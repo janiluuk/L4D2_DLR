@@ -99,7 +99,7 @@ enum struct PlayerInfo
 	int LastButtons;
 	int ChosenClass;
 	float LastDropTime;
-	char EquipedGun[64];
+	char EquippedGun[64];
 
 }
 
@@ -1383,10 +1383,10 @@ public Action:CmdClassInfo(client, args)
 {
 	PrintToChat(client,"\x05Soldier\x01 = Faster fire & melee rate");
 	PrintToChat(client,"\x05Athlete\x01 = Jump higher");
-	PrintToChat(client,"\x05Medic\x01 = Crouch to heal team, shift to drop defibs");
+	PrintToChat(client,"\x05Medic\x01 = Crouch to heal team, shift to drop med supplies");
 	PrintToChat(client,"\x05Saboture\x01 = Crouch for invisibility, double shift drops bombs");
 	PrintToChat(client,"\x05Commando\x01 = Extra damage, fast reload");
-	PrintToChat(client,"\x05Engineer\x01 = Shift to drop auto turrets and stuff");
+	PrintToChat(client,"\x05Engineer\x01 = Drop auto turrets and stuff");
 	PrintToChat(client,"\x05Brawler\x01 = Lots of health");	
 }
 
@@ -1565,14 +1565,14 @@ SetupClasses(client, class)
 		
 		case MEDIC:
 		{
-			PrintHintText(client,"Hold CTRL to heal your team mates, SHIFT drops defibs");
+			PrintHintText(client,"Hold CTRL to heal your team mates, SHIFT opens droppable menu");
 			CreateTimer(GetConVarFloat(MEDIC_HEALTH_INTERVAL), TimerDetectHealthChanges, client, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 			MaxPossibleHP = GetConVarInt(MEDIC_HEALTH);
 		}
 		
 		case ATHLETE:
 		{
-			PrintHintText(client,"Hold jump to bunny hop");
+			PrintHintText(client,"Hold JUMP to bunny hop.");
 			MaxPossibleHP = GetConVarInt(ATHLETE_HEALTH);
 		}
 		
@@ -1584,19 +1584,18 @@ SetupClasses(client, class)
 		
 		case ENGINEER:
 		{
-			PrintHintText(client,"Press shift to open the drop equipment menu, the turret is automatic");
+			PrintHintText(client,"Press SHIFT to open drop equipment menu, the turret is automatic");
 			MaxPossibleHP = GetConVarInt(ENGINEER_HEALTH);
 		}
 		
 		case SABOTEUR:
 		{
-			PrintHintText(client,"Hold CROUCH 5 sec to go invisible, the ai bots can still find you");
+			PrintHintText(client,"Hold CROUCH 5 sec to go invisible, the AI bots can still find you");
 			MaxPossibleHP = GetConVarInt(SABOTEUR_HEALTH);
 		}
 		
 		case BRAWLER:
 		{
-			
 			PrintHintText(client,"You've got a lot of health, try not to waste it");
 			MaxPossibleHP = GetConVarInt(BRAWLER_HEALTH);
 		}
@@ -1992,9 +1991,9 @@ public Event_LeftSaferoom(Handle:event, String:event_name[], bool:dontBroadcast)
 
 public Plugin:myinfo =
 {
-	name = "Talents Plugin 2023 edition",
-	author = "DLR / Neil / Spirit / panxiaohai / Yani",
-	description = "Incorporates Survivor Classes,balanced commando,classinfo,fixed class exploit",
+	name = "Talents Plugin 2023 anniversary edition",
+	author = "DLR / Ken / Neil / Spirit / panxiaohai / Yani",
+	description = "Incorporates Survivor Classes",
 	version = "v1.1",
 	url = "https://forums.alliedmods.net/showthread.php?t=273312"
 };
@@ -2045,14 +2044,14 @@ public Action:Event_WeaponFire(Handle:event, const String:name[], bool:dontBroad
 	{
 		if(client >0 && client < MAXPLAYERS + 1)
 		{
-			PrintHintText(client,"You really should pick a class, 1,5,7 are good for beginers");
+			PrintHintText(client,"You really should pick a class, 1,5,7 are good for beginners.");
 			CreatePlayerClassMenu(client);
 		}
 	}
 	
 	if(ClientData[client].ChosenClass == _:COMMANDO)
 	{
-		GetEventString(event, "weapon", ClientData[client].EquipedGun, 64);
+		GetEventString(event, "weapon", ClientData[client].EquippedGun, 64);
 		//PrintToChat(client,"weapon shot fired");	
 	}
 	return Plugin_Continue;
@@ -2060,27 +2059,27 @@ public Action:Event_WeaponFire(Handle:event, const String:name[], bool:dontBroad
 
 getdamage(client)
 {
-	if (StrContains(ClientData[client].EquipedGun,"rifle", false)!=-1)
+	if (StrContains(ClientData[client].EquippedGun,"rifle", false)!=-1)
 	{
 		return 10;
 	}
-	if (StrContains(ClientData[client].EquipedGun,"shotgun", false)!=-1)
+	if (StrContains(ClientData[client].EquippedGun,"shotgun", false)!=-1)
 	{
 		return 5;
 	}
-	if (StrContains(ClientData[client].EquipedGun, "sniper", false)!=-1)
+	if (StrContains(ClientData[client].EquippedGun, "sniper", false)!=-1)
 	{
 		return 15;
 	}
-	if (StrContains(ClientData[client].EquipedGun, "hunting", false)!=-1)
+	if (StrContains(ClientData[client].EquippedGun, "hunting", false)!=-1)
 	{
 		return 15;
 	}
-	if (StrContains(ClientData[client].EquipedGun, "pistol", false)!=-1)
+	if (StrContains(ClientData[client].EquippedGun, "pistol", false)!=-1)
 	{
 		return 25;
 	}
-	if (StrContains(ClientData[client].EquipedGun, "smg", false)!=-1)
+	if (StrContains(ClientData[client].EquippedGun, "smg", false)!=-1)
 	{
 		return 7;
 	}
