@@ -1,10 +1,10 @@
 /**
  * vim: set ts=4 :
  * =============================================================================
- * Talents Plugin by Neil
+ * Talents Plugin by DLR / Neil / Spirit / panxiaohai / Yani
  * Incorporates Survivor classes.
  *
- * (C)2013 DeadLandRape / Neil.  All rights reserved.
+ * (C)2023 DeadLandRape / Neil / Yani.  All rights reserved.
  * =============================================================================
  *
  *	Developed for DeadLandRape Gaming. This plugin is DLR proprietary software.
@@ -61,7 +61,7 @@ static const String:ClassTips[][] =
 };
 
 // How long should the Class Select menu stay open?
-static const Float:MENU_OPEN_TIME = 99999.0;
+static const float:MENU_OPEN_TIME = 99999;
 
 // What formatting string to use when printing to the chatbox
 #define PRINT_PREFIX 	"\x05[DLR] \x01"
@@ -80,15 +80,15 @@ static const Float:MENU_OPEN_TIME = 99999.0;
  */
 
 enum classes {
-	NONE,
-	SOLDIER,
-	ATHLETE,
-	MEDIC,
-	SABOTEUR,
-	COMMANDO,
-	ENGINEER,
-	BRAWLER,
-	MAXCLASSES
+	NONE = 0,
+	SOLDIER = 1,
+	ATHLETE = 2,
+	MEDIC = 3,
+	SABOTEUR = 4,
+	COMMANDO = 5,
+	ENGINEER = 6,
+	BRAWLER = 7,
+	MAXCLASSES = 7
 };
 
 enum struct PlayerInfo 
@@ -789,7 +789,7 @@ public OnPluginStart( )
 	BRAWLER_HEALTH = CreateConVar("talents_brawler_health", "600", "How much health a brawler should have");
 	
 	
-	SOLDIER_FIRE_RATE = CreateConVar("talents_soldier_fire_rate", "0.6666", "How fast the soldier should fire. Lower values = faster", true, 0.2);
+	SOLDIER_FIRE_RATE = CreateConVar("talents_soldier_fire_rate", "0.6666", "How fast the soldier should fire. Lower values = faster",  FCVAR_NOTIFY|FCVAR_SPONLY, true, 0.2, true, 1.0);
 
 	//ATHLETE_SPEED = CreateConVar("talents_athlete_speed", "1.35", "How fast soldier should run. A value of 1.0 = normal speed", FCVAR_PLUGIN);
 	ATHLETE_JUMP_VEL = CreateConVar("talents_athlete_jump", "450.0", "How high a soldier should be able to jump. Make this higher to make them jump higher, or 0.0 for normal height");
@@ -830,7 +830,7 @@ ResetClientVariables(client)
 	ClientData[client].ItemsBuilt = 0;
 	ClientData[client].HideStartTime= GetGameTime();
 	ClientData[client].LastButtons = 0;
-	ClientData[client].ChosenClass = NONE;
+	ClientData[client].ChosenClass = 0;
 	ClientData[client].LastDropTime = 0.0;
 	g_bInSaferoom[client] = false;
 }
@@ -838,7 +838,7 @@ ResetClientVariables(client)
 public Event_PlayerTeam(Handle:hEvent, String:sName[], bool:bDontBroadcast)
 {
 	new client = GetClientOfUserId(GetEventInt(hEvent, "userid"));
-    new team = GetEventInt(hEvent, "team");
+	new team = GetEventInt(hEvent, "team");
 	
 	if (team == 2 && LastClassConfirmed[client] != 0)
 	{
@@ -1138,29 +1138,29 @@ CalculateMedicPlacePos(client, type)
 			switch(type) {
 				case 0: {
 					new entity = CreateEntityByName("weapon_defibrillator");
-						DispatchKeyValue(entity, "solid", "0");
-						DispatchKeyValue(entity, "disableshadows", "1");
-						DispatchSpawn(entity);
-						TeleportEntity(entity, endPos, NULL_VECTOR, NULL_VECTOR);
+					DispatchKeyValue(entity, "solid", "0");
+					DispatchKeyValue(entity, "disableshadows", "1");
+					DispatchSpawn(entity);
+					TeleportEntity(entity, endPos, NULL_VECTOR, NULL_VECTOR);
 
-						ClientData[client].ItemsBuilt++;
+					ClientData[client].ItemsBuilt++;
 				}
 				case 1:{
 					new entity = CreateEntityByName("weapon_medkit");
-						DispatchKeyValue(entity, "solid", "0");
-						DispatchKeyValue(entity, "disableshadows", "1");
-						DispatchSpawn(entity);
-						TeleportEntity(entity, endPos, NULL_VECTOR, NULL_VECTOR);
+					DispatchKeyValue(entity, "solid", "0");
+					DispatchKeyValue(entity, "disableshadows", "1");
+					DispatchSpawn(entity);
+					TeleportEntity(entity, endPos, NULL_VECTOR, NULL_VECTOR);
 
-						ClientData[client].ItemsBuilt++;
+					ClientData[client].ItemsBuilt++;
 				}
 				case 2: {
-						new entity = CreateEntityByName("weapon_adrenaline_spawn");
-						DispatchKeyValue(entity, "solid", "0");
-						DispatchKeyValue(entity, "disableshadows", "1");
-						DispatchSpawn(entity);
-						TeleportEntity(entity, endPos, NULL_VECTOR, NULL_VECTOR);
-						ClientData[client].ItemsBuilt++;
+					new entity = CreateEntityByName("weapon_adrenaline_spawn");
+					DispatchKeyValue(entity, "solid", "0");
+					DispatchKeyValue(entity, "disableshadows", "1");
+					DispatchSpawn(entity);
+					TeleportEntity(entity, endPos, NULL_VECTOR, NULL_VECTOR);
+					ClientData[client].ItemsBuilt++;
 				}
 				default: {
 					CloseHandle( trace );
@@ -1394,7 +1394,7 @@ public Action:CmdClasses(client, args)
 {
 	for (new i = 1; i <= MaxClients; i++)
 	{
-		if(ClientData[i].ChosenClass != NONE)
+		if(ClientData[i].ChosenClass != 0)
 		{
 			PrintToChatAll("\x04%N\x01 : is a %s",i,MENU_OPTIONS[ClientData[i].ChosenClass]);
 		}
@@ -1407,7 +1407,7 @@ CreatePlayerClassMenu(client)
 		return false;
 	
 	// if client has a class already and round has started, dont give them the menu
-	if (ClientData[client].ChosenClass != _:NONE && RoundStarted == true)
+	if (ClientData[client].ChosenClass != 0 && RoundStarted == true)
 	{
 		PrintToChat(client,"Round has started, your class is locked, You are a %s",MENU_OPTIONS[ClientData[client].ChosenClass]);
 		return false;
@@ -1475,7 +1475,7 @@ public PanelHandler_SelectClass(Handle:menu, MenuAction:action, client, param)
 				SetupClasses(client, param);
 				EmitSoundToClient(client, SOUND_CLASS_SELECTED);
 				
-				if(OldClass == NONE)
+				if(OldClass == 0)
 				{
 					PrintToChatAll("\x04%N\x01 : is a \x05%s\x01%s",client,MENU_OPTIONS[param],ClassTips[param]);
 				}	
@@ -1992,7 +1992,7 @@ public Event_LeftSaferoom(Handle:event, String:event_name[], bool:dontBroadcast)
 
 public Plugin:myinfo =
 {
-	name = "Talents Plugin",
+	name = "Talents Plugin 2023 edition",
 	author = "DLR / Neil / Spirit / panxiaohai / Yani",
 	description = "Incorporates Survivor Classes,balanced commando,classinfo,fixed class exploit",
 	version = "v1.1",
@@ -2041,7 +2041,7 @@ public Action:Event_WeaponFire(Handle:event, const String:name[], bool:dontBroad
 {
 	new client = GetClientOfUserId(GetEventInt(event, "userid"));
 	
-	if (ClientData[client].ChosenClass == _:NONE && GetClientTeam(client) == 2)
+	if (ClientData[client].ChosenClass == 0 && GetClientTeam(client) == 2)
 	{
 		if(client >0 && client < MAXPLAYERS + 1)
 		{
