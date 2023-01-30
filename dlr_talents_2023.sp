@@ -789,18 +789,18 @@ public OnPluginStart( )
 	BRAWLER_HEALTH = CreateConVar("talents_brawler_health", "600", "How much health a brawler should have");
 	
 	
-	SOLDIER_FIRE_RATE = CreateConVar("talents_soldier_fire_rate", "0.6666", "How fast the soldier should fire. Lower values = faster",  FCVAR_NOTIFY|FCVAR_SPONLY, true, 0.2, true, 1.0);
+	SOLDIER_FIRE_RATE = CreateConVar("talents_soldier_fire_rate", "0.6666", "How fast the soldier should fire. Lower values = faster");
 
 	//ATHLETE_SPEED = CreateConVar("talents_athlete_speed", "1.35", "How fast soldier should run. A value of 1.0 = normal speed", FCVAR_PLUGIN);
 	ATHLETE_JUMP_VEL = CreateConVar("talents_athlete_jump", "450.0", "How high a soldier should be able to jump. Make this higher to make them jump higher, or 0.0 for normal height");
 
 	MEDIC_HEAL_DIST = CreateConVar("talents_medic_heal_dist", "256.0", "How close other survivors have to be to heal. Larger values = larger radius");
 	MEDIC_HEALTH_VALUE = CreateConVar("talents_medic_health", "10", "How much health to restore");
-	MEDIC_MAX_ITEMS = CreateConVar("talents_medic_max_items", "3", "How many items the medic can drop", FCVAR_NOTIFY|FCVAR_SPONLY, true, 1, true, 10);
+	MEDIC_MAX_ITEMS = CreateConVar("talents_medic_max_items", "3", "How many items the medic can drop");
 	MEDIC_HEALTH_INTERVAL = CreateConVar("talents_medic_health_interval", "2.0", "How often to heal players within range");
-	MAX_MEDIC_BUILD_RANGE = CreateConVar("talents_medic_build_range", "120.0", "Maximum distance away an object can be dropped by medic", FCVAR_NOTIFY|FCVAR_SPONLY, true, 60, true, 180);
+	MAX_MEDIC_BUILD_RANGE = CreateConVar("talents_medic_build_range", "120.0", "Maximum distance away an object can be dropped by medic");
 
-	SABOTEUR_INVISIBLE_TIME = CreateConVar("talents_saboteur_invis_time", "5.0", "How long it takes for the saboteur to become invisible", FCVAR_NOTIFY|FCVAR_SPONLY, true, 1, true, 15);
+	SABOTEUR_INVISIBLE_TIME = CreateConVar("talents_saboteur_invis_time", "5.0", "How long it takes for the saboteur to become invisible");
 	SABOTEUR_BOMB_ACTIVATE = CreateConVar("talents_saboteur_bomb_activate", "5.0", "How long before the dropped bomb becomes sensitive to motion");
 	SABOTEUR_BOMB_RADIUS = CreateConVar("talents_saboteur_bomb_radius", "128.0", "Radius of bomb motion detection");
 	SABOTEUR_MAX_BOMBS = CreateConVar("talents_saboteur_max_bombs", "5", "How many bombs a saboteur can drop per round");
@@ -814,7 +814,7 @@ public OnPluginStart( )
 	COMMANDO_DAMAGE = CreateConVar("talents_commando_dmg", "5", "How much bonus damage a Commando does");
 	COMMANDO_RELOAD_RATIO = CreateConVar("talents_commando_reload_ratio", "0.44", "Ratio for how fast a Commando should be able to reload");
 
-	ENGINEER_MAX_BUILDS = CreateConVar("talents_engineer_max_builds", "4", "How many times an engineer can build per round");
+	ENGINEER_MAX_BUILDS = CreateConVar("talents_engineer_max_builds", "5", "How many times an engineer can build per round");
 	MAX_ENGINEER_BUILD_RANGE = CreateConVar("talents_engineer_build_range", "120.0", "Maximum distance away an object can be built by the engineer");
 	
 	MINIMUM_DROP_INTERVAL = CreateConVar("talents_drop_interval", "30.0", "Time before an engineer, medic, or saboteur can drop another item");
@@ -947,11 +947,15 @@ public Action:TimerThink(Handle:hTimer, any:client)
 		
 		case SABOTEUR:
 		{
-			if (buttons & IN_DUCK )//&& (GetGameTime() - ClientData[client].HideStartTime) >= GetConVarFloat(SABOTEUR_INVISIBLE_TIME))
-			{	//SetEntityRenderFx(client, RENDERFX_FADE_SLOW);
-			//else
-				PrintHintText(client,"You are now invisible");
+			if (buttons & IN_DUCK )//&& 
+			{
+				if (GetGameTime() - ClientData[client].HideStartTime >= GetConVarFloat(SABOTEUR_INVISIBLE_TIME)) {
+						PrintHintText(client,"You are now invisible");
+				}
 
+				//SetEntityRenderFx(client, RENDERFX_FADE_SLOW);
+			//else
+			
 				SetEntityRenderFx(client, RENDERFX_NONE);
 				SetEntDataFloat(client, g_ioLMV, 1.5, true);
 			}
