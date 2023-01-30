@@ -73,6 +73,8 @@ static const float:MENU_OPEN_TIME = 99999;
 #define SOUND_CLASS_SELECTED "ui/pickup_misc42.wav" /**< What sound to play when a class is selected. Do not include "sounds/" prefix. */
 #define SOUND_DROP_BOMB "ui/beep22.wav"
 #define AMMO_PILE "models/props/terror/ammo_stack.mdl"
+#define MODEL_INCEN	"models/props/terror/incendiary_ammo.mdl"
+#define MODEL_EXPLO	"models/props/terror/exploding_ammo.mdl"
 
 /**
  * OTHER GLOBAL VARIABLES
@@ -96,6 +98,7 @@ enum struct PlayerInfo
 	int BombsUsed;
 	int ItemsBuilt;
 	float HideStartTime;
+	float HealStartTime;
 	int LastButtons;
 	int ChosenClass;
 	float LastDropTime;
@@ -219,6 +222,8 @@ new Float:g_SpawnPos[MAXPLAYERS+1][3];
 new LastClassConfirmed[MAXPLAYERS+1];
 
 new bool:RoundStarted =false;
+new bool:InvisibilityHint = false;
+new bool:MedicHint = false;
 
 /**
  * STOCK FUNCTIONS
@@ -523,8 +528,9 @@ stock CreateExplosion(Float:expPos[3], attacker = 0, bool:panic = true)
 			
 			if (attacker > 0)
 			{
-				if (GetClientTeam(i) == 2)
-					DealDamage(i, attacker, iDamageSurv, 8);
+				if (GetClientTeam(i) == 2) {
+					//DealDamage(i, attacker, iDamageSurv, 8);
+				}
 				else
 					DealDamage(i, attacker, iDamageInf, 8);
 			}
@@ -768,8 +774,8 @@ public OnPluginStart( )
 
 	// Concommands
 	RegConsoleCmd("sm_class", CmdClassMenu, "Shows the class selection menu");
-	RegConsoleCmd("sm_classinfo", CmdClassInfo, "Shows who is what class");
-	RegConsoleCmd("sm_classes", CmdClasses, "Shows who is what class");
+	RegConsoleCmd("sm_classinfo", CmdClassInfo, "Shows class descriptions");
+	RegConsoleCmd("sm_classes", CmdClasses, "Shows class descriptions");
 	
 	// Convars
 	MAX_SOLDIER = CreateConVar("talents_soldier_max", "1", "Max number of soldiers");
@@ -829,6 +835,7 @@ ResetClientVariables(client)
 	ClientData[client].BombsUsed = 0;
 	ClientData[client].ItemsBuilt = 0;
 	ClientData[client].HideStartTime= GetGameTime();
+	ClientData[client].HealStartTime= GetGameTime();
 	ClientData[client].LastButtons = 0;
 	ClientData[client].ChosenClass = NONE;
 	ClientData[client].LastDropTime = 0.0;
@@ -865,7 +872,9 @@ public OnMapStart()
 	// Sounds
 	PrecacheSound(SOUND_CLASS_SELECTED);
 	PrecacheSound(SOUND_DROP_BOMB);
-	
+	PrecacheModel(MODEL_INCEN, true);
+	PrecacheModel(MODEL_EXPLO, true);
+
 	// Sprites
 	g_BeamSprite = PrecacheModel("materials/sprites/laserbeam.vmt");
 	g_HaloSprite = PrecacheModel("materials/sprites/glow01.vmt");
@@ -903,11 +912,17 @@ public OnClientPutInServer(client)
 
 public Action:TimerLoadGlobal(Handle:hTimer, any:client)
 {
+	if (!client || !IsValidEntity(client) || !IsClientInGame(client) || IsFakeClient(client))
+		return;
+	
 	SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamagePre);
 }
 
 public Action:TimerLoadClient(Handle:hTimer, any:client)
 {
+	if (!client || !IsValidEntity(client) || !IsClientInGame(client) || IsFakeClient(client))
+	return;
+	
 	SDKHook(client, SDKHook_WeaponSwitch, OnWeaponSwitch);
 	SDKHook(client, SDKHook_WeaponEquip, OnWeaponEquip);
 	SDKHook(client, SDKHook_SetTransmit, SetTransmitInvisible);
@@ -950,17 +965,21 @@ public Action:TimerThink(Handle:hTimer, any:client)
 			if (buttons & IN_DUCK )//&& 
 			{
 				if (GetGameTime() - ClientData[client].HideStartTime >= GetConVarFloat(SABOTEUR_INVISIBLE_TIME)) {
-						PrintHintText(client,"You are now invisible");
+					if (InvisibilityHint == false) 
+					{
+						PrintHintText(client,"You are now invisible!");
+						InvisibilityHint = true;						
+					}
 				}
 
 				//SetEntityRenderFx(client, RENDERFX_FADE_SLOW);
 			//else
-			
 				SetEntityRenderFx(client, RENDERFX_NONE);
 				SetEntDataFloat(client, g_ioLMV, 1.5, true);
 			}
 			else
 			{
+				InvisibilityHint = false;
 				SetEntDataFloat(client, g_ioLMV, 1.0, true);
 			}
 			
@@ -982,6 +1001,14 @@ public Action:TimerThink(Handle:hTimer, any:client)
 			{	
 				CreatePlayerMedicMenu(client);	
 				ClientData[client].LastDropTime = GetGameTime();
+			}
+			if (buttons & IN_DUCK && (GetGameTime() - ClientData[client].HealStartTime) >= 3.0) {
+					if (MedicHint == false) {
+			 			PrintHintTextToAll("\x03%N\x01 is healing everyone around him!", client);
+						MedicHint = true;
+					}
+			} else {
+				MedicHint = false;
 			}
 		}
 		
@@ -1219,25 +1246,29 @@ CalculateEngineerPlacePos(client, type)
 					new upgrade = CreateEntityByName("upgrade_laser_sight");
 					DispatchKeyValue( upgrade, "count", "5" );
 					DispatchKeyValue( upgrade, "spawnflags", "2" );
-					DispatchSpawn(upgrade);
 					TeleportEntity(upgrade, endPos, NULL_VECTOR, NULL_VECTOR);
+					DispatchSpawn(upgrade);
 					ClientData[client].ItemsBuilt++;
+					ClientData[client].LastDropTime = GetGameTime();
+
 				}
 				case 3: {
 					new upgrade = CreateEntityByName("upgrade_ammo_explosive");
-					DispatchKeyValue( upgrade, "count", "5" );
-					DispatchKeyValue( upgrade, "spawnflags", "2" );
-					DispatchSpawn(upgrade);
+					SetEntityModel(upgrade, MODEL_EXPLO);
 					TeleportEntity(upgrade, endPos, NULL_VECTOR, NULL_VECTOR);
+					DispatchSpawn(upgrade);
 					ClientData[client].ItemsBuilt++;
+					ClientData[client].LastDropTime = GetGameTime();
+
 				}
 				case 4: {
 					new upgrade = CreateEntityByName("upgrade_ammo_incendiary");
-					DispatchKeyValue( upgrade, "count", "5" );
-					DispatchKeyValue( upgrade, "spawnflags", "2" );
-					DispatchSpawn(upgrade);
+					SetEntityModel(upgrade, MODEL_INCEN);
 					TeleportEntity(upgrade, endPos, NULL_VECTOR, NULL_VECTOR);
 					ClientData[client].ItemsBuilt++;
+					DispatchSpawn(upgrade);
+					ClientData[client].LastDropTime = GetGameTime();
+
 				}
 				
 				case 5: {
@@ -1283,12 +1314,23 @@ public bool:TraceFilter(entity, contentsMask, any:client)
 		return false;
 	return true;
 }
-
+public bool:IsPlayerHidden(client) 
+{
+	if (ClientData[client].ChosenClass == SABOTEUR && (GetGameTime() - ClientData[client].HideStartTime) >= (GetConVarFloat(SABOTEUR_INVISIBLE_TIME))) 
+	{
+		return true;
+	}
+	return false;
+}
 public Action:SetTransmitInvisible(client, entity)
 {
-	if (ClientData[client].ChosenClass == _:SABOTEUR && ((GetGameTime() - ClientData[client].HideStartTime) >= (GetConVarFloat(SABOTEUR_INVISIBLE_TIME) + 5.0)) && client != entity) {
-		PrintHintText(client,"You are now invisible");
+	if (ClientData[client].ChosenClass == SABOTEUR && ((GetGameTime() - ClientData[client].HideStartTime) >= (GetConVarFloat(SABOTEUR_INVISIBLE_TIME))) && client != entity) {
 
+		if (InvisibilityHint == false) 
+		{
+			PrintHintText(client,"You are now invisible!");
+			InvisibilityHint = true;						
+		}
 		SetEntityRenderFx(client, RENDERFX_NONE);
 		SetEntDataFloat(client, g_ioLMV, 1.5, true);
 		return Plugin_Handled;
@@ -1317,7 +1359,7 @@ DropBomb(client)
 	
 	EmitSoundToAll(SOUND_DROP_BOMB);
 	
-	PrintToChatAll("%N dropped a \x04bomb!", client);
+	PrintHintTextToAll("%N dropped a \x04bomb!", client);
 }
 
 public Action:TimerActivateBomb(Handle:hTimer, Handle:hPack)
@@ -1370,7 +1412,7 @@ public Action:OnTakeDamagePre(victim, &attacker, &inflictor, &Float:damage, &dam
 	
 	if (victim && attacker && IsValidEntity(attacker) && attacker <= MaxClients && IsValidEntity(victim) && victim <= MaxClients)
 	{
-		if (ClientData[attacker].ChosenClass == _:COMMANDO && GetClientTeam(attacker) == 2 && GetClientTeam(victim) == 3)
+		if (ClientData[attacker].ChosenClass == COMMANDO && GetClientTeam(attacker) == 2 && GetClientTeam(victim) == 3)
 		{
 			/*if (GetConVarInt(COMMANDO_DAMAGE_CRITICAL_CHANCE) <= GetRandomInt(1, 100))
 				damage *= GetConVarFloat(COMMANDO_DAMAGE_CRITICAL_RATIO);
@@ -1387,13 +1429,13 @@ public Action:OnTakeDamagePre(victim, &attacker, &inflictor, &Float:damage, &dam
 }
 public Action:CmdClassInfo(client, args)
 {
-	PrintToChat(client,"\x05Soldier\x01 = Faster fire & melee rate");
-	PrintToChat(client,"\x05Athlete\x01 = Jump higher");
-	PrintToChat(client,"\x05Medic\x01 = CROUCH to heal team, SHIFT to drop med supplies");
-	PrintToChat(client,"\x05Saboture\x01 = CROUCH for invisibility, SHIFT to drops bombs");
-	PrintToChat(client,"\x05Commando\x01 = Extra damage, fast reload");
-	PrintToChat(client,"\x05Engineer\x01 = Drop auto turrets and stuff, SHIFT for menu");
-	PrintToChat(client,"\x05Brawler\x01 = Lots of health");	
+	PrintToChat(client,"\x05Soldier\x01 = Has faster fire & melee rate");
+	PrintToChat(client,"\x05Athlete\x01 = Jumps higher");
+	PrintToChat(client,"\x05Medic\x01 = Heals others, plants medical supplies");
+	PrintToChat(client,"\x05Saboteur\x01 = Can go invisible, plants powerful mines");
+	PrintToChat(client,"\x05Commando\x01 = Has fast reload, deals extra damage.");
+	PrintToChat(client,"\x05Engineer\x01 = Drops auto turrets and ammo");
+	PrintToChat(client,"\x05Brawler\x01 = Has Lots of health");	
 }
 
 public Action:CmdClasses(client, args)
@@ -1565,44 +1607,44 @@ SetupClasses(client, class)
 	{
 		case SOLDIER:
 		{
-			PrintHintText(client,"Soldier attacks fast, try meleeing the tank to death!");
+			PrintHintText(client,"You attack and shoot fast, try meleeing the tank to death!");
 			MaxPossibleHP = GetConVarInt(SOLDIER_HEALTH);
 		}
 		
 		case MEDIC:
 		{
-			PrintHintText(client,"Hold CTRL to heal your team mates, SHIFT opens droppable menu");
+			PrintHintText(client,"Hold CTRL to heal mates around you, Press SHIFT to open droppable menu!");
 			CreateTimer(GetConVarFloat(MEDIC_HEALTH_INTERVAL), TimerDetectHealthChanges, client, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 			MaxPossibleHP = GetConVarInt(MEDIC_HEALTH);
 		}
 		
 		case ATHLETE:
 		{
-			PrintHintText(client,"Hold JUMP to bunny hop.");
+			PrintHintText(client,"Hold JUMP to bunny hop!");
 			MaxPossibleHP = GetConVarInt(ATHLETE_HEALTH);
 		}
 		
 		case COMMANDO:
 		{
-			PrintHintText(client,"You have increased reload and fire rate.");
+			PrintHintText(client,"You have increased reload and fire rate!");
 			MaxPossibleHP = GetConVarInt(COMMANDO_HEALTH);
 		}
 		
 		case ENGINEER:
 		{
-			PrintHintText(client,"Press SHIFT to open drop equipment menu, the turret is automatic");
+			PrintHintText(client,"Press SHIFT to open equipment menu, the turret is automatic");
 			MaxPossibleHP = GetConVarInt(ENGINEER_HEALTH);
 		}
 		
 		case SABOTEUR:
 		{
-			PrintHintText(client,"Hold CROUCH 5 sec to go invisible, the AI bots can still find you");
+			PrintHintText(client,"Hold CROUCH 5 sec to go invisible from humans. Press SHIFT to drop mine!");
 			MaxPossibleHP = GetConVarInt(SABOTEUR_HEALTH);
 		}
 		
 		case BRAWLER:
 		{
-			PrintHintText(client,"You've got a lot of health, try not to waste it");
+			PrintHintText(client,"You've got a lot of health, try to waste it well!");
 			MaxPossibleHP = GetConVarInt(BRAWLER_HEALTH);
 		}
 	}
@@ -1653,16 +1695,11 @@ public Action:TimerDetectHealthChanges(Handle:hTimer, any:client)
 	{	return Plugin_Continue; }
 	
 	new btns = GetClientButtons(client);
-	decl bool:showmessage = false;
 
 	if (btns & IN_DUCK)
 	{
 		CreateParticle(client, MEDIC_GLOW, true, 1.0);
-		if (!showmessage) {
-			PrintToChatAll("%s\x03%N\x01 is healing everyone around him!", PRINT_PREFIX, client);
-			showmessage = true;
 
-		}
 		decl Float:pos[3];
 		GetClientAbsOrigin(client, pos);
 		
@@ -1702,6 +1739,8 @@ public Action:TimerDetectHealthChanges(Handle:hTimer, any:client)
 				}
 			}
 		}
+	} else {
+		MedicHint = false;
 	}
 	
 	return Plugin_Continue;
@@ -1778,7 +1817,7 @@ RebuildCache()
 	
 	for (new i = 1; i <= MaxClients; i++)
 	{
-		if (IsValidEntity(i) && IsClientInGame(i) && IsPlayerAlive(i) && GetClientTeam(i) == 2 && ClientData[i].ChosenClass == _:SOLDIER)
+		if (IsValidEntity(i) && IsClientInGame(i) && IsPlayerAlive(i) && GetClientTeam(i) == 2 && ClientData[i].ChosenClass == SOLDIER)
 		{
 			g_iRC++;
 			g_iRI[g_iRC] = i;
@@ -1841,13 +1880,15 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
 	
 	new flags = GetEntityFlags(client);
 	
-	if (!(buttons & IN_DUCK) || !(flags & FL_ONGROUND))
+	if (!(buttons & IN_DUCK) || !(flags & FL_ONGROUND)) {
 		ClientData[client].HideStartTime= GetGameTime();
-	
+		ClientData[client].HealStartTime= GetGameTime();
+	}
+
 	if (IsFakeClient(client) || IsHanging(client) || IsIncapacitated(client) || FindAttacker(client) > 0 || IsClientOnLadder(client) || GetClientWaterLevel(client) > Water_Level:WATER_LEVEL_FEET_IN_WATER)
 		return Plugin_Continue;
 	
-	if (ClientData[client].ChosenClass == _:ATHLETE)
+	if (ClientData[client].ChosenClass == ATHLETE)
 	{
 		if (buttons & IN_JUMP && flags & FL_ONGROUND )
 		{
@@ -1866,7 +1907,7 @@ public Event_RelCommandoClass(Handle:event, String:name[], bool:dontBroadcast)
 {
 	new client = GetClientOfUserId(GetEventInt(event,"userid"));
 	
-	if (ClientData[client].ChosenClass != _:COMMANDO)
+	if (ClientData[client].ChosenClass != COMMANDO)
 		return;
 	
 	new weapon = GetEntDataEnt2(client, g_oAW);
@@ -2059,7 +2100,7 @@ public Action:Event_WeaponFire(Handle:event, const String:name[], bool:dontBroad
 		}
 	}
 	
-	if(ClientData[client].ChosenClass == _:COMMANDO)
+	if(ClientData[client].ChosenClass == COMMANDO)
 	{
 		GetEventString(event, "weapon", ClientData[client].EquippedGun, 64);
 		//PrintToChat(client,"weapon shot fired");	
@@ -2099,7 +2140,7 @@ getdamage(client)
 public Action:Event_LeftStartArea(Handle:event, const String:name[], bool:dontBroadcast)
 {
 	RoundStarted = true;
-	PrintToChatAll("%sPlayers left safe area, classes now locked",PRINT_PREFIX);	
+	PrintToChatAll("%sPlayers left safe area, classes now locked!",PRINT_PREFIX);	
 }
 stock bool:IsWitch(iEntity)
 {
