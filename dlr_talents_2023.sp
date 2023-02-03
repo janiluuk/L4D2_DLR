@@ -1102,7 +1102,7 @@ public PanelHandler_SelectMedicItem(Handle:menu, MenuAction:action, client, para
 	{
 		case MenuAction_Select:
 		{
-			if( param >= 1 && param <= 3 )//was 5
+			if( param >= 1 && param <= 4 )//was 5
 				CalculateMedicPlacePos(client, param - 1);
 		}
 	}
@@ -1196,8 +1196,6 @@ CalculateMedicPlacePos(client, type)
 				}
 				case 3: {
 					new entity = CreateEntityByName("weapon_pain_pills_spawn");
-					DispatchKeyValue(entity, "solid", "0");
-					DispatchKeyValue(entity, "disableshadows", "1");
 					DispatchSpawn(entity);
 					TeleportEntity(entity, endPos, NULL_VECTOR, NULL_VECTOR);
 					ClientData[client].ItemsBuilt++;
