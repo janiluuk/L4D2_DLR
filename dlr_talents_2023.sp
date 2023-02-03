@@ -1087,6 +1087,7 @@ CreatePlayerMedicMenu(client)
 	DrawPanelItem(hPanel, "Defibrillator");
 	DrawPanelItem(hPanel, "Medkit");
 	DrawPanelItem(hPanel, "Adrenaline");
+	DrawPanelItem(hPanel, "Pills");
 	DrawPanelItem(hPanel, "Exit");
 	
 	SendPanelToClient(hPanel, client, PanelHandler_SelectMedicItem, MENU_OPEN_TIME);
@@ -1193,6 +1194,14 @@ CalculateMedicPlacePos(client, type)
 					TeleportEntity(entity, endPos, NULL_VECTOR, NULL_VECTOR);
 					ClientData[client].ItemsBuilt++;
 				}
+				case 3: {
+					new entity = CreateEntityByName("weapon_pain_pills_spawn");
+					DispatchKeyValue(entity, "solid", "0");
+					DispatchKeyValue(entity, "disableshadows", "1");
+					DispatchSpawn(entity);
+					TeleportEntity(entity, endPos, NULL_VECTOR, NULL_VECTOR);
+					ClientData[client].ItemsBuilt++;
+				}				
 				default: {
 					CloseHandle( trace );
 					return;
@@ -1433,7 +1442,7 @@ public Action:CmdClassInfo(client, args)
 	PrintToChat(client,"\x05Athlete\x01 = Jumps higher");
 	PrintToChat(client,"\x05Medic\x01 = Heals others, plants medical supplies");
 	PrintToChat(client,"\x05Saboteur\x01 = Can go invisible, plants powerful mines");
-	PrintToChat(client,"\x05Commando\x01 = Has fast reload, deals extra damage.");
+	PrintToChat(client,"\x05Commando\x01 = Has fast reload, deals extra damage");
 	PrintToChat(client,"\x05Engineer\x01 = Drops auto turrets and ammo");
 	PrintToChat(client,"\x05Brawler\x01 = Has Lots of health");	
 }
@@ -1605,7 +1614,7 @@ SetupClasses(client, class)
 	
 	switch (class)
 	{
-		case SOLDIER:
+		case SOLDIER:	
 		{
 			PrintHintText(client,"You attack and shoot fast, try meleeing the tank to death!");
 			MaxPossibleHP = GetConVarInt(SOLDIER_HEALTH);
