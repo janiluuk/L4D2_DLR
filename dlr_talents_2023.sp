@@ -1124,7 +1124,6 @@ CreatePlayerEngineerMenu(client)
 	SetPanelTitle(hPanel, "Engineer:");
 	DrawPanelItem(hPanel, "Ammo Pile");
 	DrawPanelItem(hPanel, "Turret");
-	DrawPanelItem(hPanel, "Laser Sights");
 	DrawPanelItem(hPanel, "Frag Rounds");
 	DrawPanelItem(hPanel, "Incendiary Rounds");
 	DrawPanelItem(hPanel, "Remove Turret");/// what ive added for remove tureet
@@ -1143,7 +1142,7 @@ public PanelHandler_SelectEngineerItem(Handle:menu, MenuAction:action, client, p
 	{
 		case MenuAction_Select:
 		{
-			if( param >= 1 && param <= 6 )//was 5
+			if( param >= 1 && param <= 5 )//was 5
 				CalculateEngineerPlacePos(client, param - 1);
 		}
 	}
@@ -1190,15 +1189,17 @@ CalculateMedicPlacePos(client, type)
 					new entity = CreateEntityByName("weapon_adrenaline_spawn");
 					DispatchKeyValue(entity, "solid", "0");
 					DispatchKeyValue(entity, "disableshadows", "1");
-					DispatchSpawn(entity);
 					TeleportEntity(entity, endPos, NULL_VECTOR, NULL_VECTOR);
 					ClientData[client].ItemsBuilt++;
+					DispatchSpawn(entity);
+
 				}
 				case 3: {
-					new entity = CreateEntityByName("weapon_pain_pills_spawn");
-					DispatchSpawn(entity);
-					TeleportEntity(entity, endPos, NULL_VECTOR, NULL_VECTOR);
-					ClientData[client].ItemsBuilt++;
+					new pills = CreateEntityByName("weapon_pain_pills_spawn", -1);
+					DispatchKeyValue(pills, "solid", "6");
+					DispatchKeyValue(pills, "disableshadows", "1");
+					DispatchSpawn(pills);
+					TeleportEntity(pills, endPos, NULL_VECTOR, NULL_VECTOR);
 				}				
 				default: {
 					CloseHandle( trace );
@@ -1250,16 +1251,6 @@ CalculateEngineerPlacePos(client, type)
 
 				}
 				case 2: {
-					new upgrade = CreateEntityByName("upgrade_laser_sight");
-					DispatchKeyValue( upgrade, "count", "5" );
-					DispatchKeyValue( upgrade, "spawnflags", "2" );
-					TeleportEntity(upgrade, endPos, NULL_VECTOR, NULL_VECTOR);
-					DispatchSpawn(upgrade);
-					ClientData[client].ItemsBuilt++;
-					ClientData[client].LastDropTime = GetGameTime();
-
-				}
-				case 3: {
 					new upgrade = CreateEntityByName("upgrade_ammo_explosive");
 					SetEntityModel(upgrade, MODEL_EXPLO);
 					TeleportEntity(upgrade, endPos, NULL_VECTOR, NULL_VECTOR);
@@ -1268,7 +1259,7 @@ CalculateEngineerPlacePos(client, type)
 					ClientData[client].LastDropTime = GetGameTime();
 
 				}
-				case 4: {
+				case 3: {
 					new upgrade = CreateEntityByName("upgrade_ammo_incendiary");
 					SetEntityModel(upgrade, MODEL_INCEN);
 					TeleportEntity(upgrade, endPos, NULL_VECTOR, NULL_VECTOR);
@@ -1278,8 +1269,8 @@ CalculateEngineerPlacePos(client, type)
 
 				}
 				
-				case 5: {
-					ClientCommand(client, "sm_removemachine");
+				case 4: {
+					ClientCommand(client, "sm_dlrpmkairm");
 					/*if (removemachine(client))
 					{
 						ClientData[client].ItemsBuilt--;	
