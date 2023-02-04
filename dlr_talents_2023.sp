@@ -1198,8 +1198,8 @@ CalculateMedicPlacePos(client, type)
 					new pills = CreateEntityByName("weapon_pain_pills_spawn", -1);
 					DispatchKeyValue(pills, "solid", "6");
 					DispatchKeyValue(pills, "disableshadows", "1");
-					DispatchSpawn(pills);
 					TeleportEntity(pills, endPos, NULL_VECTOR, NULL_VECTOR);
+					DispatchSpawn(pills);
 				}				
 				default: {
 					CloseHandle( trace );
