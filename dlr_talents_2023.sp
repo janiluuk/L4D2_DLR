@@ -409,7 +409,7 @@ stock HurtEntity(client, attacker, Float:amount, type)
 		DispatchSpawn(iDmgEntity);
 		if (IsValidEntity(iDmgEntity))
 		{
-			AcceptEntityInput(iDmgEntity, "Hurt", attacker);
+		//	AcceptEntityInput(iDmgEntity, "Hurt", attacker);
 			AcceptEntityInput(iDmgEntity, "Kill");
 		}
 	}
@@ -476,7 +476,8 @@ stock CreateExplosion(Float:expPos[3], attacker = 0, bool:panic = true)
 	DispatchKeyValue(exHurt, "DamageRadius", sRadius);
 	DispatchKeyValue(exHurt, "DamageDelay", sInterval);
 	DispatchKeyValue(exHurt, "Damage", "0");
-	DispatchKeyValue(exHurt, "DamageType", "8");
+	DispatchKeyValue(exHurt, "DamageType", "0");
+
 	DispatchSpawn(exHurt);
 	TeleportEntity(exHurt, expPos, NULL_VECTOR, NULL_VECTOR);
 	
@@ -877,11 +878,11 @@ public OnPluginStart( )
 	ENGINEER_TURRET_EXTERNAL_PLUGIN = CreateConVar("talents_engineer_machinegun_plugin", "1", "Whether to use external plugin for turrets.");
 	MINIMUM_DROP_INTERVAL = CreateConVar("talents_drop_interval", "30.0", "Time before an engineer, medic, or saboteur can drop another item");
 
-	DefaultHealDuration = GetConVarFloat(DEFAULT_HEAL_DURATION);
-	DefaultReviveDuration = GetConVarFloat(DEFAULT_REVIVE_DURATION);
+	DefaultHealDuration = GetConVarInt(DEFAULT_HEAL_DURATION);
+	DefaultReviveDuration = GetConVarInt(DEFAULT_REVIVE_DURATION);
 
 	SetConVarInt(FindConVar("first_aid_kit_use_duration"), DefaultHealDuration, false, false);
-	SetConVarInt(FindConVar("survivor_revive_duration"), DefaultReviveDuration, false, false);
+	SetConVarInt(FindConVar("survivor_revive_duration"), 5, false, false);
 		
 	FirstAidDuration = GetConVarFloat(FindConVar("first_aid_kit_use_duration"));
 	ReviveDuration = GetConVarFloat(FindConVar("survivor_revive_duration"));
@@ -1319,7 +1320,7 @@ CalculateEngineerPlacePos(client, type)
 
 					if (GetConVarInt(ENGINEER_TURRET_EXTERNAL_PLUGIN) > 0) 
 					{
-						ClientCommand(client, "sm_dlrpmkai");
+						ClientCommand(client, Engineer_Turret_Spawn_Cmd);
 					} else {
 
 						if(CreateMachine(client))
@@ -1350,7 +1351,7 @@ CalculateEngineerPlacePos(client, type)
 				case 4: {
 					if (GetConVarInt(ENGINEER_TURRET_EXTERNAL_PLUGIN) > 0) 
 					{
-						ClientCommand(client, "sm_dlrpmkairm");
+						ClientCommand(client, Engineer_Turret_Remove_Cmd);
 					} else {
 
 						if (removemachine(client))
