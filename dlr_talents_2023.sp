@@ -233,8 +233,8 @@ new Float:ReviveDuration;
 new Float:DefaultHealDuration;
 new Float:DefaultReviveDuration;
 new bool:BombActive = false;
-new String:Engineer_Turret_Spawn_Cmd = "sm_dlrpmkai";
-new String:Engineer_Turret_Remove_Cmd = "sm_dlrpmkairm";
+new String:Engineer_Turret_Spawn_Cmd[16] = "sm_dlrpmkai";
+new String:Engineer_Turret_Remove_Cmd[16] = "sm_dlrpmkairm";
 
 // Last class taken
 new LastClassConfirmed[MAXPLAYERS+1];
@@ -475,7 +475,7 @@ stock CreateExplosion(Float:expPos[3], attacker = 0, bool:panic = true)
 	//Set up hurt point
 	DispatchKeyValue(exHurt, "DamageRadius", sRadius);
 	DispatchKeyValue(exHurt, "DamageDelay", sInterval);
-	DispatchKeyValue(exHurt, "Damage", "1");
+	DispatchKeyValue(exHurt, "Damage", "0");
 	DispatchKeyValue(exHurt, "DamageType", "8");
 	DispatchSpawn(exHurt);
 	TeleportEntity(exHurt, expPos, NULL_VECTOR, NULL_VECTOR);
@@ -877,8 +877,8 @@ public OnPluginStart( )
 	ENGINEER_TURRET_EXTERNAL_PLUGIN = CreateConVar("talents_engineer_machinegun_plugin", "1", "Whether to use external plugin for turrets.");
 	MINIMUM_DROP_INTERVAL = CreateConVar("talents_drop_interval", "30.0", "Time before an engineer, medic, or saboteur can drop another item");
 
-	DefaultHealDuration = GetConVarFloat(FindConVar("talents_default_heal_duration"));
-	DefaultReviveDuration = GetConVarFloat(FindConVar("talents_default_revive_duration"));
+	DefaultHealDuration = GetConVarFloat(DEFAULT_HEAL_DURATION);
+	DefaultReviveDuration = GetConVarFloat(DEFAULT_REVIVE_DURATION);
 
 	SetConVarInt(FindConVar("first_aid_kit_use_duration"), DefaultHealDuration, false, false);
 	SetConVarInt(FindConVar("survivor_revive_duration"), DefaultReviveDuration, false, false);
@@ -1922,7 +1922,7 @@ public UpgradeQuickHeal(client)
 	if(ClientData[client].ChosenClass == MEDIC)
 		SetConVarFloat(g_VarFirstAidDuration, FirstAidDuration * GetConVarFloat(MEDIC_HEAL_RATIO), false, false);
 	else
-		SetConVarFloat(g_VarFirstAidDuration, FirstAidDuration, false, false);
+		SetConVarFloat(g_VarFirstAidDuration, FirstAidDuration * 1.0, false, false);
 }
 
 public UpgradeQuickRevive(client)
@@ -1930,7 +1930,7 @@ public UpgradeQuickRevive(client)
 	if(ClientData[client].ChosenClass == MEDIC)
 		SetConVarFloat(g_VarReviveDuration, ReviveDuration * GetConVarFloat(MEDIC_REVIVE_RATIO), false, false);
 	else
-		SetConVarFloat(g_VarReviveDuration, ReviveDuration, false, false);
+		SetConVarFloat(g_VarReviveDuration, ReviveDuration * 1.0, false, false);
 }
 
 public event_HealBegin(Handle:event, const String:name[], bool:Broadcast)
