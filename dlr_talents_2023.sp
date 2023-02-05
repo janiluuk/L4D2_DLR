@@ -51,12 +51,12 @@ static const String:MENU_OPTIONS[][] =
 static const String:ClassTips[][] =
 {
 	", Is a noob who didnt pick a class.",
-	", He can shoot fast.",
-	", He Can Jump high.",
-	", He can heal his team by crouching.",
-	", He is invisible while hes crouched.",
-	", He does loads of damage.",
-	", He can drop auto turrets.",
+	", He can shoot fast, takes less damage and moves faster.",
+	", He can Jump high.",
+	", He can heal his team by crouching, heal and revive faster and drop supplies. ",
+	", He is invisible while hes crouched and drops mines",
+	", He does loads of damage and has fast reload.",
+	", He can drop auto turrets and ammo supplies.",
 	", He has lots of health."
 };
 
@@ -64,8 +64,7 @@ static const String:ClassTips[][] =
 static const float:MENU_OPEN_TIME = 99999;
 
 // What formatting string to use when printing to the chatbox
-#define PRINT_PREFIX 	"\x05[DLR] \x01"
-
+#define PRINT_PREFIX 	"\x05[DLR] \x01" 
 
 /// SOUNDS AND OTHER
 /// PRECACHE DATA
@@ -154,6 +153,7 @@ new RndSession;
 #define EXPLOSION_PARTICLE3 "explosion_huge_b"
 #define EFIRE_PARTICLE "gas_explosion_ground_fire"
 #define MEDIC_GLOW "fire_medium_01_glow"
+#define BOMB_GLOW "fire_medium_01_glow"
 #define ENGINEER_MACHINE_GUN "models/w_models/weapons/50cal.mdl"
 
 // Convars (change these via the created cfg files)
@@ -179,8 +179,13 @@ new Handle:COMMANDO_HEALTH;
 new Handle:ENGINEER_HEALTH;
 new Handle:BRAWLER_HEALTH;
 
+new Handle:DEFAULT_REVIVE_DURATION;
+new Handle:DEFAULT_HEAL_DURATION;
+
 // Soldier
 new Handle:SOLDIER_FIRE_RATE;
+new Handle:SOLDIER_DAMAGE_REDUCE_RATIO;
+new Handle:SOLDIER_SPEED;
 
 // Athlete
 //new Handle:ATHLETE_SPEED;
@@ -191,6 +196,9 @@ new Handle:MEDIC_HEAL_DIST;
 new Handle:MEDIC_HEALTH_VALUE;
 new Handle:MEDIC_MAX_ITEMS;
 new Handle:MEDIC_HEALTH_INTERVAL;
+new Handle:MEDIC_HEAL_RATIO;
+new Handle:MEDIC_REVIVE_RATIO;
+
 new Handle:MAX_MEDIC_BUILD_RANGE;
 
 
@@ -213,10 +221,20 @@ new Handle:MAX_ENGINEER_BUILD_RANGE;
 
 // Saboteur, Engineer, Medic
 new Handle:MINIMUM_DROP_INTERVAL;
+new Handle:ENGINEER_TURRET_EXTERNAL_PLUGIN;
 
 // Saferoom checks for saboteur
 new bool:g_bInSaferoom[MAXPLAYERS+1] = false;
 new Float:g_SpawnPos[MAXPLAYERS+1][3];
+new Handle:g_VarFirstAidDuration = INVALID_HANDLE;
+new Handle:g_VarReviveDuration = INVALID_HANDLE;
+new Float:FirstAidDuration;
+new Float:ReviveDuration;
+new Float:DefaultHealDuration;
+new Float:DefaultReviveDuration;
+new bool:BombActive = false;
+new String:Engineer_Turret_Spawn_Cmd = "sm_dlrpmkai";
+new String:Engineer_Turret_Remove_Cmd = "sm_dlrpmkairm";
 
 // Last class taken
 new LastClassConfirmed[MAXPLAYERS+1];
@@ -224,6 +242,7 @@ new LastClassConfirmed[MAXPLAYERS+1];
 new bool:RoundStarted =false;
 new bool:InvisibilityHint = false;
 new bool:MedicHint = false;
+
 
 /**
  * STOCK FUNCTIONS
@@ -624,6 +643,23 @@ public Action:TimerRemovePrecacheParticle(Handle:timer, any:Particle)
 		AcceptEntityInput(Particle, "Kill");
 }
 
+stock CreateParticleInPos(Float:pos[3], String:Particle_Name[])
+{
+	decl String:sName[64], String:sTargetName[64];
+	new Particle = CreateEntityByName("info_particle_system");
+	TeleportEntity(Particle, pos, NULL_VECTOR, NULL_VECTOR);
+	DispatchKeyValue(Particle, "effect_name", Particle_Name);
+	
+
+	DispatchSpawn(Particle);
+	DispatchSpawn(Particle);
+
+	ActivateEntity(Particle);
+	AcceptEntityInput(Particle, "start");
+
+	CreateTimer(10.0, TimerStopAndRemoveBombParticle, Particle, TIMER_FLAG_NO_MAPCHANGE);
+}
+
 stock CreateParticle(client, String:Particle_Name[], bool:Parent, Float:duration)
 {
 	decl Float:pos[3], String:sName[64], String:sTargetName[64];
@@ -662,6 +698,16 @@ public Action:TimerStopAndRemoveParticle(Handle:timer, any:entity)
 	if (entity > 0 && IsValidEntity(entity))
 	{
 		AcceptEntityInput(entity, "Kill");
+	}
+}
+public Action:TimerStopAndRemoveBombParticle(Handle:timer, any:entity)
+{
+	if (entity > 0 && IsValidEntity(entity) && BombActive == false)
+	{
+		AcceptEntityInput(entity, "Kill");
+	}
+	if (BombActive == true) {
+		CreateTimer(1.0, TimerStopAndRemoveParticle, entity, TIMER_FLAG_NO_MAPCHANGE);
 	}
 }
 
@@ -769,7 +815,8 @@ public OnPluginStart( )
 	HookEvent("player_left_checkpoint", Event_LeftSaferoom);
 	HookEvent("player_team", Event_PlayerTeam);
 	HookEvent("player_left_start_area",Event_LeftStartArea);
-	
+	HookEvent("heal_begin", event_HealBegin, EventHookMode_Pre);
+	HookEvent("revive_begin", event_ReviveBegin, EventHookMode_Pre);
 	HookEvent("weapon_fire", Event_WeaponFire);
 
 	// Concommands
@@ -796,14 +843,19 @@ public OnPluginStart( )
 	
 	
 	SOLDIER_FIRE_RATE = CreateConVar("talents_soldier_fire_rate", "0.6666", "How fast the soldier should fire. Lower values = faster");
+	SOLDIER_SPEED = CreateConVar("talents_soldier_speed", "1.25", "How fast soldier should run. A value of 1.0 = normal speed", FCVAR_PLUGIN);
 
-	//ATHLETE_SPEED = CreateConVar("talents_athlete_speed", "1.35", "How fast soldier should run. A value of 1.0 = normal speed", FCVAR_PLUGIN);
 	ATHLETE_JUMP_VEL = CreateConVar("talents_athlete_jump", "450.0", "How high a soldier should be able to jump. Make this higher to make them jump higher, or 0.0 for normal height");
 
 	MEDIC_HEAL_DIST = CreateConVar("talents_medic_heal_dist", "256.0", "How close other survivors have to be to heal. Larger values = larger radius");
 	MEDIC_HEALTH_VALUE = CreateConVar("talents_medic_health", "10", "How much health to restore");
 	MEDIC_MAX_ITEMS = CreateConVar("talents_medic_max_items", "3", "How many items the medic can drop");
 	MEDIC_HEALTH_INTERVAL = CreateConVar("talents_medic_health_interval", "2.0", "How often to heal players within range");
+	MEDIC_REVIVE_RATIO = CreateConVar("talents_medic_revive_ratio", "0.5", "How much faster medic revives. lower is faster");
+	MEDIC_HEAL_RATIO = CreateConVar("talents_medic_heal_ratio", "0.5", "How much faster medic heals, lower is faster");
+	DEFAULT_REVIVE_DURATION = CreateConVar("talents_default_revive_duration", "4.0", "Default reviving duration in seconds");
+	DEFAULT_HEAL_DURATION = CreateConVar("talents_default_heal_duration", "4.0", "Default healing duration in seconds");
+
 	MAX_MEDIC_BUILD_RANGE = CreateConVar("talents_medic_build_range", "120.0", "Maximum distance away an object can be dropped by medic");
 
 	SABOTEUR_INVISIBLE_TIME = CreateConVar("talents_saboteur_invis_time", "5.0", "How long it takes for the saboteur to become invisible");
@@ -812,18 +864,31 @@ public OnPluginStart( )
 	SABOTEUR_MAX_BOMBS = CreateConVar("talents_saboteur_max_bombs", "5", "How many bombs a saboteur can drop per round");
 	SABOTEUR_BOMB_DAMAGE_SURV = CreateConVar("talents_saboteur_bomb_dmg_surv", "0", "How much damage a bomb does to survivors");
 	SABOTEUR_BOMB_DAMAGE_INF = CreateConVar("talents_saboteur_bomb_dmg_inf", "300", "How much damage a bomb does to infected");
-	SABOTEUR_BOMB_POWER = CreateConVar("talents_saboteur_bomb_power", "10.0", "How much blast power a bomb has. Higher values will throw survivors farther away");
+	SABOTEUR_BOMB_POWER = CreateConVar("talents_saboteur_bomb_power", "2.0", "How much blast power a bomb has. Higher values will throw survivors farther away");
 
 	//COMMANDO_DAMAGE_RATIO = CreateConVar("talents_commando_dmg_ratio", "1.5", "How many more times commando class does damage", FCVAR_PLUGIN);
 	//COMMANDO_DAMAGE_CRITICAL_CHANCE = CreateConVar("talents_commando_dmg_critical_chance", "25", "Percent chance that damage will be critical", FCVAR_PLUGIN);
 	//COMMANDO_DAMAGE_CRITICAL_RATIO = CreateConVar("talents_commando_dmg_critical_ratio", "3.0", "Critical damage ratio", FCVAR_PLUGIN);
 	COMMANDO_DAMAGE = CreateConVar("talents_commando_dmg", "5", "How much bonus damage a Commando does");
 	COMMANDO_RELOAD_RATIO = CreateConVar("talents_commando_reload_ratio", "0.44", "Ratio for how fast a Commando should be able to reload");
-
+	SOLDIER_DAMAGE_REDUCE_RATIO = CreateConVar("talents_soldier_damage_reduce_ratio", "0.5", "Ratio for how much to reduce damage for soldier");
 	ENGINEER_MAX_BUILDS = CreateConVar("talents_engineer_max_builds", "5", "How many times an engineer can build per round");
 	MAX_ENGINEER_BUILD_RANGE = CreateConVar("talents_engineer_build_range", "120.0", "Maximum distance away an object can be built by the engineer");
-	
+	ENGINEER_TURRET_EXTERNAL_PLUGIN = CreateConVar("talents_engineer_machinegun_plugin", "1", "Whether to use external plugin for turrets.");
 	MINIMUM_DROP_INTERVAL = CreateConVar("talents_drop_interval", "30.0", "Time before an engineer, medic, or saboteur can drop another item");
+
+	DefaultHealDuration = GetConVarFloat(FindConVar("talents_default_heal_duration"));
+	DefaultReviveDuration = GetConVarFloat(FindConVar("talents_default_revive_duration"));
+
+	SetConVarInt(FindConVar("first_aid_kit_use_duration"), DefaultHealDuration, false, false);
+	SetConVarInt(FindConVar("survivor_revive_duration"), DefaultReviveDuration, false, false);
+		
+	FirstAidDuration = GetConVarFloat(FindConVar("first_aid_kit_use_duration"));
+	ReviveDuration = GetConVarFloat(FindConVar("survivor_revive_duration"));
+
+	g_VarFirstAidDuration = FindConVar("first_aid_kit_use_duration");
+	g_VarReviveDuration = FindConVar("survivor_revive_duration");
+
 	
 	ResetAllState();//turrets stuff
 	
@@ -886,7 +951,8 @@ public OnMapStart()
 	PrecacheParticle(EXPLOSION_PARTICLE3);
 	PrecacheParticle(EFIRE_PARTICLE);
 	PrecacheParticle(MEDIC_GLOW);
-	
+	PrecacheParticle(BOMB_GLOW);
+
 	// Cache
 	ClearCache();
 	RoundStarted = false;
@@ -1029,6 +1095,11 @@ public Action:TimerThink(Handle:hTimer, any:client)
 				
 			}
 		}
+		case SOLDIER:
+		{
+			SetEntDataFloat(client, g_ioLMV, GetConVarFloat(SOLDIER_SPEED), true);
+		}
+		
 	}
 	
 	return Plugin_Continue;
@@ -1190,8 +1261,8 @@ CalculateMedicPlacePos(client, type)
 					DispatchKeyValue(entity, "solid", "0");
 					DispatchKeyValue(entity, "disableshadows", "1");
 					TeleportEntity(entity, endPos, NULL_VECTOR, NULL_VECTOR);
-					ClientData[client].ItemsBuilt++;
 					DispatchSpawn(entity);
+					ClientData[client].ItemsBuilt++;
 
 				}
 				case 3: {
@@ -1200,6 +1271,8 @@ CalculateMedicPlacePos(client, type)
 					DispatchKeyValue(pills, "disableshadows", "1");
 					TeleportEntity(pills, endPos, NULL_VECTOR, NULL_VECTOR);
 					DispatchSpawn(pills);
+					ClientData[client].ItemsBuilt++;
+
 				}				
 				default: {
 					CloseHandle( trace );
@@ -1243,12 +1316,17 @@ CalculateEngineerPlacePos(client, type)
 					ClientData[client].ItemsBuilt++;
 				}
 				case 1:{
-					ClientCommand(client, "sm_dlrpmkai");
-					/* if(CreateMachine(client))
-					{
-						ClientData[client].ItemsBuilt++;
-					}*/
 
+					if (GetConVarInt(ENGINEER_TURRET_EXTERNAL_PLUGIN) > 0) 
+					{
+						ClientCommand(client, "sm_dlrpmkai");
+					} else {
+
+						if(CreateMachine(client))
+						{
+							ClientData[client].ItemsBuilt++;
+						}
+					}
 				}
 				case 2: {
 					new upgrade = CreateEntityByName("upgrade_ammo_explosive");
@@ -1270,11 +1348,16 @@ CalculateEngineerPlacePos(client, type)
 				}
 				
 				case 4: {
-					ClientCommand(client, "sm_dlrpmkairm");
-					/*if (removemachine(client))
+					if (GetConVarInt(ENGINEER_TURRET_EXTERNAL_PLUGIN) > 0) 
 					{
-						ClientData[client].ItemsBuilt--;	
-					}*/
+						ClientCommand(client, "sm_dlrpmkairm");
+					} else {
+
+						if (removemachine(client))
+						{
+							ClientData[client].ItemsBuilt--;	
+						}
+					}
 				}
 				default: {
 					CloseHandle( trace );
@@ -1354,7 +1437,8 @@ DropBomb(client)
 	TE_SendToAll();
 	TE_SetupBeamRingPoint(pos, 10.0, 256.0, g_BeamSprite, g_HaloSprite, 0, 10, 0.6, 10.0, 0.5, redColor, 10, 0);
 	TE_SendToAll();
-	
+	BombActive = true;
+	CreateParticleInPos(pos, BOMB_GLOW);
 	EmitSoundToAll(SOUND_DROP_BOMB);
 	
 	PrintHintTextToAll("%N dropped a \x04bomb!", client);
@@ -1394,7 +1478,9 @@ public Action:TimerCheckBombSensors(Handle:hTimer, Handle:hPack)
 			{
 				PrintToChatAll("%s\x03%N\x01's \x04bomb \x01detonated!", PRINT_PREFIX, owner);
 				CreateExplosion(pos, owner, false);
+				BombActive = false;
 				CloseHandle(hPack);
+
 				return Plugin_Stop;
 			}
 		}	
@@ -1410,6 +1496,14 @@ public Action:OnTakeDamagePre(victim, &attacker, &inflictor, &Float:damage, &dam
 	
 	if (victim && attacker && IsValidEntity(attacker) && attacker <= MaxClients && IsValidEntity(victim) && victim <= MaxClients)
 	{
+
+		//PrintToChatAll("%s", m_attacker);
+		if(ClientData[attacker].ChosenClass == SOLDIER && GetClientTeam(victim) == 2)
+		{
+			//PrintToChat(victim, "Damage: %f, New: %f", damage, damage*0.5);
+			damage = damage * GetConVarFloat(SOLDIER_DAMAGE_REDUCE_RATIO);
+			return Plugin_Changed;
+		}
 		if (ClientData[attacker].ChosenClass == COMMANDO && GetClientTeam(attacker) == 2 && GetClientTeam(victim) == 3)
 		{
 			/*if (GetConVarInt(COMMANDO_DAMAGE_CRITICAL_CHANCE) <= GetRandomInt(1, 100))
@@ -1427,10 +1521,10 @@ public Action:OnTakeDamagePre(victim, &attacker, &inflictor, &Float:damage, &dam
 }
 public Action:CmdClassInfo(client, args)
 {
-	PrintToChat(client,"\x05Soldier\x01 = Has faster fire & melee rate");
+	PrintToChat(client,"\x05Soldier\x01 = Has faster attack rate, runs faster and takes less damage");
 	PrintToChat(client,"\x05Athlete\x01 = Jumps higher");
-	PrintToChat(client,"\x05Medic\x01 = Heals others, plants medical supplies");
-	PrintToChat(client,"\x05Saboteur\x01 = Can go invisible, plants powerful mines");
+	PrintToChat(client,"\x05Medic\x01 = Heals others, plants medical supplies. Faster revive & heal speed");
+	PrintToChat(client,"\x05Saboteur\x01 = Can go invisible, plants powerful mines and throws special grenades");
 	PrintToChat(client,"\x05Commando\x01 = Has fast reload, deals extra damage");
 	PrintToChat(client,"\x05Engineer\x01 = Drops auto turrets and ammo");
 	PrintToChat(client,"\x05Brawler\x01 = Has Lots of health");	
@@ -1605,7 +1699,7 @@ SetupClasses(client, class)
 	{
 		case SOLDIER:	
 		{
-			PrintHintText(client,"You attack and shoot fast, try meleeing the tank to death!");
+			PrintHintText(client,"You have increased attack rate, reduced damage and faster movement!");
 			MaxPossibleHP = GetConVarInt(SOLDIER_HEALTH);
 		}
 		
@@ -1822,6 +1916,35 @@ RebuildCache()
 		}
 	}
 }
+
+public UpgradeQuickHeal(client)
+{
+	if(ClientData[client].ChosenClass == MEDIC)
+		SetConVarFloat(g_VarFirstAidDuration, FirstAidDuration * GetConVarFloat(MEDIC_HEAL_RATIO), false, false);
+	else
+		SetConVarFloat(g_VarFirstAidDuration, FirstAidDuration, false, false);
+}
+
+public UpgradeQuickRevive(client)
+{
+	if(ClientData[client].ChosenClass == MEDIC)
+		SetConVarFloat(g_VarReviveDuration, ReviveDuration * GetConVarFloat(MEDIC_REVIVE_RATIO), false, false);
+	else
+		SetConVarFloat(g_VarReviveDuration, ReviveDuration, false, false);
+}
+
+public event_HealBegin(Handle:event, const String:name[], bool:Broadcast)
+{
+	new client = GetClientOfUserId(GetEventInt(event, "userid"));
+	UpgradeQuickHeal(client);
+}
+
+public event_ReviveBegin(Handle:event, const String:name[], bool:Broadcast)
+{
+	new client = GetClientOfUserId(GetEventInt(event, "userid"));
+	UpgradeQuickRevive(client);
+}
+
 
 public Event_PlayerSpawn(Handle:hEvent, String:sName[], bool:bDontBroadcast)
 {
@@ -2043,7 +2166,7 @@ public Plugin:myinfo =
 	name = "Talents Plugin 2023 anniversary edition",
 	author = "DLR / Ken / Neil / Spirit / panxiaohai / Yani",
 	description = "Incorporates Survivor Classes",
-	version = "v1.1",
+	version = "v1.2",
 	url = "https://forums.alliedmods.net/showthread.php?t=273312"
 };
 
