@@ -13,6 +13,7 @@ Original is from 2013, this is anniversary update for the infamous DLR plugin.
 - Mines do more damage to infected, 1500hp. Some edge over tank
 - Mines glow now so players know to avoid the spot or lure someone to it
 - Notifications on placing mines.
+- Default health for players configurable
 - Countdown notification for all before mine becoming active
 - Support for multiple types of mines (freeze, vomit, antigravity, black hole), ui missing
 - More descriptive class descriptions and help
