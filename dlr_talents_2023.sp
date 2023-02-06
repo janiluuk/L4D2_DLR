@@ -74,6 +74,9 @@ static const float:MENU_OPEN_TIME = 99999;
 #define AMMO_PILE "models/props/terror/ammo_stack.mdl"
 #define MODEL_INCEN	"models/props/terror/incendiary_ammo.mdl"
 #define MODEL_EXPLO	"models/props/terror/exploding_ammo.mdl"
+#define MODEL_SPRITE "models/sprites/glow01.spr"
+#define PARTICLE_DEFIB                  "item_defibrillator_body"
+#define PARTICLE_ELMOS                  "st_elmos_fire_cp0"
 
 /**
  * OTHER GLOBAL VARIABLES
@@ -155,6 +158,7 @@ new RndSession;
 #define MEDIC_GLOW "fire_medium_01_glow"
 #define BOMB_GLOW "fire_medium_01_glow"
 #define ENGINEER_MACHINE_GUN "models/w_models/weapons/50cal.mdl"
+#define SPRITE_GLOW "sprites/blueglow1.vmt"
 
 // Convars (change these via the created cfg files)
 
@@ -235,6 +239,7 @@ new Float:DefaultReviveDuration;
 new bool:BombActive = false;
 new String:Engineer_Turret_Spawn_Cmd[16] = "sm_dlrpmkai";
 new String:Engineer_Turret_Remove_Cmd[16] = "sm_dlrpmkairm";
+new Handle:GLOW_COLOR_ACTIVE;
 
 // Last class taken
 new LastClassConfirmed[MAXPLAYERS+1];
@@ -421,7 +426,7 @@ stock CreateExplosion(Float:expPos[3], attacker = 0, bool:panic = true)
 	new Float:flMxDistance = 450.0;
 	new Float:power = GetConVarFloat(SABOTEUR_BOMB_POWER);
 	new iDamageSurv = GetConVarInt(SABOTEUR_BOMB_DAMAGE_SURV);
-	new iDamageInf = GetConVarInt(SABOTEUR_BOMB_DAMAGE_INF);
+	new Float:iDamageInf = GetConVarFloat(SABOTEUR_BOMB_DAMAGE_INF);
 	new Float:flInterval = 0.1;
 	FloatToString(flInterval, sInterval, sizeof(sInterval));
 	IntToString(450, sRadius, sizeof(sRadius));
@@ -658,7 +663,7 @@ stock CreateParticleInPos(Float:pos[3], String:Particle_Name[])
 	ActivateEntity(Particle);
 	AcceptEntityInput(Particle, "start");
 
-	CreateTimer(15.0, TimerStopAndRemoveBombParticle, Particle, TIMER_FLAG_NO_MAPCHANGE);
+	CreateTimer(5.0, TimerStopAndRemoveBombParticle, Particle, TIMER_FLAG_NO_MAPCHANGE);
 }
 
 stock CreateParticle(client, String:Particle_Name[], bool:Parent, Float:duration)
@@ -691,9 +696,190 @@ stock CreateParticle(client, String:Particle_Name[], bool:Parent, Float:duration
 	
 	ActivateEntity(Particle);
 	AcceptEntityInput(Particle, "start");
-	CreateTimer(duration, TimerStopAndRemoveParticle, Particle, TIMER_FLAG_NO_MAPCHANGE);
+	CreateTimer(duration, TimerActivateBombParticle, Particle, TIMER_FLAG_NO_MAPCHANGE);
+}
+void SetupPrjEffects(int entity, float vPos[3], const char[] color)
+{
+        // Grenade Pos
+        GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", vPos);
+
+        // Sprite
+        CreateEnvSprite(entity, color);
+
+        // Steam
+        static float vAng[3];
+        GetEntPropVector(entity, Prop_Data, "m_angRotation", vAng);
+        MakeEnvSteam(entity, vPos, vAng, color);
+
+        // Light
+        int light = MakeLightDynamic(entity, vPos);
+        SetVariantEntity(light);
+        SetVariantString(color);
+        AcceptEntityInput(light, "color");
+        AcceptEntityInput(light, "TurnOn");
+}
+void MakeEnvSteam(int target, const float vPos[3], const float vAng[3], const char[] sColor)
+{
+        int entity = CreateEntityByName("env_steam");
+        if( entity == -1 )
+        {
+                LogError("Failed to create 'env_steam'");
+                return;
+        }
+
+	static char sTemp[16];
+        Format(sTemp, sizeof(sTemp), "silv_steam_%d", target);
+        DispatchKeyValue(entity, "targetname", sTemp);
+        DispatchKeyValue(entity, "SpawnFlags", "1");
+        DispatchKeyValue(entity, "rendercolor", sColor);
+        DispatchKeyValue(entity, "SpreadSpeed", "10");
+        DispatchKeyValue(entity, "Speed", "100");
+        DispatchKeyValue(entity, "StartSize", "5");
+        DispatchKeyValue(entity, "EndSize", "10");
+        DispatchKeyValue(entity, "Rate", "50");
+        DispatchKeyValue(entity, "JetLength", "100");
+        DispatchKeyValue(entity, "renderamt", "150");
+        DispatchKeyValue(entity, "InitialState", "1");
+        DispatchSpawn(entity);
+        AcceptEntityInput(entity, "TurnOn");
+        TeleportEntity(entity, vPos, vAng, NULL_VECTOR);
+
+        // Attach
+        if( target )
+        {
+                SetVariantString("!activator");
+                AcceptEntityInput(entity, "SetParent", target);
+        }
+
+	return;
 }
 
+void CreateEnvSprite(int target, const char[] sColor)
+{
+        int entity = CreateEntityByName("env_sprite");
+        if( entity == -1)
+        {
+                LogError("Failed to create 'env_sprite'");
+                return;
+        }
+
+        DispatchKeyValue(entity, "rendercolor", sColor);
+        DispatchKeyValue(entity, "model", MODEL_SPRITE);
+        DispatchKeyValue(entity, "spawnflags", "3");
+        DispatchKeyValue(entity, "rendermode", "9");
+        DispatchKeyValue(entity, "GlowProxySize", "0.1");
+        DispatchKeyValue(entity, "renderamt", "175");
+        DispatchKeyValue(entity, "scale", "0.1");
+        DispatchSpawn(entity);
+
+        // Attach
+        if( target )
+        {
+                SetVariantString("!activator");
+                AcceptEntityInput(entity, "SetParent", target);
+        }
+}
+
+int MakeLightDynamic(int target, const float vPos[3])
+{
+        int entity = CreateEntityByName("light_dynamic");
+        if( entity == -1 )
+        {
+                LogError("Failed to create 'light_dynamic'");
+                return 0;
+        }
+
+        DispatchKeyValue(entity, "_light", "0 255 0 0");
+        DispatchKeyValue(entity, "brightness", "0.1");
+        DispatchKeyValueFloat(entity, "spotlight_radius", 32.0);
+        DispatchKeyValueFloat(entity, "distance", 600.0);
+        DispatchKeyValue(entity, "style", "6");
+        DispatchSpawn(entity);
+        AcceptEntityInput(entity, "TurnOff");
+
+        TeleportEntity(entity, vPos, NULL_VECTOR, NULL_VECTOR);
+
+        // Attach
+        if( target )
+        {
+                SetVariantString("!activator");
+                AcceptEntityInput(entity, "SetParent", target);
+        }
+
+	return entity;
+}
+
+int DisplayParticle(int target, const char[] sParticle, const float vPos[3], const float vAng[3], float refire = 0.0)
+{
+        int entity = CreateEntityByName("info_particle_system");
+        if( entity == -1)
+        {
+                LogError("Failed to create 'info_particle_system'");
+                return 0;
+        }
+
+        DispatchKeyValue(entity, "effect_name", sParticle);
+        DispatchSpawn(entity);
+        ActivateEntity(entity);
+        AcceptEntityInput(entity, "start");
+        TeleportEntity(entity, vPos, vAng, NULL_VECTOR);
+
+        // Refire
+        if( refire )
+        {
+                static char sTemp[48];
+                Format(sTemp, sizeof(sTemp), "OnUser1 !self:Stop::%f:-1", refire - 0.05);
+                SetVariantString(sTemp);
+                AcceptEntityInput(entity, "AddOutput");
+                Format(sTemp, sizeof(sTemp), "OnUser1 !self:FireUser2::%f:-1", refire);
+                SetVariantString(sTemp);
+                AcceptEntityInput(entity, "AddOutput");
+                AcceptEntityInput(entity, "FireUser1");
+
+                SetVariantString("OnUser2 !self:Start::0:-1");
+                AcceptEntityInput(entity, "AddOutput");
+                SetVariantString("OnUser2 !self:FireUser1::0:-1");
+                AcceptEntityInput(entity, "AddOutput");
+        }
+
+	// Attach
+        if( target )
+        {
+                SetVariantString("!activator");
+                AcceptEntityInput(entity, "SetParent", target);
+        }
+
+	return entity;
+}
+
+int GetColor(ConVar hCvar)
+{
+    char sTemp[12];
+    hCvar.GetString(sTemp, sizeof(sTemp));
+    if( sTemp[0] == 0 )
+    	return 0;
+
+    char sColors[3][4];
+    int color = ExplodeString(sTemp, " ", sColors, sizeof(sColors), sizeof(sColors[]));
+
+    if( color != 3 )
+            return 0;
+
+    color = StringToInt(sColors[0]);
+    color += 256 * StringToInt(sColors[1]);
+    color += 65536 * StringToInt(sColors[2]);
+
+    return color;
+}
+
+public Action:TimerActivateBombParticle(Handle:timer, any:entity)
+{
+	if (entity > 0 && IsValidEntity(entity))
+	{
+		AcceptEntityInput(entity, "Kill");
+
+	}
+}
 public Action:TimerStopAndRemoveParticle(Handle:timer, any:entity)
 {
 	if (entity > 0 && IsValidEntity(entity))
@@ -703,14 +889,43 @@ public Action:TimerStopAndRemoveParticle(Handle:timer, any:entity)
 }
 public Action:TimerStopAndRemoveBombParticle(Handle:timer, any:entity)
 {
-	if (entity > 0 && IsValidEntity(entity) && BombActive == false)
+	if (entity > 0 && IsValidEntity(entity)) 
 	{
-		AcceptEntityInput(entity, "Kill");
-	}
-	if (BombActive == true) {
-		CreateTimer(1.0, TimerStopAndRemoveParticle, entity, TIMER_FLAG_NO_MAPCHANGE);
+		if (BombActive == false) {
+			AcceptEntityInput(entity, "Kill");
+		} else {
+			int color = GetColor(GLOW_COLOR_ACTIVE);
+	        // Grenade Pos + Effects
+	        static float vPos[3];
+	        SetupPrjEffects(entity, vPos, "0 250 0"); // Light Blu
+	        int ent;
+	        // Particles
+	        ent = DisplayParticle(entity, PARTICLE_DEFIB,         vPos, NULL_VECTOR);
+            if (ent)  InputKill(ent, 15.0);
+			ent = DisplayParticle(entity, PARTICLE_ELMOS,         vPos, NULL_VECTOR);
+			if (ent) InputKill(ent, 15.0);
+	        SetEntProp(entity, Prop_Send, "m_iGlowType", 3);
+	        SetEntProp(entity, Prop_Send, "m_glowColorOverride", color);
+	        SetEntProp(entity, Prop_Send, "m_nGlowRange", 100);
+	        ActivateEntity(entity);
+			AcceptEntityInput(entity, "start");
+			InputKill(entity, 15.0);
+            CreateTimer(5.0, TimerStopAndRemoveParticle, entity, TIMER_FLAG_NO_MAPCHANGE);
+			AcceptEntityInput(entity, "Kill");
+            
+		}
 	}
 }
+
+void InputKill(int entity, float time)
+{
+        static char temp[40];
+        Format(temp, sizeof(temp), "OnUser4 !self:Kill::%f:-1", time);
+        SetVariantString(temp);
+        AcceptEntityInput(entity, "AddOutput");
+        AcceptEntityInput(entity, "FireUser4");
+}
+
 
 stock IsGhost(client)
 {
@@ -877,12 +1092,13 @@ public OnPluginStart( )
 	MAX_ENGINEER_BUILD_RANGE = CreateConVar("talents_engineer_build_range", "120.0", "Maximum distance away an object can be built by the engineer");
 	ENGINEER_TURRET_EXTERNAL_PLUGIN = CreateConVar("talents_engineer_machinegun_plugin", "1", "Whether to use external plugin for turrets.");
 	MINIMUM_DROP_INTERVAL = CreateConVar("talents_drop_interval", "30.0", "Time before an engineer, medic, or saboteur can drop another item");
+	GLOW_COLOR_ACTIVE = CreateConVar("talents_bomb_active_glow_color", "0 255 0", "Glow color for active bombs");
 
-	DefaultHealDuration = GetConVarInt(DEFAULT_HEAL_DURATION);
-	DefaultReviveDuration = GetConVarInt(DEFAULT_REVIVE_DURATION);
+	DefaultHealDuration = GetConVarFloat(DEFAULT_HEAL_DURATION);
+	DefaultReviveDuration = GetConVarFloat(DEFAULT_REVIVE_DURATION);
 
-	SetConVarInt(FindConVar("first_aid_kit_use_duration"), DefaultHealDuration, false, false);
-	SetConVarInt(FindConVar("survivor_revive_duration"), 5, false, false);
+	SetConVarFloat(FindConVar("first_aid_kit_use_duration"), DefaultHealDuration, false, false);
+	SetConVarFloat(FindConVar("survivor_revive_duration"), DefaultReviveDuration, false, false);
 		
 	FirstAidDuration = GetConVarFloat(FindConVar("first_aid_kit_use_duration"));
 	ReviveDuration = GetConVarFloat(FindConVar("survivor_revive_duration"));
@@ -940,6 +1156,8 @@ public OnMapStart()
 	PrecacheSound(SOUND_DROP_BOMB);
 	PrecacheModel(MODEL_INCEN, true);
 	PrecacheModel(MODEL_EXPLO, true);
+	PrecacheModel(MODEL_SPRITE, true);
+	PrecacheModel(SPRITE_GLOW, true);
 
 	// Sprites
 	g_BeamSprite = PrecacheModel("materials/sprites/laserbeam.vmt");
@@ -1031,9 +1249,13 @@ public Action:TimerThink(Handle:hTimer, any:client)
 		
 		case SABOTEUR:
 		{
-			if (BombActive == true && RoundToFloor(iCanDropTime) <= GetConVarInt(SABOTEUR_BOMB_ACTIVATE)) {
-					PrintHintTextToAll("%N's mine becomes active in %i seconds", client, GetConVarInt(SABOTEUR_BOMB_ACTIVATE) - (RoundToFloor(GetGameTime() - ClientData[client].LastDropTime)));
+			if (BombActive == true && RoundToFloor(iCanDropTime) < GetConVarInt(SABOTEUR_BOMB_ACTIVATE)) {
+					PrintHintTextToAll("%N's mine becomes active in %i seconds", client, GetConVarInt(SABOTEUR_BOMB_ACTIVATE) - (RoundToFloor(iCanDropTime)));
 			}
+			if (BombActive == true && RoundToFloor(iCanDropTime) == GetConVarInt(SABOTEUR_BOMB_ACTIVATE)) {
+					PrintHintTextToAll("%N's mine is active!", client);
+			}
+
 			if (buttons & IN_DUCK )//&& 
 			{
 				if (GetGameTime() - ClientData[client].HideStartTime >= GetConVarFloat(SABOTEUR_INVISIBLE_TIME)) {
@@ -1055,26 +1277,24 @@ public Action:TimerThink(Handle:hTimer, any:client)
 				SetEntDataFloat(client, g_ioLMV, 1.0, true);
 			}
 			
-			if (buttons & IN_SPEED && ClientData[client].ItemsBuilt < GetConVarInt(SABOTEUR_MAX_BOMBS))
+			if (buttons & IN_SPEED)
 			{
-				if (CanDrop == false) {
+				if (CanDrop == false && (RoundToFloor(iCanDropTime) > GetConVarInt(SABOTEUR_BOMB_ACTIVATE))) {
 					PrintHintText(client ,"Next bomb available in %i seconds", (GetConVarInt(MINIMUM_DROP_INTERVAL) - RoundToFloor(iCanDropTime)));
-					} else {
-						if (!IsPlayerInSaferoom(client) && !IsInEndingSaferoom(client))
-						{
-							DropBomb(client);
-							
+				} else {
+
+					if (CanDrop == true && !IsPlayerInSaferoom(client) && !IsInEndingSaferoom(client))
+					{
+						if (ClientData[client].ItemsBuilt > GetConVarInt(SABOTEUR_MAX_BOMBS)) {
+							PrintHintText(client ,"Maximum amount of bombs used!");
+						} else {
+							DropBomb(client);							
 							ClientData[client].ItemsBuilt++;
 							ClientData[client].LastDropTime = GetGameTime();
-						}						
+						}
 					}
-
+				}
 			}
-			if (buttons & IN_SPEED && CanDrop && ClientData[client].ItemsBuilt >= GetConVarInt(SABOTEUR_MAX_BOMBS))
-			{
-					 PrintHintText(client ,"Maximum amount of bombs used!");
-			}
-
 		}
 		
 		case MEDIC:
