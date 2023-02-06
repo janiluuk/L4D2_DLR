@@ -1018,7 +1018,9 @@ public Action:TimerThink(Handle:hTimer, any:client)
 	
 	new buttons = GetClientButtons(client);
 	new bool:CanDrop = (GetGameTime() - ClientData[client].LastDropTime) >= GetConVarFloat(MINIMUM_DROP_INTERVAL);
+	new float:iCanDropTime = (GetGameTime() - ClientData[client].LastDropTime);
 	
+
 	decl Float:pos[3];
 	GetClientAbsOrigin(client, pos);
 	
@@ -1029,6 +1031,9 @@ public Action:TimerThink(Handle:hTimer, any:client)
 		
 		case SABOTEUR:
 		{
+			if (BombActive == true && RoundToFloor(iCanDropTime) <= GetConVarInt(SABOTEUR_BOMB_ACTIVATE)) {
+					PrintHintTextToAll("%N's mine becomes active in %i seconds", client, GetConVarInt(SABOTEUR_BOMB_ACTIVATE) - (RoundToFloor(GetGameTime() - ClientData[client].LastDropTime)));
+			}
 			if (buttons & IN_DUCK )//&& 
 			{
 				if (GetGameTime() - ClientData[client].HideStartTime >= GetConVarFloat(SABOTEUR_INVISIBLE_TIME)) {
@@ -1050,20 +1055,26 @@ public Action:TimerThink(Handle:hTimer, any:client)
 				SetEntDataFloat(client, g_ioLMV, 1.0, true);
 			}
 			
-			if (buttons & IN_SPEED && CanDrop && ClientData[client].ItemsBuilt < GetConVarInt(SABOTEUR_MAX_BOMBS))
+			if (buttons & IN_SPEED && ClientData[client].ItemsBuilt < GetConVarInt(SABOTEUR_MAX_BOMBS))
 			{
-				if (!IsPlayerInSaferoom(client) && !IsInEndingSaferoom(client))
-				{
-					DropBomb(client);
-					
-					ClientData[client].ItemsBuilt++;
-					ClientData[client].LastDropTime = GetGameTime();
-				}
+				if (CanDrop == false) {
+					PrintHintText(client ,"Next bomb available in %i seconds", (GetConVarInt(MINIMUM_DROP_INTERVAL) - RoundToFloor(iCanDropTime)));
+					} else {
+						if (!IsPlayerInSaferoom(client) && !IsInEndingSaferoom(client))
+						{
+							DropBomb(client);
+							
+							ClientData[client].ItemsBuilt++;
+							ClientData[client].LastDropTime = GetGameTime();
+						}						
+					}
+
 			}
 			if (buttons & IN_SPEED && CanDrop && ClientData[client].ItemsBuilt >= GetConVarInt(SABOTEUR_MAX_BOMBS))
 			{
 					 PrintHintText(client ,"Maximum amount of bombs used!");
 			}
+
 		}
 		
 		case MEDIC:
@@ -1437,7 +1448,8 @@ DropBomb(client)
 	WritePackCell(hPack, client);
 	WritePackCell(hPack, RndSession);
 	CreateTimer(GetConVarFloat(SABOTEUR_BOMB_ACTIVATE), TimerActivateBomb, hPack, TIMER_FLAG_NO_MAPCHANGE);
-	
+	CreateTimer(0.1, TimerCountDown, hPack, TIMER_FLAG_NO_MAPCHANGE);
+
 	TE_SetupBeamRingPoint(pos, 10.0, 256.0, g_BeamSprite, g_HaloSprite, 0, 15, 0.5, 5.0, 0.0, greenColor, 10, 0);
 	TE_SendToAll();
 	TE_SetupBeamRingPoint(pos, 10.0, 256.0, g_BeamSprite, g_HaloSprite, 0, 10, 0.6, 10.0, 0.5, redColor, 10, 0);
@@ -1446,7 +1458,13 @@ DropBomb(client)
 	CreateParticleInPos(pos, BOMB_GLOW);
 	EmitSoundToAll(SOUND_DROP_BOMB);
 	
-	PrintHintTextToAll("%N dropped a \x04bomb!", client);
+	PrintHintTextToAll("%N dropped a regular mine!", client);
+}
+
+public Action:TimerCountDown(Handle:hTimer, Handle:hPack)
+{
+		
+	return Plugin_Stop;
 }
 
 public Action:TimerActivateBomb(Handle:hTimer, Handle:hPack)
@@ -1481,7 +1499,7 @@ public Action:TimerCheckBombSensors(Handle:hTimer, Handle:hPack)
 		
 			if (GetVectorDistance(pos, clientpos) < GetConVarFloat(SABOTEUR_BOMB_RADIUS))
 			{
-				PrintToChatAll("%s\x03%N\x01's \x04bomb \x01detonated!", PRINT_PREFIX, owner);
+				PrintHintTextToAll("\x03%N\x01's \x04mine \x01detonated!", owner);
 				CreateExplosion(pos, owner, false);
 				BombActive = false;
 				CloseHandle(hPack);
