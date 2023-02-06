@@ -246,6 +246,7 @@ new Handle:GLOW_COLOR_ACTIVE;
 new LastClassConfirmed[MAXPLAYERS+1];
 
 new bool:RoundStarted =false;
+new bool:ClassHint =false;
 new bool:InvisibilityHint = false;
 new bool:MedicHint = false;
 
@@ -900,11 +901,10 @@ public Action:TimerStopAndRemoveBombParticle(Handle:timer, any:entity)
 			AcceptEntityInput(entity, "Kill");
 		} else {
 
-			int color = GetColor(GLOW_COLOR_ACTIVE);
-			// Grenade Pos + Effects
 			static float vPos[3];
-
-			SetupPrjEffects(entity, vPos, "255 0 0"); // Red
+		    char color[12];
+	    	GetConVarString(GLOW_COLOR_ACTIVE, color, sizeof(color));
+			SetupPrjEffects(entity, vPos, color); // Red
 			AcceptEntityInput(entity, "start");
 			CreateTimer(15.0, TimerStopAndRemoveParticle, entity, TIMER_FLAG_NO_MAPCHANGE);
 
@@ -1096,7 +1096,7 @@ public OnPluginStart( )
 	MAX_ENGINEER_BUILD_RANGE = CreateConVar("talents_engineer_build_range", "120.0", "Maximum distance away an object can be built by the engineer");
 	ENGINEER_TURRET_EXTERNAL_PLUGIN = CreateConVar("talents_engineer_machinegun_plugin", "1", "Whether to use external plugin for turrets.");
 	MINIMUM_DROP_INTERVAL = CreateConVar("talents_drop_interval", "30.0", "Time before an engineer, medic, or saboteur can drop another item");
-	GLOW_COLOR_ACTIVE = CreateConVar("talents_bomb_active_glow_color", "0 255 0", "Glow color for active bombs");
+	GLOW_COLOR_ACTIVE = CreateConVar("talents_bomb_active_glow_color","255 0 0", "Glow color for active bombs - Default Red");
 
 	DefaultHealDuration = GetConVarFloat(DEFAULT_HEAL_DURATION);
 	DefaultReviveDuration = GetConVarFloat(DEFAULT_REVIVE_DURATION);
@@ -1128,6 +1128,23 @@ ResetClientVariables(client)
 	g_bInSaferoom[client] = false;
 }
 
+public setPlayerDefaultHealth(client)
+{
+	if (ClientData[client].ChosenClass == _:NONE && RoundStarted == false) {
+	// HEALTH
+		new MaxPossibleHP = GetConVarInt(DEFAULT_HEALTH);
+
+		new OldMaxHealth = GetEntProp(client, Prop_Send, "m_iMaxHealth");
+		new OldHealth = GetClientHealth(client);
+		new OldTempHealth = GetClientTempHealth(client);
+		if (OldMaxHealth == MaxPossibleHP) return; 
+		SetClientTempHealth(client, OldTempHealth);
+		SetEntityHealth(client, MaxPossibleHP);
+		SetEntProp(client, Prop_Send, "m_iMaxHealth", MaxPossibleHP);
+		SetClientTempHealth(client, 0);		
+	}
+}
+
 public Event_PlayerTeam(Handle:hEvent, String:sName[], bool:bDontBroadcast)
 {
 	new client = GetClientOfUserId(GetEventInt(hEvent, "userid"));
@@ -1150,6 +1167,7 @@ public Event_RoundChange(Handle:event, String:name[], bool:dontBroadcast)
 	
 	RndSession++;
 	RoundStarted = false;
+
 	ResetAllState();//turrets stuff
 }
 
@@ -1179,6 +1197,7 @@ public OnMapStart()
 	// Cache
 	ClearCache();
 	RoundStarted = false;
+	ClassHint = false;
 	PrecacheTurret();//turretstuff
 }
 
@@ -1787,10 +1806,16 @@ CreatePlayerClassMenu(client)
 		return false;
 	
 	// if client has a class already and round has started, dont give them the menu
-	if (ClientData[client].ChosenClass !=  _:NONE && RoundStarted == true)
+	if (ClientData[client].ChosenClass != _:NONE && RoundStarted == true)
 	{
 		PrintToChat(client,"Round has started, your class is locked, You are a %s",MENU_OPTIONS[ClientData[client].ChosenClass]);
 		return false;
+	}
+		
+	if(ClientData[client].ChosenClass == _:NONE && RoundStarted == false)
+	{
+		setPlayerDefaultHealth(client);
+
 	}
 	
 	new Handle:hPanel;
@@ -1835,8 +1860,6 @@ public PanelHandler_SelectClass(Handle:menu, MenuAction:action, client, param)
 			{
 				return;
 			}
-			
-			
 			
 			if( GetMaxWithClass( param ) >= 0 && CountPlayersWithClass( param ) >= GetMaxWithClass( param ) && ClientData[client].ChosenClass != param ) 
 			{
@@ -2454,10 +2477,14 @@ public Action:Event_WeaponFire(Handle:event, const String:name[], bool:dontBroad
 	
 	if (ClientData[client].ChosenClass == _:NONE && GetClientTeam(client) == 2)
 	{
-		if(client >0 && client < MAXPLAYERS + 1)
+		if(client >0 && client < MAXPLAYERS + 1 && ClassHint == false)
 		{
+			if (RoundStarted == true) {
+				ClassHint = true;
+			}
 			PrintHintText(client,"You really should pick a class, 1,5,7 are good for beginners.");
 			CreatePlayerClassMenu(client);
+
 		}
 	}
 	
