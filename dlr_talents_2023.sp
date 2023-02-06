@@ -409,7 +409,7 @@ stock HurtEntity(client, attacker, Float:amount, type)
 		DispatchSpawn(iDmgEntity);
 		if (IsValidEntity(iDmgEntity))
 		{
-		//	AcceptEntityInput(iDmgEntity, "Hurt", attacker);
+			AcceptEntityInput(iDmgEntity, "Hurt", client);
 			AcceptEntityInput(iDmgEntity, "Kill");
 		}
 	}
@@ -468,6 +468,8 @@ stock CreateExplosion(Float:expPos[3], attacker = 0, bool:panic = true)
 	//Set up physics movement explosion
 	DispatchKeyValue(exPhys, "radius", sRadius);
 	DispatchKeyValue(exPhys, "magnitude", sPower);
+	DispatchKeyValue(exPhys, "spawnflags", "1");
+
 	DispatchSpawn(exPhys);
 	TeleportEntity(exPhys, expPos, NULL_VECTOR, NULL_VECTOR);
 	
@@ -475,9 +477,8 @@ stock CreateExplosion(Float:expPos[3], attacker = 0, bool:panic = true)
 	//Set up hurt point
 	DispatchKeyValue(exHurt, "DamageRadius", sRadius);
 	DispatchKeyValue(exHurt, "DamageDelay", sInterval);
-	DispatchKeyValue(exHurt, "Damage", "0");
-	DispatchKeyValue(exHurt, "DamageType", "0");
-
+	DispatchKeyValue(exHurt, "Damage", "1");
+	DispatchKeyValue(exHurt, "DamageType", "128");
 	DispatchSpawn(exHurt);
 	TeleportEntity(exHurt, expPos, NULL_VECTOR, NULL_VECTOR);
 	
@@ -646,7 +647,6 @@ public Action:TimerRemovePrecacheParticle(Handle:timer, any:Particle)
 
 stock CreateParticleInPos(Float:pos[3], String:Particle_Name[])
 {
-	decl String:sName[64], String:sTargetName[64];
 	new Particle = CreateEntityByName("info_particle_system");
 	TeleportEntity(Particle, pos, NULL_VECTOR, NULL_VECTOR);
 	DispatchKeyValue(Particle, "effect_name", Particle_Name);
@@ -658,7 +658,7 @@ stock CreateParticleInPos(Float:pos[3], String:Particle_Name[])
 	ActivateEntity(Particle);
 	AcceptEntityInput(Particle, "start");
 
-	CreateTimer(10.0, TimerStopAndRemoveBombParticle, Particle, TIMER_FLAG_NO_MAPCHANGE);
+	CreateTimer(15.0, TimerStopAndRemoveBombParticle, Particle, TIMER_FLAG_NO_MAPCHANGE);
 }
 
 stock CreateParticle(client, String:Particle_Name[], bool:Parent, Float:duration)
@@ -864,7 +864,7 @@ public OnPluginStart( )
 	SABOTEUR_BOMB_RADIUS = CreateConVar("talents_saboteur_bomb_radius", "128.0", "Radius of bomb motion detection");
 	SABOTEUR_MAX_BOMBS = CreateConVar("talents_saboteur_max_bombs", "5", "How many bombs a saboteur can drop per round");
 	SABOTEUR_BOMB_DAMAGE_SURV = CreateConVar("talents_saboteur_bomb_dmg_surv", "0", "How much damage a bomb does to survivors");
-	SABOTEUR_BOMB_DAMAGE_INF = CreateConVar("talents_saboteur_bomb_dmg_inf", "300", "How much damage a bomb does to infected");
+	SABOTEUR_BOMB_DAMAGE_INF = CreateConVar("talents_saboteur_bomb_dmg_inf", "1000", "How much damage a bomb does to infected");
 	SABOTEUR_BOMB_POWER = CreateConVar("talents_saboteur_bomb_power", "2.0", "How much blast power a bomb has. Higher values will throw survivors farther away");
 
 	//COMMANDO_DAMAGE_RATIO = CreateConVar("talents_commando_dmg_ratio", "1.5", "How many more times commando class does damage", FCVAR_PLUGIN);
@@ -1059,6 +1059,10 @@ public Action:TimerThink(Handle:hTimer, any:client)
 					ClientData[client].ItemsBuilt++;
 					ClientData[client].LastDropTime = GetGameTime();
 				}
+			}
+			if (buttons & IN_SPEED && CanDrop && ClientData[client].ItemsBuilt >= GetConVarInt(SABOTEUR_MAX_BOMBS))
+			{
+					 PrintHintText(client ,"Maximum amount of bombs used!");
 			}
 		}
 		
