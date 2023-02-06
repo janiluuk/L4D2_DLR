@@ -175,6 +175,7 @@ new Handle:MAX_ENGINEER;
 new Handle:MAX_BRAWLER;
 
 // Everyone
+new Handle:DEFAULT_HEALTH;
 new Handle:SOLDIER_HEALTH;
 new Handle:ATHLETE_HEALTH;
 new Handle:MEDIC_HEALTH;
@@ -909,13 +910,12 @@ public Action:TimerStopAndRemoveBombParticle(Handle:timer, any:entity)
 
 			int entId;
 			// Particle
-			entId = DisplayParticle(entity, PARTICLE_DEFIB,         vPos, NULL_VECTOR);
+			entId = DisplayParticle(entity, PARTICLE_DEFIB, vPos, NULL_VECTOR);
 			if (entId)  InputKill(entId, 15.0);
 			CreateTimer(15.0, TimerStopAndRemoveParticle, entId, TIMER_FLAG_NO_MAPCHANGE);
-			entId = DisplayParticle(entity, PARTICLE_ELMOS,         vPos, NULL_VECTOR);
-			if (entId) InputKill(entId, 20.0);
+			entId = DisplayParticle(entity, PARTICLE_ELMOS, vPos, NULL_VECTOR);
+			if (entId) InputKill(entId, 15.0);
 			CreateTimer(15.0, TimerStopAndRemoveParticle, entId, TIMER_FLAG_NO_MAPCHANGE);			
-
 		}
 	}
 }
@@ -1052,6 +1052,7 @@ public OnPluginStart( )
 	MAX_ENGINEER = CreateConVar("talents_engineer_max", "1", "Max number of engineers");
 	MAX_BRAWLER = CreateConVar("talents_brawler_max", "1", "Max number of brawlers");
 	
+	DEFAULT_HEALTH = CreateConVar("talents_default_health", "150", "How much health a default player should have");
 	SOLDIER_HEALTH = CreateConVar("talents_soldier_health", "300", "How much health a soldier should have");
 	ATHLETE_HEALTH = CreateConVar("talents_athelete_health", "150", "How much health an athlete should have");
 	MEDIC_HEALTH = CreateConVar("talents_medic_health_start", "150", "How much health a medic should have");
@@ -1932,7 +1933,7 @@ SetupClasses(client, class)
 			return;
 	
 	ClientData[client].ChosenClass = class;
-	new MaxPossibleHP = 100;
+	new MaxPossibleHP = GetConVarInt(DEFAULT_HEALTH);
 	
 	switch (class)
 	{
