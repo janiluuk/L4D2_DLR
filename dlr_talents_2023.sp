@@ -656,7 +656,6 @@ stock CreateParticleInPos(Float:pos[3], String:Particle_Name[])
 	TeleportEntity(Particle, pos, NULL_VECTOR, NULL_VECTOR);
 	DispatchKeyValue(Particle, "effect_name", Particle_Name);
 	
-
 	DispatchSpawn(Particle);
 	DispatchSpawn(Particle);
 
@@ -664,6 +663,7 @@ stock CreateParticleInPos(Float:pos[3], String:Particle_Name[])
 	AcceptEntityInput(Particle, "start");
 
 	CreateTimer(5.0, TimerStopAndRemoveBombParticle, Particle, TIMER_FLAG_NO_MAPCHANGE);
+
 }
 
 stock CreateParticle(client, String:Particle_Name[], bool:Parent, Float:duration)
@@ -877,15 +877,19 @@ public Action:TimerActivateBombParticle(Handle:timer, any:entity)
 	if (entity > 0 && IsValidEntity(entity))
 	{
 		AcceptEntityInput(entity, "Kill");
-
 	}
+
 }
 public Action:TimerStopAndRemoveParticle(Handle:timer, any:entity)
 {
 	if (entity > 0 && IsValidEntity(entity))
 	{
-		AcceptEntityInput(entity, "Kill");
-	}
+		if (BombActive == true) {
+			CreateTimer(5.0, TimerStopAndRemoveParticle, entity, TIMER_FLAG_NO_MAPCHANGE);			
+		} else {
+			AcceptEntityInput(entity, "Kill");
+		}
+	}		
 }
 public Action:TimerStopAndRemoveBombParticle(Handle:timer, any:entity)
 {
@@ -894,25 +898,24 @@ public Action:TimerStopAndRemoveBombParticle(Handle:timer, any:entity)
 		if (BombActive == false) {
 			AcceptEntityInput(entity, "Kill");
 		} else {
+
 			int color = GetColor(GLOW_COLOR_ACTIVE);
-	        // Grenade Pos + Effects
-	        static float vPos[3];
-	        SetupPrjEffects(entity, vPos, "0 250 0"); // Light Blu
-	        int ent;
-	        // Particles
-	        ent = DisplayParticle(entity, PARTICLE_DEFIB,         vPos, NULL_VECTOR);
-            if (ent)  InputKill(ent, 15.0);
-			ent = DisplayParticle(entity, PARTICLE_ELMOS,         vPos, NULL_VECTOR);
-			if (ent) InputKill(ent, 15.0);
-	        SetEntProp(entity, Prop_Send, "m_iGlowType", 3);
-	        SetEntProp(entity, Prop_Send, "m_glowColorOverride", color);
-	        SetEntProp(entity, Prop_Send, "m_nGlowRange", 100);
-	        ActivateEntity(entity);
+			// Grenade Pos + Effects
+			static float vPos[3];
+
+			SetupPrjEffects(entity, vPos, "255 0 0"); // Red
 			AcceptEntityInput(entity, "start");
-			InputKill(entity, 15.0);
-            CreateTimer(5.0, TimerStopAndRemoveParticle, entity, TIMER_FLAG_NO_MAPCHANGE);
-			AcceptEntityInput(entity, "Kill");
-            
+			CreateTimer(15.0, TimerStopAndRemoveParticle, entity, TIMER_FLAG_NO_MAPCHANGE);
+
+			int entId;
+			// Particle
+			entId = DisplayParticle(entity, PARTICLE_DEFIB,         vPos, NULL_VECTOR);
+			if (entId)  InputKill(entId, 15.0);
+			CreateTimer(15.0, TimerStopAndRemoveParticle, entId, TIMER_FLAG_NO_MAPCHANGE);
+			entId = DisplayParticle(entity, PARTICLE_ELMOS,         vPos, NULL_VECTOR);
+			if (entId) InputKill(entId, 20.0);
+			CreateTimer(15.0, TimerStopAndRemoveParticle, entId, TIMER_FLAG_NO_MAPCHANGE);			
+
 		}
 	}
 }
@@ -1668,7 +1671,6 @@ DropBomb(client)
 	WritePackCell(hPack, client);
 	WritePackCell(hPack, RndSession);
 	CreateTimer(GetConVarFloat(SABOTEUR_BOMB_ACTIVATE), TimerActivateBomb, hPack, TIMER_FLAG_NO_MAPCHANGE);
-	CreateTimer(0.1, TimerCountDown, hPack, TIMER_FLAG_NO_MAPCHANGE);
 
 	TE_SetupBeamRingPoint(pos, 10.0, 256.0, g_BeamSprite, g_HaloSprite, 0, 15, 0.5, 5.0, 0.0, greenColor, 10, 0);
 	TE_SendToAll();
@@ -1679,12 +1681,6 @@ DropBomb(client)
 	EmitSoundToAll(SOUND_DROP_BOMB);
 	
 	PrintHintTextToAll("%N dropped a regular mine!", client);
-}
-
-public Action:TimerCountDown(Handle:hTimer, Handle:hPack)
-{
-		
-	return Plugin_Stop;
 }
 
 public Action:TimerActivateBomb(Handle:hTimer, Handle:hPack)
