@@ -125,6 +125,8 @@ new g_ioLMV;
 
 // Commando vars
 new g_ioPR = -1;
+new g_iVMStartTimeO  = -1;
+new g_iViewModelO = -1;
 new g_ioNA = -1;
 new g_ioTI = -1;
 new g_iSSD = -1;
@@ -275,6 +277,9 @@ public OnPluginStart( )
 	g_iSID = FindSendPropInfo("CBaseShotgun", "m_reloadInsertDuration");
 	g_iSED = FindSendPropInfo("CBaseShotgun", "m_reloadEndDuration");
 	g_iSRS = FindSendPropInfo("CBaseShotgun", "m_reloadState");
+
+    g_iVMStartTimeO = FindSendPropInfo("CTerrorViewModel","m_flLayerStartTime");
+    g_iViewModelO = FindSendPropInfo("CTerrorPlayer","m_hViewModel");
 
 	g_CollisionOffset = FindSendPropInfo( "CBaseEntity", "m_CollisionGroup" );
 	
@@ -560,11 +565,14 @@ public Action:TimerThink(Handle:hTimer, any:client)
 				//SetEntityRenderFx(client, RENDERFX_FADE_SLOW);
 			//else
 				SetEntityRenderFx(client, RENDERFX_NONE);
+				SetEntityRenderColor(client, 255, 255, 255, 0);
+
 				SetEntDataFloat(client, g_ioLMV, 1.5, true);
 			}
 			else
 			{
 				InvisibilityHint = false;
+				SetEntityRenderColor(client, 255, 255, 255, 255);
 				SetEntDataFloat(client, g_ioLMV, 1.0, true);
 			}
 			
@@ -1247,7 +1255,7 @@ SetupClasses(client, class)
 		
 		case SABOTEUR:
 		{
-			PrintHintText(client,"Hold CROUCH 5 sec to go invisible from humans. Press SHIFT to drop mine!");
+			PrintHintText(client,"Hold CROUCH 5 sec to go invisible for human players. Press SHIFT to drop mine!");
 			MaxPossibleHP = GetConVarInt(SABOTEUR_HEALTH);
 		}
 		
@@ -1596,10 +1604,20 @@ public Event_RelCommandoClass(Handle:event, String:name[], bool:dontBroadcast)
 	
 	if (StrContains(bNetCl, "shotgun", false) == -1)
 	{
+		new Handle:hPack = CreateDataPack();
+		WritePackCell(hPack, weapon);
+
 		new Float:fRLRat = GetConVarFloat(COMMANDO_RELOAD_RATIO);
 		new Float:fNTC = (GetEntDataFloat(weapon, g_iNPA) - flGT) * fRLRat;
 		new Float:NA = fNTC + flGT;
-		
+        new Float:flNextTime_ret = GetEntDataFloat(weapon, g_iNPA);
+
+        new Float:flStartTime_calc = flGT - ( flNextTime_ret - flGT ) * ( 1 - fRLRat ) ;
+        WritePackFloat(hPack, flStartTime_calc);
+
+        if ( (fNTC - 0.4) > 0 )
+        CreateTimer( fNTC - 0.4, CommandoRelFireEnd2, hPack);
+
 		SetEntDataFloat(weapon, g_ioPR, 1.0 / fRLRat, true);
 		SetEntDataFloat(weapon, g_ioTI, NA, true);
 		SetEntDataFloat(weapon, g_iNPA, NA, true);
@@ -1611,7 +1629,14 @@ public Event_RelCommandoClass(Handle:event, String:name[], bool:dontBroadcast)
 	{
 		new Handle:hPack = CreateDataPack();
 		WritePackCell(hPack, weapon);
-		
+		if (StrContains(bNetCl, "shotgun_spas", false) != -1)
+		{
+			WritePackFloat(hPack, 0.416666);
+			WritePackFloat(hPack, 0.395999);
+			WritePackFloat(hPack, 1.000000);
+			
+			CreateTimer(0.1, CommandoPumpShotReload, hPack);
+		}
 		if (StrContains(bNetCl, "pumpshotgun", false) != -1)
 		{
 			WritePackFloat(hPack, 0.393939);
@@ -1639,10 +1664,38 @@ public Action:CommandoRelFireEnd(Handle:timer, any:weapon)
 		return Plugin_Stop;
 	
 	SetEntDataFloat(weapon, g_ioPR, 1.0, true);
-	
+	KillTimer(timer);
+
 	return Plugin_Stop;
 }
 
+public Action:CommandoRelFireEnd2(Handle:timer, Handle:hPack)
+{
+        KillTimer(timer);
+        if (IsServerProcessing()==false)
+        {
+                CloseHandle(hPack);
+                return Plugin_Stop;
+        }
+
+        ResetPack(hPack);
+
+		new weapon = ReadPackCell(hPack);
+
+        new iCid = GetEntPropEnt(weapon, Prop_Data, "m_hOwner");
+
+        if (iCid <= 0
+                || IsValidEntity(iCid)==false
+                || IsClientInGame(iCid)==false)
+                return Plugin_Stop;
+
+        new Float:flStartTime_calc = ReadPackFloat(hPack);
+        CloseHandle(hPack);
+		new iVMid = GetEntDataEnt2(iCid,g_iViewModelO);
+        SetEntDataFloat(iVMid, g_iVMStartTimeO, flStartTime_calc, true);
+
+	return Plugin_Stop;
+}
 public Action:CommandoPumpShotReload(Handle:timer, Handle:hOldPack)
 {
 	ResetPack(hOldPack);
@@ -1682,10 +1735,11 @@ public Action:CommandoShotCalculate(Handle:timer, Handle:hPack)
 	if (weapon <= 0 || !IsValidEntity(weapon))
 	{
 		CloseHandle(hPack);
+		KillTimer(timer);
 		return Plugin_Stop;
 	}
 	
-	if (GetEntData(weapon, g_iSRS) == 0)
+	if (GetEntData(weapon, g_iSRS) == 0 || GetEntData(weapon, g_iSRS) == 2 )
 	{
 		new Float:flNextTime = GetGameTime() + addMod;
 		
@@ -1693,9 +1747,9 @@ public Action:CommandoShotCalculate(Handle:timer, Handle:hPack)
 		SetEntDataFloat(GetEntPropEnt(weapon, Prop_Data, "m_hOwner"), g_ioNA, flNextTime, true);
 		SetEntDataFloat(weapon,	g_ioTI, flNextTime, true);
 		SetEntDataFloat(weapon,	g_iNPA, flNextTime, true);
-		
+		KillTimer(timer);
+
 		CloseHandle(hPack);
-		
 		return Plugin_Stop;
 	}
 	
