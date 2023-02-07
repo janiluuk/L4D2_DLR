@@ -134,6 +134,15 @@ new g_iSID = -1;
 new g_iSED = -1;
 new g_iSRS = -1;
 
+bool g_bParachute[MAXPLAYERS+1], g_bLeft4Dead2;
+int g_iVelocity = -1, g_iParaEntRef[MAXPLAYERS+1] = {INVALID_ENT_REFERENCE, ...};
+
+static char g_sModels[2][] =
+{
+	"models/props_swamp/parachute01.mdl",
+	"models/props/de_inferno/ceiling_fan_blade.mdl"
+};
+
 // Enums (doc'd by SMLib)
 enum Water_Level
 {
@@ -149,6 +158,7 @@ new redColor[4]		= {255, 75, 75, 255};
 new greenColor[4]	= {75, 255, 75, 255};
 new RndSession;
 
+#define SOUND_HELICOPTER "vehicles/airboat/fan_blade_fullthrottle_loop1.wav"
 #define PUNCH_SOUND "melee_tonfa_02.wav"
 #define EXPLOSION_SOUND "weapons/hegrenade/explode5.wav"
 #define EXPLOSION_SOUND2 "weapons/grenade_launcher/grenadefire/grenade_launcher_explode_1.wav"
@@ -194,6 +204,7 @@ new Handle:PILLS_HEALTH_BUFFER;
 new Handle:ADRENALINE_DURATION;
 new Handle:ADRENALINE_HEALTH_BUFFER;
 ConVar healthModEnabled;
+ConVar parachuteEnabled;
 
 // Soldier
 new Handle:SOLDIER_FIRE_RATE;
@@ -258,8 +269,6 @@ new bool:MedicHint = false;
 new BombHintTimestamp = 0;
 
 
-
-
 /**
  * PLUGIN LOGIC
  */
@@ -280,7 +289,7 @@ public OnPluginStart( )
 
     g_iVMStartTimeO = FindSendPropInfo("CTerrorViewModel","m_flLayerStartTime");
     g_iViewModelO = FindSendPropInfo("CTerrorPlayer","m_hViewModel");
-
+	g_iVelocity = FindSendPropInfo("CBasePlayer", "m_vecVelocity[0]");
 	g_CollisionOffset = FindSendPropInfo( "CBaseEntity", "m_CollisionGroup" );
 	
 	// Hooks
@@ -330,6 +339,7 @@ public OnPluginStart( )
 
 	ATHLETE_JUMP_VEL = CreateConVar("talents_athlete_jump", "450.0", "How high a soldier should be able to jump. Make this higher to make them jump higher, or 0.0 for normal height");
 	ATHLETE_SPEED = CreateConVar("talents_athlete_speed", "1.20", "How fast athlete should run. A value of 1.0 = normal speed");
+	parachuteEnabled = CreateConVar("talents_athlete_enable_parachute","0.0","Enable parachute for athlete. Hold E in air to use it. 0 = OFF, 1 = ON.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 
 	MEDIC_HEAL_DIST = CreateConVar("talents_medic_heal_dist", "256.0", "How close other survivors have to be to heal. Larger values = larger radius");
 	MEDIC_HEALTH_VALUE = CreateConVar("talents_medic_health", "10", "How much health to restore");
@@ -347,10 +357,7 @@ public OnPluginStart( )
 	SABOTEUR_BOMB_DAMAGE_INF = CreateConVar("talents_saboteur_bomb_dmg_inf", "1000", "How much damage a bomb does to infected");
 	SABOTEUR_BOMB_POWER = CreateConVar("talents_saboteur_bomb_power", "2.0", "How much blast power a bomb has. Higher values will throw survivors farther away");
 
-	//COMMANDO_DAMAGE_CRITICAL_CHANCE = CreateConVar("talents_commando_dmg_critical_chance", "25", "Percent chance that damage will be critical", FCVAR_PLUGIN);
-	//COMMANDO_DAMAGE_CRITICAL_RATIO = CreateConVar("talents_commando_dmg_critical_ratio", "3.0", "Critical damage ratio", FCVAR_PLUGIN);
 	COMMANDO_DAMAGE = CreateConVar("talents_commando_dmg", "5", "How much bonus damage a Commando does");
-	//COMMANDO_DAMAGE_RATIO = CreateConVar("talents_commando_dmg_ratio", "1.5", "How many more times commando class does damage", FCVAR_PLUGIN);
 	COMMANDO_RELOAD_RATIO = CreateConVar("talents_commando_reload_ratio", "0.44", "Ratio for how fast a Commando should be able to reload");
 	SOLDIER_DAMAGE_REDUCE_RATIO = CreateConVar("talents_soldier_damage_reduce_ratio", "0.5", "Ratio for how much to reduce damage for soldier");
 	ENGINEER_MAX_BUILDS = CreateConVar("talents_engineer_max_builds", "5", "How many times an engineer can build per round");
@@ -403,7 +410,7 @@ ResetClientVariables(client)
 	ClientData[client].HideStartTime= GetGameTime();
 	ClientData[client].HealStartTime= GetGameTime();
 	ClientData[client].LastButtons = 0;
-	ClientData[client].ChosenClass = NONE;
+	ClientData[client].ChosenClass = _:NONE;
 	ClientData[client].LastDropTime = 0.0;
 	g_bInSaferoom[client] = false;
 }
@@ -462,6 +469,9 @@ public OnMapStart()
 	RoundStarted = false;
 	ClassHint = false;
 	PrecacheTurret();//turretstuff
+
+	for (int i = 0; i < 2; i++)
+		PrecacheModel(g_sModels[i]);
 }
 
 public OnMapEnd()
@@ -1018,19 +1028,14 @@ public Action:OnTakeDamagePre(victim, &attacker, &inflictor, &Float:damage, &dam
 	{
 
 		//PrintToChatAll("%s", m_attacker);
-		if(ClientData[victim].ChosenClass == SOLDIER && GetClientTeam(victim) == 2)
+		if(ClientData[victim].ChosenClass == _:SOLDIER && GetClientTeam(victim) == 2)
 		{
 			//PrintToChat(victim, "Damage: %f, New: %f", damage, damage*0.5);
 			damage = damage * GetConVarFloat(SOLDIER_DAMAGE_REDUCE_RATIO);
 			return Plugin_Changed;
 		}
-		if (ClientData[attacker].ChosenClass == COMMANDO && GetClientTeam(attacker) == 2 && GetClientTeam(victim) == 3)
+		if (ClientData[attacker].ChosenClass == _:COMMANDO && GetClientTeam(attacker) == 2 && GetClientTeam(victim) == 3)
 		{
-	/*		if (GetConVarInt(COMMANDO_DAMAGE_CRITICAL_CHANCE) <= GetRandomInt(1, 100))
-				damage *= GetConVarFloat(COMMANDO_DAMAGE_CRITICAL_RATIO);
-			else
-				damage *= GetConVarFloat(COMMANDO_DAMAGE_RATIO);
-*/
 			damage = damage + getdamage(attacker);
 			//PrintToChat(attacker,"%f",damage);
 			damage += GetConVarInt(COMMANDO_DAMAGE);
@@ -1043,7 +1048,7 @@ public Action:OnTakeDamagePre(victim, &attacker, &inflictor, &Float:damage, &dam
 public Action:CmdClassInfo(client, args)
 {
 	PrintToChat(client,"\x05Soldier\x01 = Has faster attack rate, runs faster and takes less damage");
-	PrintToChat(client,"\x05Athlete\x01 = Jumps higher");
+	PrintToChat(client,"\x05Athlete\x01 = Jumps higher, has parachute.");
 	PrintToChat(client,"\x05Medic\x01 = Heals others, plants medical supplies. Faster revive & heal speed");
 	PrintToChat(client,"\x05Saboteur\x01 = Can go invisible, plants powerful mines and throws special grenades");
 	PrintToChat(client,"\x05Commando\x01 = Has fast reload, deals extra damage");
@@ -1224,26 +1229,31 @@ SetupClasses(client, class)
 	{
 		case SOLDIER:	
 		{
-			PrintHintText(client,"You have increased attack rate, reduced damage and faster movement!");
+			PrintHintText(client,"You have armor, increased attack rate and move faster!");
 			MaxPossibleHP = GetConVarInt(SOLDIER_HEALTH);
 		}
 		
 		case MEDIC:
 		{
-			PrintHintText(client,"Hold CTRL to heal mates around you, Press SHIFT to open droppable menu!");
+			PrintHintText(client,"Hold CTRL to heal mates around you, Press SHIFT to drop items!");
 			CreateTimer(GetConVarFloat(MEDIC_HEALTH_INTERVAL), TimerDetectHealthChanges, client, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 			MaxPossibleHP = GetConVarInt(MEDIC_HEALTH);
 		}
 		
 		case ATHLETE:
 		{
-			PrintHintText(client,"Hold JUMP to bunny hop!");
+			decl String:text[64];
+			text = "";
+			if (parachuteEnabled) {
+				text = "While in air, press E to use parachute!";
+			}
+			PrintHintText(client,"You move faster, Hold JUMP to bunny hop! %s", text);
 			MaxPossibleHP = GetConVarInt(ATHLETE_HEALTH);
 		}
 		
 		case COMMANDO:
 		{
-			PrintHintText(client,"You have increased reload and fire rate!");
+			PrintHintText(client,"You have faster reload and cause more damage!");
 			MaxPossibleHP = GetConVarInt(COMMANDO_HEALTH);
 		}
 		
@@ -1255,13 +1265,13 @@ SetupClasses(client, class)
 		
 		case SABOTEUR:
 		{
-			PrintHintText(client,"Hold CROUCH 5 sec to go invisible for human players. Press SHIFT to drop mine!");
+			PrintHintText(client,"Press SHIFT to drop mines! Hold CROUCH over 5 sec to go invisible (For humans)");
 			MaxPossibleHP = GetConVarInt(SABOTEUR_HEALTH);
 		}
 		
 		case BRAWLER:
 		{
-			PrintHintText(client,"You've got a lot of health, try to waste it well!");
+			PrintHintText(client,"You've got lots of health!");
 			MaxPossibleHP = GetConVarInt(BRAWLER_HEALTH);
 		}
 	}
@@ -1343,7 +1353,7 @@ public OnGameFrame()
 		|| !IsClientInGame(client)
 		|| !IsPlayerAlive(client)
 		|| GetClientTeam(client) != 2
-		|| ClientData[client].ChosenClass != SOLDIER)
+		|| ClientData[client].ChosenClass != _:SOLDIER)
 			continue;
 		
 		bweapon = GetEntDataEnt2(client, g_oAW);
@@ -1393,7 +1403,7 @@ RebuildCache()
 	
 	for (new i = 1; i <= MaxClients; i++)
 	{
-		if (IsValidEntity(i) && IsClientInGame(i) && IsPlayerAlive(i) && GetClientTeam(i) == 2 && ClientData[i].ChosenClass == SOLDIER)
+		if (IsValidEntity(i) && IsClientInGame(i) && IsPlayerAlive(i) && GetClientTeam(i) == 2 && ClientData[i].ChosenClass == _:SOLDIER)
 		{
 			g_iRC++;
 			g_iRI[g_iRC] = i;
@@ -1571,15 +1581,92 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
 	if (IsFakeClient(client) || IsHanging(client) || IsIncapacitated(client) || FindAttacker(client) > 0 || IsClientOnLadder(client) || GetClientWaterLevel(client) > Water_Level:WATER_LEVEL_FEET_IN_WATER)
 		return Plugin_Continue;
 	
-	if (ClientData[client].ChosenClass == ATHLETE)
+	if (ClientData[client].ChosenClass == _:ATHLETE)
 	{
 		if (buttons & IN_JUMP && flags & FL_ONGROUND )
 		{
 			PushEntity(client, Float:{-90.0,0.0,0.0}, GetConVarFloat(ATHLETE_JUMP_VEL));
 			flags &= ~FL_ONGROUND;	
 			SetEntityFlags(client,flags);
+
 		}
-	}
+		if(parachuteEnabled.BoolValue == false) return Plugin_Continue;	
+			if(g_bParachute[client])
+			{
+				if(!(buttons & IN_USE) || !IsPlayerAlive(client))
+				{
+					DisableParachute(client);
+					return Plugin_Continue;
+				}
+
+				float fVel[3];
+				GetEntDataVector(client, g_iVelocity, fVel);
+
+				if(fVel[2] >= 0.0)
+				{
+					DisableParachute(client);
+					return Plugin_Continue;
+				}
+
+				if(GetEntityFlags(client) & FL_ONGROUND)
+				{
+					DisableParachute(client);
+					return Plugin_Continue;
+				}
+				
+				float fOldSpeed = fVel[2];
+
+				if(fVel[2] < 100.0 * -1.0) fVel[2] = 100.0 * -1.0;
+
+				if(fOldSpeed != fVel[2])
+					TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, fVel);
+			}
+			else
+			{
+				if(!(buttons & IN_USE) || !IsPlayerAlive(client))
+					return Plugin_Continue;
+
+				if(GetEntityFlags(client) & FL_ONGROUND)
+					return Plugin_Continue;
+
+				float fVel[3];
+				GetEntDataVector(client, g_iVelocity, fVel);
+
+				if(fVel[2] >= 0.0)
+					return Plugin_Continue;
+
+				int iEntity = CreateEntityByName("prop_dynamic_override"); 
+				DispatchKeyValue(iEntity, "model", g_bLeft4Dead2 ? g_sModels[0] : g_sModels[1]);
+				DispatchSpawn(iEntity);
+				
+				SetEntityMoveType(iEntity, MOVETYPE_NOCLIP);
+
+				float ParachutePos[3], ParachuteAng[3];
+				GetClientAbsOrigin(client, ParachutePos);
+				GetClientAbsAngles(client, ParachuteAng);
+				ParachutePos[2] += 80.0;
+				ParachuteAng[0] = 0.0;
+				
+				TeleportEntity(iEntity, ParachutePos, ParachuteAng, NULL_VECTOR);
+				
+			    int R = GetRandomInt(0, 255), G = GetRandomInt(0, 255), B = GetRandomInt(0, 255); 
+			    SetEntProp(iEntity, Prop_Send, "m_nGlowRange", 1000);
+			    SetEntProp(iEntity, Prop_Send, "m_iGlowType", 3);
+			    SetEntProp(iEntity, Prop_Send, "m_glowColorOverride", R + (G * 256) + (B * 65536));
+				
+			    SetEntPropFloat(iEntity, Prop_Data, "m_flModelScale", 0.3);
+
+			    SetEntityRenderMode(iEntity, RENDER_TRANSCOLOR);
+			    SetEntityRenderColor(iEntity, 255, 255, 255, 2);
+				
+				SetVariantString("!activator");
+				AcceptEntityInput(iEntity, "SetParent", client);
+
+				g_iParaEntRef[client] = EntIndexToEntRef(iEntity);
+				g_bParachute[client] = true;
+		}
+
+	}	
 	
 	ClientData[client].LastButtons = buttons;
 	
@@ -1618,12 +1705,11 @@ public Event_RelCommandoClass(Handle:event, String:name[], bool:dontBroadcast)
         if ( (fNTC - 0.4) > 0 )
         CreateTimer( fNTC - 0.4, CommandoRelFireEnd2, hPack);
 
-		SetEntDataFloat(weapon, g_ioPR, 1.0 / fRLRat, true);
-		SetEntDataFloat(weapon, g_ioTI, NA, true);
-		SetEntDataFloat(weapon, g_iNPA, NA, true);
-		SetEntDataFloat(client, g_ioNA, NA, true);
-		
-		CreateTimer(fNTC, CommandoRelFireEnd, weapon);
+        SetEntDataFloat(weapon, g_ioPR, 1.0 / fRLRat, true);
+        SetEntDataFloat(weapon, g_ioTI, NA, true);
+        SetEntDataFloat(weapon, g_iNPA, NA, true);
+        SetEntDataFloat(client, g_ioNA, NA, true);
+        CreateTimer(fNTC, CommandoRelFireEnd, weapon);
 	}
 	else
 	{
@@ -1677,13 +1763,10 @@ public Action:CommandoRelFireEnd2(Handle:timer, Handle:hPack)
                 CloseHandle(hPack);
                 return Plugin_Stop;
         }
-
         ResetPack(hPack);
 
-		new weapon = ReadPackCell(hPack);
-
+        new weapon = ReadPackCell(hPack);
         new iCid = GetEntPropEnt(weapon, Prop_Data, "m_hOwner");
-
         if (iCid <= 0
                 || IsValidEntity(iCid)==false
                 || IsClientInGame(iCid)==false)
@@ -1691,10 +1774,10 @@ public Action:CommandoRelFireEnd2(Handle:timer, Handle:hPack)
 
         new Float:flStartTime_calc = ReadPackFloat(hPack);
         CloseHandle(hPack);
-		new iVMid = GetEntDataEnt2(iCid,g_iViewModelO);
+        new iVMid = GetEntDataEnt2(iCid,g_iViewModelO);
         SetEntDataFloat(iVMid, g_iVMStartTimeO, flStartTime_calc, true);
 
-	return Plugin_Stop;
+    return Plugin_Stop;
 }
 public Action:CommandoPumpShotReload(Handle:timer, Handle:hOldPack)
 {
@@ -1846,6 +1929,10 @@ getdamage(client)
 	{
 		return 10;
 	}
+	if (StrContains(ClientData[client].EquippedGun,"grenade", false)!=-1)
+	{
+		return 20;
+	}	
 	if (StrContains(ClientData[client].EquippedGun,"shotgun", false)!=-1)
 	{
 		return 5;
@@ -3250,3 +3337,46 @@ stock DealDamage(iVictim, iAttacker, Float:flAmount, iType = 0)
 	CreateTimer(0.1, timerHurtEntity, hPack);
 }
 
+public Action Timer_Parachute( Handle timer, any iEntity)
+{
+	int iParachute = EntRefToEntIndex(iEntity);
+	if (IsValidEntity(iParachute))
+	{
+		RotateParachute(iParachute, 100.0, 1);
+		return Plugin_Continue;
+	}
+	return Plugin_Stop;
+}
+
+void RotateParachute(int index, float value, int axis)
+{
+	if (IsValidEntity(index))
+	{
+		float s_rotation[3];
+		GetEntPropVector(index, Prop_Data, "m_angRotation", s_rotation);
+		s_rotation[axis] += value;
+		TeleportEntity( index, NULL_VECTOR, s_rotation, NULL_VECTOR);
+	}
+}
+
+void DisableParachute(int client)
+{
+	int iEntity = EntRefToEntIndex(g_iParaEntRef[client]);
+	if(iEntity != INVALID_ENT_REFERENCE)
+	{
+		AcceptEntityInput(iEntity, "ClearParent");
+		AcceptEntityInput(iEntity, "kill");
+	}
+
+	ParachuteDrop(client);
+	g_bParachute[client] = false;
+	g_iParaEntRef[client] = INVALID_ENT_REFERENCE;
+}
+
+void ParachuteDrop(int client)
+{
+	if (!IsClientInGame(client))
+		return;
+	
+	if( !g_bLeft4Dead2 ) StopSound(client, SNDCHAN_STATIC, SOUND_HELICOPTER);	
+}
