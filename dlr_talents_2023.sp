@@ -199,7 +199,7 @@ new Handle:SOLDIER_DAMAGE_REDUCE_RATIO;
 new Handle:SOLDIER_SPEED;
 
 // Athlete
-//new Handle:ATHLETE_SPEED;
+new Handle:ATHLETE_SPEED;
 new Handle:ATHLETE_JUMP_VEL;
 
 // Medic
@@ -321,9 +321,10 @@ public OnPluginStart( )
 	
 	
 	SOLDIER_FIRE_RATE = CreateConVar("talents_soldier_fire_rate", "0.6666", "How fast the soldier should fire. Lower values = faster");
-	SOLDIER_SPEED = CreateConVar("talents_soldier_speed", "1.25", "How fast soldier should run. A value of 1.0 = normal speed");
+	SOLDIER_SPEED = CreateConVar("talents_soldier_speed", "1.15", "How fast soldier should run. A value of 1.0 = normal speed");
 
 	ATHLETE_JUMP_VEL = CreateConVar("talents_athlete_jump", "450.0", "How high a soldier should be able to jump. Make this higher to make them jump higher, or 0.0 for normal height");
+	ATHLETE_SPEED = CreateConVar("talents_athlete_speed", "1.20", "How fast athlete should run. A value of 1.0 = normal speed");
 
 	MEDIC_HEAL_DIST = CreateConVar("talents_medic_heal_dist", "256.0", "How close other survivors have to be to heal. Larger values = larger radius");
 	MEDIC_HEALTH_VALUE = CreateConVar("talents_medic_health", "10", "How much health to restore");
@@ -362,7 +363,6 @@ public OnPluginStart( )
 	ADRENALINE_DURATION =  CreateConVar("talents_adrenaline_duration", "30.0", "Default adrenaline duration");
 	ADRENALINE_HEALTH_BUFFER =  CreateConVar("talents_adrenaline_health_buffer", "75.0", "Default health given on adrenaline");
 		
-
 	FirstAidDuration = GetConVarFloat(FindConVar("first_aid_kit_use_duration"));
 	ReviveDuration = GetConVarFloat(FindConVar("survivor_revive_duration"));
 
@@ -524,8 +524,8 @@ public Action:TimerThink(Handle:hTimer, any:client)
 
 	switch (ClientData[client].ChosenClass)
 	{
-		//case ATHLETE:
-		//	SetEntDataFloat(client, g_ioLMV, GetConVarFloat(ATHLETE_SPEED), true);
+		case ATHLETE:
+			SetEntDataFloat(client, g_ioLMV, GetConVarFloat(ATHLETE_SPEED), true);
 		
 		case SABOTEUR:
 		{
@@ -700,8 +700,8 @@ public PanelHandler_SelectMedicItem(Handle:menu, MenuAction:action, client, para
 		case MenuAction_Select:
 		{
 			if( param >= 1 && param <= 4 )
-				CalculateMedicPlacePos(client, param - 1);
-				ClientData[client].LastDropTime = GetGameTime();				
+			CalculateMedicPlacePos(client, param - 1);
+			ClientData[client].LastDropTime = GetGameTime();
 		}
 	}
 }
@@ -1261,7 +1261,7 @@ SetupClasses(client, class)
 	setPlayerHealth(client, MaxPossibleHP);
 }
 
-public void:setPlayerHealth(client, int:MaxPossibleHP)
+setPlayerHealth(client, MaxPossibleHP)
 {
 	if (!client) return;
 	// HEALTH
@@ -1282,7 +1282,7 @@ public void:setPlayerHealth(client, int:MaxPossibleHP)
 }
 
 
-public void:setPlayerDefaultHealth(client)
+setPlayerDefaultHealth(client)
 {
 		if (!client
 		|| !IsValidEntity(client)
@@ -2180,8 +2180,8 @@ public Action:TimerStopAndRemoveBombParticle(Handle:timer, any:entity)
 		} else {
 
 			static float vPos[3];
-		    char color[12];
-	    	GetConVarString(GLOW_COLOR_ACTIVE, color, sizeof(color));
+			char color[12];
+			GetConVarString(GLOW_COLOR_ACTIVE, color, sizeof(color));
 			SetupPrjEffects(entity, vPos, color); // Red
 			AcceptEntityInput(entity, "start");
 			CreateTimer(15.0, TimerStopAndRemoveParticle, entity, TIMER_FLAG_NO_MAPCHANGE);
@@ -2831,36 +2831,35 @@ void SetupPrjEffects(int entity, float vPos[3], const char[] color)
 }
 void MakeEnvSteam(int target, const float vPos[3], const float vAng[3], const char[] sColor)
 {
-    int entity = CreateEntityByName("env_steam");
-    if( entity == -1 )
-    {
-            LogError("Failed to create 'env_steam'");
-            return;
-    }
-
+	int entity = CreateEntityByName("env_steam");
+	if( entity == -1 )
+	{
+		LogError("Failed to create 'env_steam'");
+		return;
+	}
 	static char sTemp[16];
-    Format(sTemp, sizeof(sTemp), "silv_steam_%d", target);
-    DispatchKeyValue(entity, "targetname", sTemp);
-    DispatchKeyValue(entity, "SpawnFlags", "1");
-    DispatchKeyValue(entity, "rendercolor", sColor);
-    DispatchKeyValue(entity, "SpreadSpeed", "10");
-    DispatchKeyValue(entity, "Speed", "100");
-    DispatchKeyValue(entity, "StartSize", "5");
-    DispatchKeyValue(entity, "EndSize", "10");
-    DispatchKeyValue(entity, "Rate", "50");
-    DispatchKeyValue(entity, "JetLength", "100");
-    DispatchKeyValue(entity, "renderamt", "150");
-    DispatchKeyValue(entity, "InitialState", "1");
-    DispatchSpawn(entity);
-    AcceptEntityInput(entity, "TurnOn");
-    TeleportEntity(entity, vPos, vAng, NULL_VECTOR);
+	Format(sTemp, sizeof(sTemp), "silv_steam_%d", target);
+	DispatchKeyValue(entity, "targetname", sTemp);
+	DispatchKeyValue(entity, "SpawnFlags", "1");
+	DispatchKeyValue(entity, "rendercolor", sColor);
+	DispatchKeyValue(entity, "SpreadSpeed", "10");
+	DispatchKeyValue(entity, "Speed", "100");
+	DispatchKeyValue(entity, "StartSize", "5");
+	DispatchKeyValue(entity, "EndSize", "10");
+	DispatchKeyValue(entity, "Rate", "50");
+	DispatchKeyValue(entity, "JetLength", "100");
+	DispatchKeyValue(entity, "renderamt", "150");
+	DispatchKeyValue(entity, "InitialState", "1");
+	DispatchSpawn(entity);
+	AcceptEntityInput(entity, "TurnOn");
+	TeleportEntity(entity, vPos, vAng, NULL_VECTOR);
 
-    // Attach
-    if( target )
-    {
-            SetVariantString("!activator");
-            AcceptEntityInput(entity, "SetParent", target);
-    }
+	// Attach
+	if( target )
+	{
+		SetVariantString("!activator");
+		AcceptEntityInput(entity, "SetParent", target);
+	}
 
 	return;
 }
@@ -2893,72 +2892,68 @@ void CreateEnvSprite(int target, const char[] sColor)
 
 int MakeLightDynamic(int target, const float vPos[3])
 {
-    int entity = CreateEntityByName("light_dynamic");
-    if( entity == -1 )
-    {
-            LogError("Failed to create 'light_dynamic'");
-            return 0;
-    }
+	int entity = CreateEntityByName("light_dynamic");
+	if( entity == -1 )
+	{
+	        LogError("Failed to create 'light_dynamic'");
+	        return 0;
+	}
 
-    DispatchKeyValue(entity, "_light", "0 255 0 0");
-    DispatchKeyValue(entity, "brightness", "0.1");
-    DispatchKeyValueFloat(entity, "spotlight_radius", 32.0);
-    DispatchKeyValueFloat(entity, "distance", 600.0);
-    DispatchKeyValue(entity, "style", "6");
-    DispatchSpawn(entity);
-    AcceptEntityInput(entity, "TurnOff");
+	DispatchKeyValue(entity, "_light", "0 255 0 0");
+	DispatchKeyValue(entity, "brightness", "0.1");
+	DispatchKeyValueFloat(entity, "spotlight_radius", 32.0);
+	DispatchKeyValueFloat(entity, "distance", 600.0);
+	DispatchKeyValue(entity, "style", "6");
+	DispatchSpawn(entity);
+	AcceptEntityInput(entity, "TurnOff");
 
-    TeleportEntity(entity, vPos, NULL_VECTOR, NULL_VECTOR);
-
-    // Attach
-    if( target )
-    {
-            SetVariantString("!activator");
-            AcceptEntityInput(entity, "SetParent", target);
-    }
-
+	TeleportEntity(entity, vPos, NULL_VECTOR, NULL_VECTOR);
+	// Attach
+	if( target )
+	{
+	        SetVariantString("!activator");
+	        AcceptEntityInput(entity, "SetParent", target);
+	}
 	return entity;
 }
 
 int DisplayParticle(int target, const char[] sParticle, const float vPos[3], const float vAng[3], float refire = 0.0)
 {
-    int entity = CreateEntityByName("info_particle_system");
-    if( entity == -1)
-    {
-            LogError("Failed to create 'info_particle_system'");
-            return 0;
-    }
+	int entity = CreateEntityByName("info_particle_system");	
+	if( entity == -1)
+	{
+		LogError("Failed to create 'info_particle_system'");
+		return 0;
+	}
 
-    DispatchKeyValue(entity, "effect_name", sParticle);
-    DispatchSpawn(entity);
-    ActivateEntity(entity);
-    AcceptEntityInput(entity, "start");
-    TeleportEntity(entity, vPos, vAng, NULL_VECTOR);
+	DispatchKeyValue(entity, "effect_name", sParticle);
+	DispatchSpawn(entity);
+	ActivateEntity(entity);
+	AcceptEntityInput(entity, "start");
+	TeleportEntity(entity, vPos, vAng, NULL_VECTOR);
 
     // Refire
-    if( refire )
-    {
-            static char sTemp[48];
-            Format(sTemp, sizeof(sTemp), "OnUser1 !self:Stop::%f:-1", refire - 0.05);
-            SetVariantString(sTemp);
-            AcceptEntityInput(entity, "AddOutput");
-            Format(sTemp, sizeof(sTemp), "OnUser1 !self:FireUser2::%f:-1", refire);
-            SetVariantString(sTemp);
-            AcceptEntityInput(entity, "AddOutput");
-            AcceptEntityInput(entity, "FireUser1");
-
-            SetVariantString("OnUser2 !self:Start::0:-1");
-            AcceptEntityInput(entity, "AddOutput");
-            SetVariantString("OnUser2 !self:FireUser1::0:-1");
-            AcceptEntityInput(entity, "AddOutput");
-    }
-
-// Attach
-    if( target )
-    {
-            SetVariantString("!activator");
-            AcceptEntityInput(entity, "SetParent", target);
-    }
+	if( refire )
+	{
+		static char sTemp[48];
+		Format(sTemp, sizeof(sTemp), "OnUser1 !self:Stop::%f:-1", refire - 0.05);
+		SetVariantString(sTemp);
+		AcceptEntityInput(entity, "AddOutput");
+		Format(sTemp, sizeof(sTemp), "OnUser1 !self:FireUser2::%f:-1", refire);
+		SetVariantString(sTemp);
+		AcceptEntityInput(entity, "AddOutput");
+		AcceptEntityInput(entity, "FireUser1");
+		SetVariantString("OnUser2 !self:Start::0:-1");
+		AcceptEntityInput(entity, "AddOutput");
+		SetVariantString("OnUser2 !self:FireUser1::0:-1");
+		AcceptEntityInput(entity, "AddOutput");
+	}
+	// Attach
+	if( target )
+	{
+		SetVariantString("!activator");
+		AcceptEntityInput(entity, "SetParent", target);
+	}
 
 	return entity;
 }
