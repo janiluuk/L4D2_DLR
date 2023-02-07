@@ -4,16 +4,18 @@ Original is from 2013, this is anniversary update for the infamous DLR plugin.
 
 - Sourcemod 11 compatible
 - Rewrite for internal variable structure and variable naming
-- Soldier has faster moving speed and takes less damage. All configurable.
+- Soldier has faster moving speed and takes less damage. configurable.
+- Athlete has faster moving speed, configurable.
 - Medic has more options to spawn. Has faster healing and revival times.
+- Includes modifiers for adrenaline/pills/revive/heal durations in the config. disable with "talents_health_modifiers_enabled" 
 - Announcement to other players when healing spot is active.
+- Default health for players without class configurable
 - Engineer spawns ready-to-use upgrade packs instead of deployable boxes.
 - Saboteur moves faster when crouched and shows visibility status.
 - Mines do less damage to survivors. Standing really close to the mine can still incap.
 - Mines do more damage to infected, 1500hp. Some edge over tank
-- Mines glow now so players know to avoid the spot or lure someone to it
+- Mines glow now so players know to avoid the spot or lure someone to it.
 - Notifications on placing mines.
-- Default health for players configurable
 - Countdown notification for all before mine becoming active
 - Support for multiple types of mines (freeze, vomit, antigravity, black hole), ui missing
 - More descriptive class descriptions and help
