@@ -316,7 +316,6 @@
 		HookEvent("weapon_fire", Event_WeaponFire);
 		HookEvent("server_cvar", Event_ServerCvar, EventHookMode_Pre);
 
-
 		// Concommands
 		RegConsoleCmd("sm_class", CmdClassMenu, "Shows the class selection menu");
 		RegConsoleCmd("sm_classinfo", CmdClassInfo, "Shows class descriptions");
@@ -347,7 +346,6 @@
 
 		ATHLETE_JUMP_VEL = CreateConVar("talents_athlete_jump", "450.0", "How high a soldier should be able to jump. Make this higher to make them jump higher, or 0.0 for normal height");
 		ATHLETE_SPEED = CreateConVar("talents_athlete_speed", "1.20", "How fast athlete should run. A value of 1.0 = normal speed");
-		parachuteEnabled = CreateConVar("talents_athlete_enable_parachute","0.0","Enable parachute for athlete. Hold E in air to use it. 0 = OFF, 1 = ON.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 
 		MEDIC_HEAL_DIST = CreateConVar("talents_medic_heal_dist", "256.0", "How close other survivors have to be to heal. Larger values = larger radius");
 		MEDIC_HEALTH_VALUE = CreateConVar("talents_medic_health", "10", "How much health to restore");
@@ -372,9 +370,10 @@
 		MAX_ENGINEER_BUILD_RANGE = CreateConVar("talents_engineer_build_range", "120.0", "Maximum distance away an object can be built by the engineer");
 		ENGINEER_TURRET_EXTERNAL_PLUGIN = CreateConVar("talents_engineer_machinegun_plugin", "1", "Whether to use external plugin for turrets.");
 		MINIMUM_DROP_INTERVAL = CreateConVar("talents_drop_interval", "30.0", "Time before an engineer, medic, or saboteur can drop another item");
-		GLOW_COLOR_ACTIVE = CreateConVar("talents_bomb_active_glow_color","255 0 0", "Glow color for active bombs - Default Red");
+		GLOW_COLOR_ACTIVE = CreateConVar("talents_bomb_active_glow_color","255 0 0", "Glow color for active bombs (Default Red)");
 
 		// Revive & health modifiers
+		parachuteEnabled = CreateConVar("talents_athlete_enable_parachute","0.0","Enable parachute for athlete. Hold E in air to use it. 0 = OFF, 1 = ON.", FCVAR_NOTIFY, true, 0.0, true, 1.0);		
 		healthModEnabled = CreateConVar("talents_health_modifiers_enabled","0.0","Enables/Disables health modifiers. 0 = OFF, 1 = ON.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 		REVIVE_DURATION = CreateConVar("talents_revive_duration", "4.0", "Default reviving duration in seconds");
 		HEAL_DURATION = CreateConVar("talents_heal_duration", "4.0", "Default healing duration in seconds");
@@ -426,20 +425,20 @@
 	{
 		char message[128];
 		Format(message, sizeof(message), dbgMessage);
-		if (DEBUG_MODE ==true)
+		if (DEBUG_MODE == true && isAdminUser == true)
 		PrintToChat(client, message);
 	}
 	stock void PrintDebugAll(const char[] dbgMessage, any ...)
 	{
 		char message[128];
 		Format(message, sizeof(message), dbgMessage);
-		if (DEBUG_MODE ==true)
+		if (DEBUG_MODE == true && isAdminUser == true)
 		PrintToChatAll("%s", message);
 	}
 	bool:isAdmin(client)
 	{
-	        if (client == 0 && GetUserAdmin(client) == INVALID_ADMIN_ID) { return false; }
-	        else { return true; }
+        if (client == 0 && GetUserAdmin(client) == INVALID_ADMIN_ID) { return false; }
+        else { return true; }
 	}
 
 	public Action:CmdDlrMenu(client, args)
@@ -622,14 +621,14 @@
 					if (iDropTime < GetConVarInt(SABOTEUR_BOMB_ACTIVATE)) {
 
 						if (BombHintTimestamp != iDropTime) {
-							PrintHintTextToAll("%N's mine becomes active in %i seconds", client, GetConVarInt(SABOTEUR_BOMB_ACTIVATE) - iDropTime);
+							PrintHintText(client, "Mine is arming in %i seconds", client, GetConVarInt(SABOTEUR_BOMB_ACTIVATE) - iDropTime);
 							BombHintTimestamp = iDropTime;
 						}
 					}
 					else if (iDropTime == GetConVarInt(SABOTEUR_BOMB_ACTIVATE)) {
 
 						if (BombHintTimestamp != iDropTime) {					
-							PrintHintTextToAll("%N's mine is active!", client);
+							PrintHintTextToAll("%N's mine is now armed!", client);
 							BombHintTimestamp = iDropTime;
 						}
 					}
@@ -648,30 +647,30 @@
 					//SetEntityRenderFx(client, RENDERFX_FADE_SLOW);
 				//else
 					SetEntityRenderFx(client, RENDERFX_NONE);
-					SetEntityRenderColor(client, 255, 255, 255, 0);
+					//SetEntityRenderColor(client, 255, 255, 255, 0);
 
 					SetEntDataFloat(client, g_ioLMV, 1.5, true);
 				}
 				else
 				{
 					InvisibilityHint = false;
-					SetEntityRenderColor(client, 255, 255, 255, 255);
+					//SetEntityRenderColor(client, 255, 255, 255, 255);
 					SetEntDataFloat(client, g_ioLMV, 1.0, true);
 				}
 				
 				if (buttons & IN_SPEED)
 				{
 					if (CanDrop == false && (iDropTime > GetConVarInt(SABOTEUR_BOMB_ACTIVATE))) {
-						PrintHintText(client ,"Next mine available in %i seconds", (GetConVarInt(MINIMUM_DROP_INTERVAL) - iDropTime));
+						PrintHintText(client ,"Wait %i seconds to deploy", (GetConVarInt(MINIMUM_DROP_INTERVAL) - iDropTime));
 					} else {
 
 						if (CanDrop == true && !IsPlayerInSaferoom(client) && !IsInEndingSaferoom(client))
 						{
-							if (ClientData[client].ItemsBuilt > GetConVarInt(SABOTEUR_MAX_BOMBS)) {
-								PrintHintText(client ,"Maximum amount of mines used!");
+							if (ClientData[client].ItemsBuilt >= GetConVarInt(SABOTEUR_MAX_BOMBS)) {
+								PrintHintText(client ,"You're out of mines");
 							} else {
-								DropBomb(client);							
 								ClientData[client].ItemsBuilt++;
+								DropBomb(client);							
 								ClientData[client].LastDropTime = GetGameTime();
 							}
 						}
@@ -686,7 +685,6 @@
 					CreatePlayerMedicMenu(client);	
 				}
 				if (buttons & IN_DUCK && (GetGameTime() - ClientData[client].HealStartTime) >= 2.5) {
-
 						if (MedicHint == false) {
 				 			PrintHintTextToAll("\x03%N\x01 is healing everyone around him!", client);
 							MedicHint = true;
@@ -863,6 +861,7 @@
 						DispatchKeyValue(entity, "disableshadows", "1");
 						DispatchSpawn(entity);
 						TeleportEntity(entity, endPos, NULL_VECTOR, NULL_VECTOR);
+						PrintHintText(client ,"%N deployed a defibrillator", client);
 
 						ClientData[client].ItemsBuilt++;
 					}
@@ -871,6 +870,7 @@
 						DispatchKeyValue(entity, "solid", "0");
 						DispatchSpawn(entity);
 						TeleportEntity(entity, endPos, NULL_VECTOR, NULL_VECTOR);
+						PrintHintText(client ,"%N deployed a medkit", client);
 
 						ClientData[client].ItemsBuilt++;
 					}
@@ -952,6 +952,8 @@
 						SetEntityModel(upgrade, MODEL_EXPLO);
 						TeleportEntity(upgrade, endPos, NULL_VECTOR, NULL_VECTOR);
 						DispatchSpawn(upgrade);
+						PrintHintText(client ,"%N deployed explosive ammo", client);
+
 						ClientData[client].ItemsBuilt++;
 
 					}
@@ -959,6 +961,8 @@
 						new upgrade = CreateEntityByName("upgrade_ammo_incendiary");
 						SetEntityModel(upgrade, MODEL_INCEN);
 						TeleportEntity(upgrade, endPos, NULL_VECTOR, NULL_VECTOR);
+						PrintHintText(client ,"%N deployed incendiary ammo", client);
+
 						ClientData[client].ItemsBuilt++;
 						DispatchSpawn(upgrade);
 
@@ -1006,20 +1010,14 @@
 		}
 		return false;
 	}
-	public Action:SetTransmitInvisible(client, entity)
+	public Action:SetTransmitInvisible(entity, client)
 	{
-		if (ClientData[client].ChosenClass == SABOTEUR && ((GetGameTime() - ClientData[client].HideStartTime) >= (GetConVarFloat(SABOTEUR_INVISIBLE_TIME))) && client != entity) {
-
-			if (InvisibilityHint == false) 
-			{
-				PrintHintText(client,"You are now invisible!");
-				InvisibilityHint = true;						
-			}
-			SetEntityRenderFx(client, RENDERFX_NONE);
-			SetEntDataFloat(client, g_ioLMV, 1.5, true);
+		if (IsPlayerHidden(client) && entity == client) {
+			SetEntDataFloat(entity, g_ioLMV, 1.5, true);
+			SetEntityRenderFx(entity, RENDERFX_NONE);
 			return Plugin_Handled;
-		}
-		
+	    }
+	
 		return Plugin_Continue;
 	}
 
@@ -1044,7 +1042,7 @@
 		CreateParticleInPos(pos, BOMB_GLOW);
 		EmitSoundToAll(SOUND_DROP_BOMB);
 		
-		PrintHintTextToAll("%N armed a regular mine!", client);
+		PrintHintTextToAll("%N planted a mine! (%i/%i)", ClientData[client].ItemsBuilt, GetConVarInt(SABOTEUR_MAX_BOMBS));
 	}
 
 	public Action:TimerActivateBomb(Handle:hTimer, Handle:hPack)
@@ -1142,8 +1140,18 @@
 
 	CreatePlayerClassMenu(client)
 	{
-		if (!client ||  !IsClientInGame(client) || GetClientTeam(client) != 2)
+		new Handle:hPanel;
+		decl String:buffer[256];
+		
+		if((hPanel = CreatePanel()) == INVALID_HANDLE)
+		{
+			LogError("Cannot create hPanel on CreatePlayerClassMenu");
 			return false;
+		}
+		
+		if (!client ||  !IsClientInGame(client) || GetClientTeam(client) != 2) {
+			return false;
+		}
 		
 		// if client has a class already and round has started, dont give them the menu
 		if (ClientData[client].ChosenClass != _:NONE && RoundStarted == true)
@@ -1156,15 +1164,6 @@
 		{
 			setPlayerDefaultHealth(client);
 
-		}
-		
-		new Handle:hPanel;
-		decl String:buffer[256];
-		
-		if((hPanel = CreatePanel()) == INVALID_HANDLE)
-		{
-			LogError("Cannot create hPanel on CreatePlayerClassMenu");
-			return false;
 		}
 		
 		SetPanelTitle(hPanel, "Select Your Class");
@@ -1308,7 +1307,7 @@
 			
 			case MEDIC:
 			{
-				PrintHintText(client,"Hold CTRL to heal mates around you, Press SHIFT to drop items!");
+				PrintHintText(client,"Hold CROUCH to heal others, Press SHIFT to drop medkits and more!!");
 				CreateTimer(GetConVarFloat(MEDIC_HEALTH_INTERVAL), TimerDetectHealthChanges, client, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 				MaxPossibleHP = GetConVarInt(MEDIC_HEALTH);
 			}
@@ -1317,7 +1316,7 @@
 			{
 				decl String:text[64];
 				text = "";
-				if (parachuteEnabled) {
+				if (parachuteEnabled.BoolValue) {
 					text = "While in air, press E to use parachute!";
 				}
 				PrintHintText(client,"You move faster, Hold JUMP to bunny hop! %s", text);
@@ -1332,7 +1331,7 @@
 			
 			case ENGINEER:
 			{
-				PrintHintText(client,"Press SHIFT to open equipment menu, the turret is automatic");
+				PrintHintText(client,"Press SHIFT to drop ammo or movable auto-turret!");
 				MaxPossibleHP = GetConVarInt(ENGINEER_HEALTH);
 			}
 			
@@ -1924,25 +1923,25 @@
 
 	public Action:CommandoRelFireEnd2(Handle:timer, Handle:hPack)
 	{
-	        KillTimer(timer);
-	        if (IsServerProcessing()==false)
-	        {
-	                CloseHandle(hPack);
-	                return Plugin_Stop;
-	        }
-	        ResetPack(hPack);
+        KillTimer(timer);
+        if (IsServerProcessing()==false)
+        {
+                CloseHandle(hPack);
+                return Plugin_Stop;
+        }
+        ResetPack(hPack);
 
-	        new weapon = ReadPackCell(hPack);
-	        new iCid = GetEntPropEnt(weapon, Prop_Data, "m_hOwner");
-	        if (iCid <= 0
-	                || IsValidEntity(iCid)==false
-	                || IsClientInGame(iCid)==false)
-	                return Plugin_Stop;
+        new weapon = ReadPackCell(hPack);
+        new iCid = GetEntPropEnt(weapon, Prop_Data, "m_hOwner");
+        if (iCid <= 0
+                || IsValidEntity(iCid)==false
+                || IsClientInGame(iCid)==false)
+                return Plugin_Stop;
 
-	        new Float:flStartTime_calc = ReadPackFloat(hPack);
-	        CloseHandle(hPack);
-	        new iVMid = GetEntDataEnt2(iCid,g_iViewModelO);
-	        SetEntDataFloat(iVMid, g_iVMStartTimeO, flStartTime_calc, true);
+        new Float:flStartTime_calc = ReadPackFloat(hPack);
+        CloseHandle(hPack);
+        new iVMid = GetEntDataEnt2(iCid,g_iViewModelO);
+        SetEntDataFloat(iVMid, g_iVMStartTimeO, flStartTime_calc, true);
 
 	    return Plugin_Stop;
 	}
@@ -3123,7 +3122,6 @@
 		return 0;
 	}
 
-
 	void SetupPrjEffects(int entity, float vPos[3], const char[] color)
 	{
 	        // Grenade Pos
@@ -3551,6 +3549,5 @@
 	{
 		if (!IsClientInGame(client))
 			return;
-		
 		if( !g_bLeft4Dead2 ) StopSound(client, SNDCHAN_STATIC, SOUND_HELICOPTER);	
 	}	
