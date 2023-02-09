@@ -24,5 +24,12 @@ Original is from 2013, this is anniversary update for the infamous DLR plugin.
 - Internal turret system fixed
 - Gun reload glitches fixed
 
+Roadmap
+- Cleaner UI, menu option to turn hint texts off
+- Integrate game instructor UI to be utilized for counters, and other live indicators. 
+- Engineer can build different types of defences
+- Support for external plugins as skills, integration through SDK.
+- Incap players can fight with attacker with some keys, if indicator goes back to zero, player is freed.
+
 
 See https://forums.alliedmods.net/showthread.php?t=273312 for more info
