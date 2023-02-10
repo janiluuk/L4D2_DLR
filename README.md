@@ -31,10 +31,16 @@ Roadmap
 - Cleaner UI, menu option to turn hint texts off
 - Integrate game instructor UI to be utilized for counters, and other live indicators. 
 - Engineer can build different types of defences
+- Smoker should have much more visible and thick cloud when gets killed.
 - Show specific glow on people being healed by medic, and notify them with progress bar.
 - Support for external plugins as skills, integration through SDK to prevent misuse. For example airstrike, berzerk mode, jetpack, special grenades.
 - Incap players can fight with attacker with some keys, if indicator goes back to zero, player is freed.
 - When incapacitated without supplies and you have kit available, ask survivor if want to consume it.
+- Revamp infected skills to match the added ones for survivors;
+    - Charger can drop survivor and continue running
+    - Hunter can use boost for ultra long jumps
+    - Smoker can shove opponent to any direction when pinned, e.g throw out of window.
+    - More suggestions welcome!
 
 
 See https://forums.alliedmods.net/showthread.php?t=273312 for more info
