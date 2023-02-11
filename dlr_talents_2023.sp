@@ -264,8 +264,9 @@
 	new Float:FirstAidDuration;
 	new Float:ReviveDuration;
 	new bool:BombActive = false;
-	new String:Engineer_Turret_Spawn_Cmd[16] = "sm_dlrmachinemulti";
-	new String:Engineer_Turret_Remove_Cmd[16] = "sm_dlrmachinemultirm";
+
+	new String:Engineer_Turret_Spawn_Cmd[16] = "sm_dlrpmkai"; // sm_dlrmachinemulti";
+	new String:Engineer_Turret_Remove_Cmd[16] = "sm_dlrpmkairm"; //sm_dlrmachinemultirm";
 	new Handle:GLOW_COLOR_ACTIVE;
 
 	// Last class taken
@@ -291,7 +292,7 @@
 		name = "Talents Plugin 2023 anniversary edition",
 		author = "DLR / Ken / Neil / Spirit / panxiaohai / Yani",
 		description = "Incorporates Survivor Classes",
-		version = "v1.2",
+		version = "v1.3",
 		url = "https://forums.alliedmods.net/showthread.php?t=273312"
 	};
 
@@ -456,7 +457,7 @@
 		for (int i = 0; i < 2; i++)
 			PrecacheModel(g_sModels[i]);
 
-		for (int i = 0; i < MAXPLAYERS; i++)
+		for (int i = 0; i < MAXPLAYERS +1; i++)
 			g_bHide[i] = false;
 
 	}
@@ -475,9 +476,6 @@
 			return;
 		
 		g_bHide[client] = false; 
-		SDKHook(client, SDKHook_SetTransmit, Hook_SetTransmit);
-		SDKHook(client, SDKHook_WeaponEquip, OnWeaponEquip);
-		SDKHook(client, SDKHook_WeaponDrop, OnWeaponDrop);
 
 		ResetClientVariables(client);
 		RebuildCache();
@@ -496,8 +494,6 @@
 		if (!client ||  !IsValidEntity(client) || !IsClientInGame(client))
 		return;
 		
-		g_bHide[client] = false; 
-
 		if (RoundStarted == false && !IsPlayerInSaferoom(client) && !IsInEndingSaferoom(client)) {
 			RoundStarted = true;
 		}
@@ -513,11 +509,7 @@
 
 	public Action:OnWeaponDrop(client, weapon)
 	{
-		if (weapon > MaxClients && weapon < 2048)
-		{
-			g_iWeaponOwner[weapon] = 0;
-			SDKUnhook(weapon, SDKHook_SetTransmit, Hook_SetTransmitWeapon);
-		}
+		RebuildCache();
 	}
 
 	public Action:OnWeaponSwitch(client, weapon)
@@ -527,11 +519,6 @@
 
 	public Action:OnWeaponEquip(client, weapon)
 	{
-		if (weapon > MaxClients && weapon < 2048)
-		{
-			g_iWeaponOwner[weapon] = client;
-			SDKHook(weapon, SDKHook_SetTransmit, Hook_SetTransmitWeapon);
-		}
 		RebuildCache();
 	}
 
@@ -547,10 +534,7 @@
 			return Plugin_Stop;
 		
 		new flags = GetEntityFlags(client);
-		
-		if (IsHanging(client) || IsIncapacitated(client) || FindAttacker(client) > 0 || IsClientOnLadder(client) || !(flags & FL_ONGROUND) || GetClientWaterLevel(client) > Water_Level:WATER_LEVEL_FEET_IN_WATER)
-			return Plugin_Continue;
-		
+	
 		new buttons = GetClientButtons(client);
 		new Float:fCanDropTime = (GetGameTime() - ClientData[client].LastDropTime);
 		new bool:CanDrop = (fCanDropTime >= GetConVarFloat(MINIMUM_DROP_INTERVAL));
@@ -561,7 +545,9 @@
 		switch (ClientData[client].ChosenClass)
 		{
 			case ATHLETE:
+			{
 				SetEntDataFloat(client, g_ioLMV, GetConVarFloat(ATHLETE_SPEED), true);
+			}
 			
 			case SABOTEUR:
 			{
@@ -588,38 +574,37 @@
 				if (buttons & IN_DUCK)
 				{
 
-					if (IsFakeClient(client) || IsHanging(client) || IsIncapacitated(client) || FindAttacker(client) > 0 || IsClientOnLadder(client) || GetClientWaterLevel(client) > Water_Level:WATER_LEVEL_FEET_IN_WATER)
-					{
+					float hidingTime = GetGameTime() - ClientData[client].HideStartTime;
+					if (hidingTime >= GetConVarFloat(SABOTEUR_INVISIBLE_TIME)) {
+						if (InvisibilityTimestamp != RoundToFloor(hidingTime) && InvisibilityHint == false) 
+						{
+							HidePlayer(client);
+							//SetEntityRenderFx(client, RENDERFX_PULSE_SLOW);
+							InvisibilityTimestamp = RoundToFloor(hidingTime);
+							InvisibilityHint = true;
+							SetEntDataFloat(client, g_ioLMV, 1.5, true);
 
-					} else {
-						float hidingTime = GetGameTime() - ClientData[client].HideStartTime;
-						if (hidingTime >= GetConVarFloat(SABOTEUR_INVISIBLE_TIME)) {
-							if (InvisibilityTimestamp != RoundToFloor(hidingTime) && InvisibilityHint == false) 
-							{
-								HidePlayer(client);
-								SetEntityRenderFx(client, RENDERFX_PULSE_SLOW);
-								InvisibilityTimestamp = RoundToFloor(hidingTime);
-
-								InvisibilityHint = true;
-																	
-							}
 						}
-						if (hidingTime < GetConVarFloat(SABOTEUR_INVISIBLE_TIME) && (RoundToFloor(hidingTime) > 2)){
-
-							if (InvisibilityTimestamp != RoundToFloor(hidingTime)) {
-								PrintHintText(client,"Becoming invisible in %i seconds", RoundToFloor(GetConVarFloat(SABOTEUR_INVISIBLE_TIME) - hidingTime));
-								InvisibilityTimestamp = RoundToFloor(hidingTime);
-							}
-						}
-
-						SetEntDataFloat(client, g_ioLMV, 1.5, true);
 					}
+					if (hidingTime < GetConVarFloat(SABOTEUR_INVISIBLE_TIME) && (RoundToFloor(hidingTime) > 2)){
+
+						if (InvisibilityTimestamp != RoundToFloor(hidingTime)) {
+							PrintHintText(client,"Becoming invisible in %i seconds", RoundToFloor(GetConVarFloat(SABOTEUR_INVISIBLE_TIME) - hidingTime));
+							InvisibilityTimestamp = RoundToFloor(hidingTime);
+						}
+					}
+
+					
 				}
 				else
 				{
+					if (IsPlayerVisible(client) == false)  
+					{
 						UnhidePlayer(client);
-						InvisibilityHint = false;
 						SetEntDataFloat(client, g_ioLMV, 1.0, true);
+					}
+					InvisibilityHint = false;
+
 				}
 				
 				if (buttons & IN_SPEED)
@@ -643,26 +628,31 @@
 			
 			case MEDIC:
 			{
-
-				if (buttons & IN_SPEED && CanDrop && ClientData[client].ItemsBuilt > GetConVarInt(MEDIC_MAX_ITEMS))
-				{	
-					PrintHintText(client ,"You're out of items (Max %i)", GetConVarInt(MEDIC_MAX_ITEMS));
-				}
-				
-				if (CanDrop == false && (iDropTime < GetConVarInt(MINIMUM_DROP_INTERVAL))) {
-					PrintHintText(client ,"Wait %i seconds to deploy", (GetConVarInt(MINIMUM_DROP_INTERVAL) - iDropTime));
-				} else {
-
-					if (buttons & IN_SPEED && CanDrop && ClientData[client].ItemsBuilt < GetConVarInt(MEDIC_MAX_ITEMS))
+				if (buttons & IN_SPEED)
+				{
+					if (CanDrop) 
 					{	
-						CreatePlayerMedicMenu(client);	
-					}		
-				}		
-				if (buttons & IN_DUCK && (GetGameTime() - ClientData[client].HealStartTime) >= 2.5) {
-					SetEntDataFloat(client, g_ioLMV, 1.5, true);
-					if (MedicHint == false) {
-			 			PrintHintTextToAll("%N is healing everyone around him!", client);
-						MedicHint = true;
+
+						if (ClientData[client].ItemsBuilt > GetConVarInt(MEDIC_MAX_ITEMS)) {
+						PrintHintText(client ,"You're out of items (Max %i)", GetConVarInt(MEDIC_MAX_ITEMS));
+						}
+						if (ClientData[client].ItemsBuilt < GetConVarInt(MEDIC_MAX_ITEMS))
+						{	
+							CreatePlayerMedicMenu(client);	
+						}
+					}
+					else if (CanDrop == false && (iDropTime < GetConVarInt(MINIMUM_DROP_INTERVAL))) {
+						PrintHintText(client ,"Wait %i seconds to deploy", (GetConVarInt(MINIMUM_DROP_INTERVAL) - iDropTime));
+					} 		
+				}
+
+				if (buttons & IN_DUCK) {
+					if ((GetGameTime() - ClientData[client].HealStartTime) >= 2.5) {
+						SetEntDataFloat(client, g_ioLMV, 1.5, true);
+						if (MedicHint == false) {
+				 			PrintHintTextToAll("%N is healing everyone around him!", client);
+							MedicHint = true;
+						}
 					}
 				} else {
 					SetEntDataFloat(client, g_ioLMV, 1.0, true);					
@@ -675,7 +665,6 @@
 
 				if (buttons & IN_SPEED && RoundStarted == true)// && ClientData[client].ItemsBuilt < GetConVarInt(ENGINEER_MAX_BUILDS)) 
 				{	
-
 					if (CanDrop == false && (iDropTime < GetConVarInt(MINIMUM_DROP_INTERVAL))) {
 							PrintHintText(client ,"Wait %i seconds to deploy", (GetConVarInt(MINIMUM_DROP_INTERVAL) - iDropTime));
 					}
@@ -699,7 +688,9 @@
 				SetEntDataFloat(client, g_ioLMV, GetConVarFloat(SOLDIER_SPEED), true);
 			}
 		}
-		
+
+		ClientData[client].LastButtons = buttons;
+
 		return Plugin_Continue;
 	}
 	
@@ -1327,8 +1318,8 @@
 		SetPanelTitle(hPanel, "Engineer:");
 		DrawPanelItem(hPanel, "Ammo Pile");
 		DrawPanelItem(hPanel, "Turret");
-		DrawPanelItem(hPanel, "Frag Rounds");
 		DrawPanelItem(hPanel, "Incendiary Rounds");
+		DrawPanelItem(hPanel, "Frag Rounds");
 		DrawPanelItem(hPanel, "Remove Turret");/// what ive added for remove tureet
 		DrawPanelText(hPanel, " ");
 		DrawPanelItem(hPanel, "Exit");
@@ -1391,7 +1382,7 @@
 							}
 						}
 					}
-					case 2: {
+					case 3: {
 						new upgrade = CreateEntityByName("upgrade_ammo_explosive");
 						SetEntityModel(upgrade, MODEL_EXPLO);
 						TeleportEntity(upgrade, endPos, NULL_VECTOR, NULL_VECTOR);
@@ -1401,7 +1392,7 @@
 						ClientData[client].ItemsBuilt++;
 
 					}
-					case 3: {
+					case 2: {
 						new upgrade = CreateEntityByName("upgrade_ammo_incendiary");
 						SetEntityModel(upgrade, MODEL_INCEN);
 						TeleportEntity(upgrade, endPos, NULL_VECTOR, NULL_VECTOR);
@@ -2500,11 +2491,13 @@
 
 	public Action:TimerDeleteBombs(Handle:timer, Handle:pack)
 	{		
+
 		ResetPack(pack);
 		int index = ReadPackCell(pack);
 		bool removed = false;
+
 		if (BombIndex[index] == false) {
-			for (new i = 0; i <= 3; i++)
+			for (new i = 0; i <= 2; i++)
 			{
 				int entity = ReadPackCell(pack);
 				if(entity > 0 && IsValidEntity(entity))
@@ -2515,13 +2508,21 @@
 			}
 		} else {
 			CloseHandle(pack);
-
-			CreateTimer(5.0, TimerDeleteBombs, pack, TIMER_FLAG_NO_MAPCHANGE);			
+			new Handle:hPack = CreateDataPack();
+			WritePackCell(hPack, index);
+			int entity = ReadPackCell(pack);
+			WritePackCell(hPack, entity);
+			int defibParticle = ReadPackCell(pack);
+			WritePackCell(hPack, defibParticle);
+			int elmosParticle = ReadPackCell(pack);
+			WritePackCell(hPack, elmosParticle);
+			CreateTimer(5.0, TimerDeleteBombs, hPack, TIMER_FLAG_NO_MAPCHANGE);		
+			return Plugin_Continue;
 		}
 		if (removed == true) {
 			KillTimer(timer);
 			return Plugin_Stop;
-		}
+		} 
 	}
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -3656,55 +3657,45 @@
 		return false;
 	}
 
-	public OnEntityCreated(entity, const String:classname[])
-	{
-		if (entity > MaxClients && entity < 2048)
-		{
-			g_iWeaponOwner[entity] = 0;
-		}
-	}
-
-	public OnEntityDestroyed(entity)
-	{
-		if (entity > MaxClients && entity < 2048)
-		{
-			g_iWeaponOwner[entity] = 0;
-		}
-	}
-
 	public Action:Hook_SetTransmit(entity, client) 
-	{ 	
-		return !(client != entity && (0 < entity <= MaxClients) && g_bHide[client]) ? Plugin_Continue : Plugin_Handled; 
+	{ 
+		if (DEBUG_MODE) {
+		//	PrintToChatAll("client %i entity %i, client is %s", client, entity, g_bHide[client] ? "hidden" : "not hidden");
+		}
+		return !(entity < MAXPLAYERS && g_bHide[entity] == true && client != entity) ? Plugin_Continue : Plugin_Handled; 
 	}
 
-	public Action:Hook_SetTransmitWeapon(entity, client) 
-	{ 
-		return !(g_iWeaponOwner[entity] && g_iWeaponOwner[entity] != client && g_bHide[client]) ? Plugin_Continue : Plugin_Handled; 
+	public bool IsPlayerVisible(client) {
+		return g_bHide[client] ? true:false;
 	}
 
 	public Action:HidePlayer(client)
 	{
-		if (g_bHide[client] == true) return Plugin_Handled;
-		g_bHide[client] = true;
+		g_bHide[client] = !g_bHide[client];
 		PrintHintText(client, "You are %s", g_bHide[client] ? "invisible" : "visible");
 		
 		return Plugin_Handled;
 	}
-
 	public Action:UnhidePlayer(client)
 	{
-		if (g_bHide[client] == false) return Plugin_Handled;
-
 		g_bHide[client] = false;
-		PrintHintText(client, "You are %s", g_bHide[client] ? "invisible" : "visible");
-		
-		return Plugin_Handled;
 	}
-
 	public Action:HideCommand(client, args)
 	{
-		if (g_bHide[client] == false) HidePlayer(client);
-		else 
-		UnhidePlayer(client);
+		if (isAdmin(client)) {
+
+			new String:str[32];
+			new type=GetCmdArg(1, str, 32);
+			if(type==0) {
+			}
+			else
+			{
+				int c = StringToInt(str);
+				if (c || IsValidEntity(c) || IsClientInGame(c)){
+					client = c;					
+				}
+			}			
+			HidePlayer(client);
+		}
 		return Plugin_Handled;
 	}
