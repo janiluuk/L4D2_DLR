@@ -497,6 +497,10 @@
 		return;
 		
 		g_bHide[client] = false; 
+		
+		if (roundStarted == false && !IsPlayerInSaferoom(client) && !IsInEndingSaferoom(client)) {
+			roundStarted = true;
+		}
 
 		SDKHook(client, SDKHook_WeaponSwitch, OnWeaponSwitch);
 		SDKHook(client, SDKHook_WeaponEquip, OnWeaponEquip);
