@@ -8,11 +8,14 @@ Changes:
 - Soldier has faster moving speed and takes less damage. configurable.
 - Athlete has faster moving speed and a parachute. configurable.
 - Commando reload rate actually works now
+- Commando damage modifiers are configurable per weapon, default one is used for rest
 - Medic has more options to spawn. Has faster healing and revival times.
 - Includes modifiers for adrenaline/pills/revive/heal durations in the config. disable with "talents_health_modifiers_enabled" 
 - Announcement to other players when healing spot is active.
+- Players get notified when theyre being healed.
 - Default health for players without class configurable. Menu does not spam you if you don't choose a class.
 - Engineer spawns ready-to-use upgrade packs instead of deployable boxes.
+- Engineer, medic and saboteur get countdown for next deployment when trying to deploy too early
 - Turrets don't block anymore, so you cannot abuse it by boxing in opponents.
 - Saboteur moves faster when crouched and shows visibility status.
 - Saboteur changes color when invisible to enemies.
@@ -20,12 +23,19 @@ Changes:
 - Mines do more damage to infected, 1500hp. Some edge over tank
 - Mines glow now so players know to avoid the spot or lure someone to it.
 - Notifications on placing mines.
+* Warnings for players that go near armed mine
 - Countdown notification before mine becoming armed.
 - Support for multiple types of mines (freeze, vomit, antigravity, black hole), ui missing
+- Engineer, medic and saboteur get countdown for next deployment when trying to deploy too early, and notification if out of supplies.
 - More helpful class descriptions and help system.
 - Support for external plugins for turret system.
 - Internal turret system fixed
 - Gun reload glitches fixed
+- Mine placement rewrite, now we keep track of the type and index of each mine and their particles, so effects can vary individually.
+- Redefine visual effect to be more minimalistic for mines
+- Invisibility rewrite, it never really worked properly before.
+- Wipe out all infected from admin menu
+- Debug mode for admins
 
 Roadmap
 - Cleaner UI, menu option to turn hint texts off
