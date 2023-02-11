@@ -643,14 +643,21 @@
 			
 			case MEDIC:
 			{
-				if (buttons & IN_SPEED && CanDrop && ClientData[client].ItemsBuilt < GetConVarInt(MEDIC_MAX_ITEMS))
-				{	
-					CreatePlayerMedicMenu(client);	
-				}
+
 				if (buttons & IN_SPEED && CanDrop && ClientData[client].ItemsBuilt > GetConVarInt(MEDIC_MAX_ITEMS))
 				{	
 					PrintHintText(client ,"You're out of items (Max %i)", GetConVarInt(MEDIC_MAX_ITEMS));
-				}				
+				}
+				
+				if (CanDrop == false && (iDropTime < GetConVarInt(MINIMUM_DROP_INTERVAL))) {
+					PrintHintText(client ,"Wait %i seconds to deploy", (GetConVarInt(MINIMUM_DROP_INTERVAL) - iDropTime));
+				} else {
+
+					if (buttons & IN_SPEED && CanDrop && ClientData[client].ItemsBuilt < GetConVarInt(MEDIC_MAX_ITEMS))
+					{	
+						CreatePlayerMedicMenu(client);	
+					}		
+				}		
 				if (buttons & IN_DUCK && (GetGameTime() - ClientData[client].HealStartTime) >= 2.5) {
 					SetEntDataFloat(client, g_ioLMV, 1.5, true);
 					if (MedicHint == false) {
