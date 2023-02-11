@@ -271,7 +271,7 @@
 	// Last class taken
 	new LastClassConfirmed[MAXPLAYERS+1];
 
-	new BombIndex[16];
+	new bool:BombIndex[16];
 	new bool:RoundStarted =false;
 	new bool:ClassHint =false;
 	new bool:InvisibilityHint = false;
@@ -633,8 +633,8 @@
 							if (ClientData[client].BombsUsed >= GetConVarInt(SABOTEUR_MAX_BOMBS)) {
 								PrintHintText(client ,"You're out of mines");
 							} else {
-								DropBomb(client);							
-								ClientData[client].LastDropTime = GetGameTime();
+								ClientData[client].LastDropTime = GetGameTime();								
+								DropBomb(client);				
 							}
 						}
 					}
@@ -2026,7 +2026,7 @@
 		CreateParticleInPos(pos, BOMB_GLOW, index);
 		EmitSoundToAll(SOUND_DROP_BOMB);
 		
-		PrintHintTextToAll("%N planted a mine! (%i/%i)", ClientData[client].BombsUsed, GetConVarInt(SABOTEUR_MAX_BOMBS));
+		PrintHintTextToAll("%N planted a mine! (%i/%i)", client, ClientData[client].BombsUsed, GetConVarInt(SABOTEUR_MAX_BOMBS));
 	}
 
 	public Action:TimerActivateBomb(Handle:hTimer, Handle:hPack)
@@ -2066,7 +2066,7 @@
 				if (GetVectorDistance(pos, clientpos) < GetConVarFloat(SABOTEUR_BOMB_RADIUS))
 				{
 					if (GetClientTeam(client) == 3) {
-						PrintHintTextToAll("\x03%N\x01's \x04mine \x01detonated!", owner);
+						PrintHintTextToAll("%N's mine detonated!", owner);
 						CreateExplosion(pos, owner, false);
 						BombActive = false;
 						BombIndex[index] = false;
@@ -2507,9 +2507,10 @@
 				}
 			}
 		} else {
+			CloseHandle(pack);
+
 			CreateTimer(5.0, TimerDeleteBombs, pack, TIMER_FLAG_NO_MAPCHANGE);			
 		}
-		CloseHandle(pack);		
 		if (removed == true) {
 			KillTimer(timer);
 			return Plugin_Stop;
