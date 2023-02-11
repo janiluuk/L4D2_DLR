@@ -28,7 +28,6 @@
 	 * Feel free to change the following code-related values.
 	 */
 
-
 	/// MENU AND UI RELATED STUFF
 
 	// This is what to display on the class selection menu.
@@ -60,7 +59,7 @@
 	};
 
 	// How long should the Class Select menu stay open?
-	static const Float:MENU_OPEN_TIME = 99999.0;
+	static const MENU_OPEN_TIME = view_as<int>(9999);
 	static bool:DEBUG_MODE = false;
 
 	// What formatting string to use when printing to the chatbox
@@ -83,17 +82,15 @@
 	 * Do not change these unless you know what you are doing.
 	 */
 
-	enum CLASSES {
-		NONE = 0,
-		SOLDIER,
-		ATHLETE,
-		MEDIC,
-		SABOTEUR,
-		COMMANDO,
-		ENGINEER,
-		BRAWLER,
-		MAXCLASSES
-	};
+	const NONE = view_as<int>(0);
+	const SOLDIER = view_as<int>(1);
+	const ATHLETE= view_as<int>(2);
+	const MEDIC=view_as<int>(3);
+	const SABOTEUR=view_as<int>(4);
+	const COMMANDO=view_as<int>(5);
+	const ENGINEER=view_as<int>(6);
+	const BRAWLER=view_as<int>(7);
+	const MAXCLASSES=view_as<int>(8);
 
 	enum struct PlayerInfo 
 	{
@@ -242,6 +239,13 @@
 	// Commando
 	new Handle:COMMANDO_DAMAGE;
 	new Handle:COMMANDO_RELOAD_RATIO;
+	new Handle:COMMANDO_DAMAGE_RIFLE;
+	new Handle:COMMANDO_DAMAGE_GRENADE;
+	new Handle:COMMANDO_DAMAGE_SHOTGUN;
+	new Handle:COMMANDO_DAMAGE_SNIPER;
+	new Handle:COMMANDO_DAMAGE_HUNTING;
+	new Handle:COMMANDO_DAMAGE_PISTOL;
+	new Handle:COMMANDO_DAMAGE_SMG;
 
 	// Engineer
 	new Handle:ENGINEER_MAX_BUILDS;
@@ -252,7 +256,7 @@
 	new Handle:ENGINEER_TURRET_EXTERNAL_PLUGIN;
 
 	// Saferoom checks for saboteur
-	new bool:g_bInSaferoom[MAXPLAYERS+1] = false;
+	new bool:g_bInSaferoom[MAXPLAYERS+1];
 	new Float:g_SpawnPos[MAXPLAYERS+1][3];
 	new Handle:g_VarFirstAidDuration = INVALID_HANDLE;
 	new Handle:g_VarReviveDuration = INVALID_HANDLE;
@@ -267,7 +271,7 @@
 	// Last class taken
 	new LastClassConfirmed[MAXPLAYERS+1];
 
-	new BombIndex[16] = false;
+	new BombIndex[16];
 	new bool:RoundStarted =false;
 	new bool:ClassHint =false;
 	new bool:InvisibilityHint = false;
@@ -415,7 +419,7 @@
 		ClientData[client].HideStartTime= GetGameTime();
 		ClientData[client].HealStartTime= GetGameTime();
 		ClientData[client].LastButtons = 0;
-		ClientData[client].ChosenClass = _:NONE;
+		ClientData[client].ChosenClass = NONE;
 		ClientData[client].LastDropTime = 0.0;
 		g_bInSaferoom[client] = false;
 	}
@@ -567,9 +571,10 @@
 						}
 					}
 					else if (iDropTime == GetConVarInt(SABOTEUR_BOMB_ACTIVATE)) {
-							BombHintTimestamp = iDropTime-1;
-
-						if (BombHintTimestamp != iDropTime) {					
+						
+						BombHintTimestamp = iDropTime-1;
+						
+						if (BombHintTimestamp != iDropTime) {
 							PrintHintTextToAll("%N's mine is now armed!", client);
 							BombHintTimestamp = iDropTime;
 						}
@@ -585,10 +590,11 @@
 					} else {
 						float hidingTime = GetGameTime() - ClientData[client].HideStartTime;
 						if (hidingTime >= GetConVarFloat(SABOTEUR_INVISIBLE_TIME)) {
-							if (InvisibilityHint == false) 
+							if (InvisibilityTimestamp != RoundToFloor(hidingTime) && InvisibilityHint == false) 
 							{
 								HidePlayer(client);
 								SetEntityRenderFx(client, RENDERFX_PULSE_SLOW);
+								InvisibilityTimestamp = RoundToFloor(hidingTime);
 
 								InvisibilityHint = true;
 																	
@@ -596,23 +602,20 @@
 						}
 						if (hidingTime < GetConVarFloat(SABOTEUR_INVISIBLE_TIME) && (RoundToFloor(hidingTime) > 2)){
 
-							if (RoundToFloor(InvisibilityTimestamp) != RoundToFloor(hidingTime)) {
+							if (InvisibilityTimestamp != RoundToFloor(hidingTime)) {
 								PrintHintText(client,"Becoming invisible in %i seconds", RoundToFloor(GetConVarFloat(SABOTEUR_INVISIBLE_TIME) - hidingTime));
 								InvisibilityTimestamp = RoundToFloor(hidingTime);
 							}
 						}
 
+						SetEntDataFloat(client, g_ioLMV, 1.5, true);
 					}
-
-					SetEntDataFloat(client, g_ioLMV, 1.5, true);
 				}
 				else
 				{
-					if (InvisibilityHint == true) {
 						UnhidePlayer(client);
 						InvisibilityHint = false;
-					}
-					SetEntDataFloat(client, g_ioLMV, 1.0, true);
+						SetEntDataFloat(client, g_ioLMV, 1.0, true);
 				}
 				
 				if (buttons & IN_SPEED)
@@ -645,11 +648,11 @@
 					PrintHintText(client ,"You're out of items (Max %i)", GetConVarInt(MEDIC_MAX_ITEMS));
 				}				
 				if (buttons & IN_DUCK && (GetGameTime() - ClientData[client].HealStartTime) >= 2.5) {
-						SetEntDataFloat(client, g_ioLMV, 1.5, true);
-						if (MedicHint == false) {
-				 			PrintHintTextToAll("\x03%N\x01 is healing everyone around him!", client);
-							MedicHint = true;
-						}
+					SetEntDataFloat(client, g_ioLMV, 1.5, true);
+					if (MedicHint == false) {
+			 			PrintHintTextToAll("%N is healing everyone around him!", client);
+						MedicHint = true;
+					}
 				} else {
 					SetEntDataFloat(client, g_ioLMV, 1.0, true);					
 					MedicHint = false;
@@ -675,7 +678,6 @@
 						else
 						{
 							PrintHintText(client ,"You're out of items (Max %i)", GetConVarInt(ENGINEER_MAX_BUILDS));
-
 							CreateRemoveTurretMenu(client);
 						}
 					}					
@@ -685,7 +687,6 @@
 			{
 				SetEntDataFloat(client, g_ioLMV, GetConVarFloat(SOLDIER_SPEED), true);
 			}
-			
 		}
 		
 		return Plugin_Continue;
@@ -706,7 +707,7 @@
 	/*
 	DrawConfirmPanel(client, chosenClass)
 	{
-		if (!client || chosenClass >= _:MAXCLASSES)
+		if (!client || chosenClass >= MAXCLASSES)
 			return false;
 		
 		LastChosenClass[client] = chosenClass;
@@ -741,7 +742,7 @@
 			{
 				new class = LastChosenClass[client];
 				
-				if( param == 1 && class < _:MAXCLASSES && ( CountPlayersWithClass( class ) < GetMaxWithClass( class ) || ClientData[client].ChosenClass != class || GetMaxWithClass( class ) < 0 ) )
+				if( param == 1 && class < MAXCLASSES && ( CountPlayersWithClass( class ) < GetMaxWithClass( class ) || ClientData[client].ChosenClass != class || GetMaxWithClass( class ) < 0 ) )
 				{
 					LastClassConfirmed[client] = class;
 					
@@ -779,7 +780,7 @@
 			|| !IsClientInGame(client)
 			|| !IsPlayerAlive(client)
 			|| GetClientTeam(client) != 2
-			|| ClientData[client].ChosenClass != _:SOLDIER)
+			|| ClientData[client].ChosenClass != SOLDIER)
 				continue;
 			
 			bweapon = GetEntDataEnt2(client, g_oAW);
@@ -829,7 +830,7 @@
 		
 		for (new i = 1; i <= MaxClients; i++)
 		{
-			if (IsValidEntity(i) && IsClientInGame(i) && IsPlayerAlive(i) && GetClientTeam(i) == 2 && ClientData[i].ChosenClass == _:SOLDIER)
+			if (IsValidEntity(i) && IsClientInGame(i) && IsPlayerAlive(i) && GetClientTeam(i) == 2 && ClientData[i].ChosenClass == SOLDIER)
 			{
 				g_iRC++;
 				g_iRI[g_iRC] = i;
@@ -889,16 +890,6 @@
 		ResetClientVariables(client);
 	}
 
-	public Action:OnWeaponSwitch(client, weapon)
-	{
-		RebuildCache();
-	}
-
-	public Action:OnWeaponEquip(client, weapon)
-	{
-		RebuildCache();
-	}
-
 	public Event_EnterSaferoom(Handle:event, String:event_name[], bool:dontBroadcast)
 	{
 		new client = GetClientOfUserId(GetEventInt(event, "userid"));
@@ -947,7 +938,7 @@
 	{
 		for (new i = 1; i <= MaxClients; i++)
 		{
-			if(ClientData[i].ChosenClass != _:NONE)
+			if(ClientData[i].ChosenClass != NONE)
 			{
 				PrintToChatAll("\x04%N\x01 : is a %s",i,MENU_OPTIONS[ClientData[i].ChosenClass]);
 			}
@@ -970,13 +961,13 @@
 		}
 		
 		// if client has a class already and round has started, dont give them the menu
-		if (ClientData[client].ChosenClass != _:NONE && RoundStarted == true)
+		if (ClientData[client].ChosenClass != NONE && RoundStarted == true)
 		{
 			PrintToChat(client,"Round has started, your class is locked, You are a %s",MENU_OPTIONS[ClientData[client].ChosenClass]);
 			return false;
 		}
 			
-		if(IsClientInGame(client) && ClientData[client].ChosenClass == _:NONE && RoundStarted == false)
+		if(IsClientInGame(client) && ClientData[client].ChosenClass == NONE && RoundStarted == false)
 		{
 			setPlayerDefaultHealth(client);
 
@@ -984,7 +975,7 @@
 		
 		SetPanelTitle(hPanel, "Select Your Class");
 		
-		for (new i = 1; i < _:MAXCLASSES; i++)
+		for (new i = 1; i < MAXCLASSES; i++)
 		{
 			if( GetMaxWithClass(i) >= 0 )
 				Format(buffer, sizeof(buffer), "%i/%i %s", CountPlayersWithClass(i), GetMaxWithClass(i),  MENU_OPTIONS[i]);
@@ -1011,7 +1002,7 @@
 		{
 			case MenuAction_Select:
 			{
-				if (!client || param >= _:MAXCLASSES || GetClientTeam(client)!=2 )
+				if (!client || param >= MAXCLASSES || GetClientTeam(client)!=2 )
 				{
 					return;
 				}
@@ -1120,7 +1111,7 @@
 			return;
 		}
 		
-		//if (ClientData[client].ChosenClass != _:NONE)
+		//if (ClientData[client].ChosenClass != NONE)
 		//{
 		//	PrintToChat(client, "%sYou have already chosen a class this round.", PRINT_PREFIX);
 		//	return;
@@ -1553,7 +1544,7 @@
 
 	public UpgradeQuickHeal(client)
 	{
-		if(ClientData[client].ChosenClass == _:MEDIC)
+		if(ClientData[client].ChosenClass == MEDIC)
 			SetConVarFloat(g_VarFirstAidDuration, FirstAidDuration * GetConVarFloat(MEDIC_HEAL_RATIO), false, false);
 		else
 			SetConVarFloat(g_VarFirstAidDuration, FirstAidDuration * 1.0, false, false);
@@ -1561,7 +1552,7 @@
 
 	public UpgradeQuickRevive(client)
 	{
-		if(ClientData[client].ChosenClass == _:MEDIC)
+		if(ClientData[client].ChosenClass == MEDIC)
 			SetConVarFloat(g_VarReviveDuration, ReviveDuration * GetConVarFloat(MEDIC_REVIVE_RATIO), false, false);
 		else
 			SetConVarFloat(g_VarReviveDuration, ReviveDuration * 1.0, false, false);
@@ -1624,7 +1615,7 @@
 		if (!client
 			|| !IsValidEntity(client)
 			|| !IsClientInGame(client)
-			|| ClientData[client].ChosenClass != _:MEDIC)
+			|| ClientData[client].ChosenClass != MEDIC)
 				return Plugin_Stop;
 				
 		if(!IsPlayerAlive(client) || GetClientTeam(client) != 2)
@@ -1713,7 +1704,7 @@
 	{
 		new client = GetClientOfUserId(GetEventInt(event,"userid"));
 		
-		if (ClientData[client].ChosenClass != _:COMMANDO)
+		if (ClientData[client].ChosenClass != COMMANDO)
 			return;
 		
 		new weapon = GetEntDataEnt2(client, g_oAW);
@@ -1801,13 +1792,13 @@
 		{
 
 			//PrintToChatAll("%s", m_attacker);
-			if(ClientData[victim].ChosenClass == _:SOLDIER && GetClientTeam(victim) == 2)
+			if(ClientData[victim].ChosenClass == SOLDIER && GetClientTeam(victim) == 2)
 			{
 				//PrintToChat(victim, "Damage: %f, New: %f", damage, damage*0.5);
 				damage = damage * GetConVarFloat(SOLDIER_DAMAGE_REDUCE_RATIO);
 				return Plugin_Changed;
 			}
-			if (ClientData[attacker].ChosenClass == _:COMMANDO && GetClientTeam(attacker) == 2 && GetClientTeam(victim) == 3)
+			if (ClientData[attacker].ChosenClass == COMMANDO && GetClientTeam(attacker) == 2 && GetClientTeam(victim) == 3)
 			{
 				damage = damage + getCommandoDamageBonus(attacker);
 				//PrintToChat(attacker,"%f",damage);
@@ -1922,7 +1913,7 @@
 	{
 		new client = GetClientOfUserId(GetEventInt(event, "userid"));
 		
-		if (ClientData[client].ChosenClass == _:NONE && GetClientTeam(client) == 2)
+		if (ClientData[client].ChosenClass == NONE && GetClientTeam(client) == 2)
 		{
 			if(client > 0 && client < MAXPLAYERS + 1 && ClassHint == false)
 			{
@@ -1934,7 +1925,7 @@
 			}
 		}
 		
-		if(ClientData[client].ChosenClass == _:COMMANDO)
+		if(ClientData[client].ChosenClass == COMMANDO)
 		{
 			GetEventString(event, "weapon", ClientData[client].EquippedGun, 64);
 			//PrintToChat(client,"weapon shot fired");	
@@ -1946,34 +1937,34 @@
 	{
 		if (StrContains(ClientData[client].EquippedGun,"grenade", false)!=-1)
 		{
-			return GetConVarFloat(COMMANDO_DAMAGE_GRENADE);
+			return GetConVarInt(COMMANDO_DAMAGE_GRENADE);
 		}
 		if (StrContains(ClientData[client].EquippedGun,"shotgun", false)!=-1)
 		{
-			return GetConVarFloat(COMMANDO_DAMAGE_SHOTGUN);
+			return GetConVarInt(COMMANDO_DAMAGE_SHOTGUN);
 		}
 		if (StrContains(ClientData[client].EquippedGun, "sniper", false)!=-1)
 		{
-			return GetConVarFloat(COMMANDO_DAMAGE_SNIPER);
+			return GetConVarInt(COMMANDO_DAMAGE_SNIPER);
 		}
 		if (StrContains(ClientData[client].EquippedGun, "hunting", false)!=-1)
 		{
-			return GetConVarFloat(COMMANDO_DAMAGE_HUNTING);
+			return GetConVarInt(COMMANDO_DAMAGE_HUNTING);
 		}
 		if (StrContains(ClientData[client].EquippedGun, "pistol", false)!=-1)
 		{
-			return GetConVarFloat(COMMANDO_DAMAGE_PISTOL);
+			return GetConVarInt(COMMANDO_DAMAGE_PISTOL);
 		}
 		if (StrContains(ClientData[client].EquippedGun, "smg", false)!=-1)
 		{
-			return GetConVarFloat(COMMANDO_DAMAGE_SMG);
+			return GetConVarInt(COMMANDO_DAMAGE_SMG);
 		}
 		if (StrContains(ClientData[client].EquippedGun,"rifle", false)!=-1)
 		{
-			return GetConVarFloat(COMMANDO_DAMAGE_RIFLE);
+			return GetConVarInt(COMMANDO_DAMAGE_RIFLE);
 		}
 		// default
-		return GetConVarFloat(COMMANDO_DAMAGE);
+		return GetConVarInt(COMMANDO_DAMAGE);
 	}
 
 	public Action:Event_LeftStartArea(Handle:event, const String:name[], bool:dontBroadcast)
@@ -2501,7 +2492,6 @@
 		ResetPack(pack);
 		int index = ReadPackCell(pack);
 		bool removed = false;
-
 		if (BombIndex[index] == false) {
 			for (new i = 0; i <= 3; i++)
 			{
@@ -2521,7 +2511,6 @@
 			return Plugin_Stop;
 		}
 	}
-
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -3502,7 +3491,7 @@
 		if (IsFakeClient(client) || IsHanging(client) || IsIncapacitated(client) || FindAttacker(client) > 0 || IsClientOnLadder(client) || GetClientWaterLevel(client) > Water_Level:WATER_LEVEL_FEET_IN_WATER)
 			return Plugin_Continue;
 		
-		if (ClientData[client].ChosenClass == _:ATHLETE)
+		if (ClientData[client].ChosenClass == ATHLETE)
 		{
 			if (buttons & IN_JUMP && flags & FL_ONGROUND )
 			{
@@ -3648,7 +3637,7 @@
 
 	public bool:IsPlayerHidden(client) 
 	{
-		if (ClientData[client].ChosenClass == _:SABOTEUR && (GetGameTime() - ClientData[client].HideStartTime) >= (GetConVarFloat(SABOTEUR_INVISIBLE_TIME))) 
+		if (ClientData[client].ChosenClass == SABOTEUR && (GetGameTime() - ClientData[client].HideStartTime) >= (GetConVarFloat(SABOTEUR_INVISIBLE_TIME))) 
 		{
 			return true;
 		}
