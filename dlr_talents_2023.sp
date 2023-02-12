@@ -74,8 +74,8 @@
 	#define MODEL_INCEN	"models/props/terror/incendiary_ammo.mdl"
 	#define MODEL_EXPLO	"models/props/terror/exploding_ammo.mdl"
 	#define MODEL_SPRITE "models/sprites/glow01.spr"
-	#define PARTICLE_DEFIB                  "item_defibrillator_body"
-	#define PARTICLE_ELMOS                  "st_elmos_fire_cp0"
+	#define PARTICLE_DEFIB "item_defibrillator_body"
+	#define PARTICLE_ELMOS "st_elmos_fire_cp0"
 
 	/**
 	 * OTHER GLOBAL VARIABLES
@@ -249,7 +249,7 @@
 
 	// Engineer
 	new Handle:ENGINEER_MAX_BUILDS;
-	new Handle:MAX_ENGINEER_BUILD_RANGE;
+	new Handle:ENGINEER_MAX_BUILD_RANGE;
 
 	// Saboteur, Engineer, Medic
 	new Handle:MINIMUM_DROP_INTERVAL;
@@ -267,7 +267,7 @@
 
 	new String:Engineer_Turret_Spawn_Cmd[16] = "sm_dlrpmkai"; // sm_dlrmachinemulti";
 	new String:Engineer_Turret_Remove_Cmd[16] = "sm_dlrpmkairm"; //sm_dlrmachinemultirm";
-	new Handle:GLOW_COLOR_ACTIVE;
+	new Handle:SABOTEUR_ACTIVE_BOMB_COLOR;
 
 	// Last class taken
 	new LastClassConfirmed[MAXPLAYERS+1];
@@ -361,10 +361,12 @@
 		
 		SOLDIER_FIRE_RATE = CreateConVar("talents_soldier_fire_rate", "0.6666", "How fast the soldier should fire. Lower values = faster");
 		SOLDIER_SPEED = CreateConVar("talents_soldier_speed", "1.15", "How fast soldier should run. A value of 1.0 = normal speed");
+		SOLDIER_DAMAGE_REDUCE_RATIO = CreateConVar("talents_soldier_damage_reduce_ratio", "0.5", "Ratio for how much to reduce damage for soldier");
 
 		ATHLETE_JUMP_VEL = CreateConVar("talents_athlete_jump", "450.0", "How high a soldier should be able to jump. Make this higher to make them jump higher, or 0.0 for normal height");
 		ATHLETE_SPEED = CreateConVar("talents_athlete_speed", "1.20", "How fast athlete should run. A value of 1.0 = normal speed");
-
+		parachuteEnabled = CreateConVar("talents_athlete_enable_parachute","0.0","Enable parachute for athlete. Hold E in air to use it. 0 = OFF, 1 = ON.", FCVAR_NOTIFY, true, 0.0, true, 1.0);		
+		
 		MEDIC_HEAL_DIST = CreateConVar("talents_medic_heal_dist", "256.0", "How close other survivors have to be to heal. Larger values = larger radius");
 		MEDIC_HEALTH_VALUE = CreateConVar("talents_medic_health", "10", "How much health to restore");
 		MEDIC_MAX_ITEMS = CreateConVar("talents_medic_max_items", "3", "How many items the medic can drop");
@@ -380,6 +382,7 @@
 		SABOTEUR_BOMB_DAMAGE_SURV = CreateConVar("talents_saboteur_bomb_dmg_surv", "0", "How much damage a bomb does to survivors");
 		SABOTEUR_BOMB_DAMAGE_INF = CreateConVar("talents_saboteur_bomb_dmg_inf", "1000", "How much damage a bomb does to infected");
 		SABOTEUR_BOMB_POWER = CreateConVar("talents_saboteur_bomb_power", "2.0", "How much blast power a bomb has. Higher values will throw survivors farther away");
+		SABOTEUR_ACTIVE_BOMB_COLOR = CreateConVar("talents_bomb_active_glow_color","255 0 0", "Glow color for active bombs (Default Red)");
 
 		COMMANDO_DAMAGE = CreateConVar("talents_commando_dmg", "5.0", "How much bonus damage a Commando does by default");
 		COMMANDO_DAMAGE_RIFLE = CreateConVar("talents_commando_dmg_rifle", "10.0", "How much bonus damage a Commando does with rifle");
@@ -389,18 +392,15 @@
 		COMMANDO_DAMAGE_HUNTING = CreateConVar("talents_commando_dmg_hunting", "15.0", "How much bonus damage a Commando does with hunting rifle");
 		COMMANDO_DAMAGE_PISTOL = CreateConVar("talents_commando_dmg_pistol", "25.0", "How much bonus damage a Commando does with pistol");
 		COMMANDO_DAMAGE_SMG = CreateConVar("talents_commando_dmg_smg", "7.0", "How much bonus damage a Commando does with smg");
-
 		COMMANDO_RELOAD_RATIO = CreateConVar("talents_commando_reload_ratio", "0.44", "Ratio for how fast a Commando should be able to reload");
-		SOLDIER_DAMAGE_REDUCE_RATIO = CreateConVar("talents_soldier_damage_reduce_ratio", "0.5", "Ratio for how much to reduce damage for soldier");
+		
 		ENGINEER_MAX_BUILDS = CreateConVar("talents_engineer_max_builds", "5", "How many times an engineer can build per round");
-		MAX_ENGINEER_BUILD_RANGE = CreateConVar("talents_engineer_build_range", "120.0", "Maximum distance away an object can be built by the engineer");
+		ENGINEER_MAX_BUILD_RANGE = CreateConVar("talents_engineer_build_range", "120.0", "Maximum distance away an object can be built by the engineer");
 		ENGINEER_TURRET_EXTERNAL_PLUGIN = CreateConVar("talents_engineer_machinegun_plugin", "1", "Whether to use external plugin for turrets.");
+		
 		MINIMUM_DROP_INTERVAL = CreateConVar("talents_drop_interval", "30.0", "Time before an engineer, medic, or saboteur can drop another item");
-		GLOW_COLOR_ACTIVE = CreateConVar("talents_bomb_active_glow_color","255 0 0", "Glow color for active bombs (Default Red)");
-
 
 		// Revive & health modifiers
-		parachuteEnabled = CreateConVar("talents_athlete_enable_parachute","0.0","Enable parachute for athlete. Hold E in air to use it. 0 = OFF, 1 = ON.", FCVAR_NOTIFY, true, 0.0, true, 1.0);		
 		healthModEnabled = CreateConVar("talents_health_modifiers_enabled","0.0","Enables/Disables health modifiers. 0 = OFF, 1 = ON.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 		REVIVE_DURATION = CreateConVar("talents_revive_duration", "4.0", "Default reviving duration in seconds");
 		HEAL_DURATION = CreateConVar("talents_heal_duration", "4.0", "Default healing duration in seconds");
@@ -408,6 +408,7 @@
 		PILLS_HEALTH_BUFFER =  CreateConVar("talents_pills_health_buffer", "75.0", "Default health given on pills");	
 		ADRENALINE_DURATION =  CreateConVar("talents_adrenaline_duration", "30.0", "Default adrenaline duration");
 		ADRENALINE_HEALTH_BUFFER =  CreateConVar("talents_adrenaline_health_buffer", "75.0", "Default health given on adrenaline");
+
 		ResetAllState();//turrets stuff	
 		AutoExecConfig(true, "talents");
 		ApplyHealthModifiers();	
@@ -582,7 +583,7 @@
 							//SetEntityRenderFx(client, RENDERFX_PULSE_SLOW);
 							InvisibilityTimestamp = RoundToFloor(hidingTime);
 							InvisibilityHint = true;
-							SetEntDataFloat(client, g_ioLMV, 1.5, true);
+							SetEntDataFloat(client, g_ioLMV, 1.8, true);
 
 						}
 					}
@@ -593,8 +594,7 @@
 							InvisibilityTimestamp = RoundToFloor(hidingTime);
 						}
 					}
-
-					
+	
 				}
 				else
 				{
@@ -613,7 +613,7 @@
 						PrintHintText(client ,"Wait %i seconds to deploy", (GetConVarInt(MINIMUM_DROP_INTERVAL) - iDropTime));
 					} else {
 
-						if (CanDrop == true && !IsPlayerInSaferoom(client) && !IsInEndingSaferoom(client))
+						if (CanDrop == true) && !IsPlayerInSaferoom(client) && !IsInEndingSaferoom(client))
 						{
 							if (ClientData[client].BombsUsed >= GetConVarInt(SABOTEUR_MAX_BOMBS)) {
 								PrintHintText(client ,"You're out of mines");
@@ -648,7 +648,7 @@
 
 				if (buttons & IN_DUCK) {
 					if ((GetGameTime() - ClientData[client].HealStartTime) >= 2.5) {
-						SetEntDataFloat(client, g_ioLMV, 1.5, true);
+						SetEntDataFloat(client, g_ioLMV, 1.7, true);
 						if (MedicHint == false) {
 				 			PrintHintTextToAll("%N is healing everyone around him!", client);
 							MedicHint = true;
@@ -666,7 +666,7 @@
 				if (buttons & IN_SPEED && RoundStarted == true)// && ClientData[client].ItemsBuilt < GetConVarInt(ENGINEER_MAX_BUILDS)) 
 				{	
 					if (CanDrop == false && (iDropTime < GetConVarInt(MINIMUM_DROP_INTERVAL))) {
-							PrintHintText(client ,"Wait %i seconds to deploy", (GetConVarInt(MINIMUM_DROP_INTERVAL) - iDropTime));
+						PrintHintText(client ,"Wait %i seconds to deploy", (GetConVarInt(MINIMUM_DROP_INTERVAL) - iDropTime));
 					}
 
 					if (CanDrop == true) {
@@ -761,57 +761,6 @@
 	}
 	*/
 
-	public OnGameFrame()
-	{
-		if (!g_iRC)
-			return;
-
-		decl client;
-		decl bweapon;
-		decl Float:fNTC;
-		decl Float:fNTR;
-		new Float:fGT = GetGameTime();
-		
-		for (new i = 1; i <= g_iRC; i++)
-		{
-			client = g_iRI[i];
-			
-			if (!client
-			|| client >= MAXPLAYERS
-			|| !IsValidEntity(client)
-			|| !IsClientInGame(client)
-			|| !IsPlayerAlive(client)
-			|| GetClientTeam(client) != 2
-			|| ClientData[client].ChosenClass != SOLDIER)
-				continue;
-			
-			bweapon = GetEntDataEnt2(client, g_oAW);
-			
-			if(bweapon <= 0) 
-				continue;
-			
-			fNTR = GetEntDataFloat(bweapon, g_iNPA);
-			
-			if (g_iEi[client] == bweapon && g_fNT[client] >= fNTR)
-				continue;
-			
-			if (g_iEi[client] == bweapon && g_fNT[client] < fNTR)
-			{
-				fNTC = ( fNTR - fGT ) * GetConVarFloat(SOLDIER_FIRE_RATE) + fGT;
-				g_fNT[client] = fNTC;
-				SetEntDataFloat(bweapon, g_iNPA, fNTC, true);
-				continue;
-			}
-			
-			if (g_iEi[client] != bweapon)
-			{
-				g_iEi[client] = bweapon;
-				g_fNT[client] = fNTR;
-				continue;
-			}
-		}
-	}
-
 	public ClearCache()
 	{
 		g_iRC = 0;
@@ -902,6 +851,12 @@
 	{
 		new client = GetClientOfUserId(GetEventInt(event, "userid"));
 		g_bInSaferoom[client] = false;
+	}
+
+	public Action:Event_LeftStartArea(Handle:event, const String:name[], bool:dontBroadcast)
+	{
+		RoundStarted = true;
+		PrintToChatAll("%sPlayers left safe area, classes now locked!",PRINT_PREFIX);	
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////
@@ -1356,7 +1311,7 @@
 			TR_GetEndPosition(endPos, trace);
 			CloseHandle(trace);
 			
-			if (GetVectorDistance(endPos, vPos) <= GetConVarFloat(MAX_ENGINEER_BUILD_RANGE))
+			if (GetVectorDistance(endPos, vPos) <= GetConVarFloat(ENGINEER_MAX_BUILD_RANGE))
 			{
 				vAng[0] = 0.0;
 				vAng[2] = 0.0;
@@ -1785,31 +1740,6 @@
 		}
 	}
 
-	public Action:OnTakeDamagePre(victim, &attacker, &inflictor, &Float:damage, &damagetype)
-	{
-		if (!IsServerProcessing())
-			return Plugin_Continue;
-		
-		if (victim && attacker && IsValidEntity(attacker) && attacker <= MaxClients && IsValidEntity(victim) && victim <= MaxClients)
-		{
-
-			//PrintToChatAll("%s", m_attacker);
-			if(ClientData[victim].ChosenClass == SOLDIER && GetClientTeam(victim) == 2)
-			{
-				//PrintToChat(victim, "Damage: %f, New: %f", damage, damage*0.5);
-				damage = damage * GetConVarFloat(SOLDIER_DAMAGE_REDUCE_RATIO);
-				return Plugin_Changed;
-			}
-			if (ClientData[attacker].ChosenClass == COMMANDO && GetClientTeam(attacker) == 2 && GetClientTeam(victim) == 3)
-			{
-				damage = damage + getCommandoDamageBonus(attacker);
-				//PrintToChat(attacker,"%f",damage);
-				return Plugin_Changed;
-			}
-		}
-		
-		return Plugin_Continue;
-	}
 
 	public Action:CommandoRelFireEnd(Handle:timer, any:weapon)
 	{
@@ -1969,20 +1899,87 @@
 		return GetConVarInt(COMMANDO_DAMAGE);
 	}
 
-	public Action:Event_LeftStartArea(Handle:event, const String:name[], bool:dontBroadcast)
+
+
+	///////////////////////////////////////////////////////////////////////////////////
+	// Soldier
+	///////////////////////////////////////////////////////////////////////////////////
+
+	public OnGameFrame()
 	{
-		RoundStarted = true;
-		PrintToChatAll("%sPlayers left safe area, classes now locked!",PRINT_PREFIX);	
+		if (!g_iRC)
+			return;
+
+		decl client;
+		decl bweapon;
+		decl Float:fNTC;
+		decl Float:fNTR;
+		new Float:fGT = GetGameTime();
+		
+		for (new i = 1; i <= g_iRC; i++)
+		{
+			client = g_iRI[i];
+			
+			if (!client
+			|| client >= MAXPLAYERS
+			|| !IsValidEntity(client)
+			|| !IsClientInGame(client)
+			|| !IsPlayerAlive(client)
+			|| GetClientTeam(client) != 2
+			|| ClientData[client].ChosenClass != SOLDIER)
+				continue;
+			
+			bweapon = GetEntDataEnt2(client, g_oAW);
+			
+			if(bweapon <= 0) 
+				continue;
+			
+			fNTR = GetEntDataFloat(bweapon, g_iNPA);
+			
+			if (g_iEi[client] == bweapon && g_fNT[client] >= fNTR)
+				continue;
+			
+			if (g_iEi[client] == bweapon && g_fNT[client] < fNTR)
+			{
+				fNTC = ( fNTR - fGT ) * GetConVarFloat(SOLDIER_FIRE_RATE) + fGT;
+				g_fNT[client] = fNTC;
+				SetEntDataFloat(bweapon, g_iNPA, fNTC, true);
+				continue;
+			}
+			
+			if (g_iEi[client] != bweapon)
+			{
+				g_iEi[client] = bweapon;
+				g_fNT[client] = fNTR;
+				continue;
+			}
+		}
 	}
-	stock bool:IsWitch(iEntity)
+	
+	public Action:OnTakeDamagePre(victim, &attacker, &inflictor, &Float:damage, &damagetype)
 	{
-	    if(iEntity > 0 && IsValidEntity(iEntity) && IsValidEdict(iEntity))
-	    {
-	        decl String:strClassName[64];
-	        GetEdictClassname(iEntity, strClassName, sizeof(strClassName));
-	        return StrEqual(strClassName, "witch");
-	    }
-	    return false;
+		if (!IsServerProcessing())
+			return Plugin_Continue;
+		
+		if (victim && attacker && IsValidEntity(attacker) && attacker <= MaxClients && IsValidEntity(victim) && victim <= MaxClients)
+		{
+
+			//PrintToChatAll("%s", m_attacker);
+			if(ClientData[victim].ChosenClass == SOLDIER && GetClientTeam(victim) == 2)
+			{
+				//PrintToChat(victim, "Damage: %f, New: %f", damage, damage*0.5);
+				damage = damage * GetConVarFloat(SOLDIER_DAMAGE_REDUCE_RATIO);
+				return Plugin_Changed;
+			}
+			if (ClientData[attacker].ChosenClass == COMMANDO && GetClientTeam(attacker) == 2 && GetClientTeam(victim) == 3)
+			{
+				damage = damage + getCommandoDamageBonus(attacker);
+				//PrintToChat(attacker,"%f",damage);
+				return Plugin_Changed;
+			}
+		}
+		
+		return Plugin_Continue;
 	}
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2470,7 +2467,7 @@
 				new Handle:hPack = CreateDataPack();
 				WritePackCell(hPack, index);
 				WritePackCell(hPack, entity);
-				GetConVarString(GLOW_COLOR_ACTIVE, color, sizeof(color));
+				GetConVarString(SABOTEUR_ACTIVE_BOMB_COLOR, color, sizeof(color));
 				SetupPrjEffects(entity, vPos, color); // Red
 				int defibParticle;
 				int elmosParticle;
@@ -3383,7 +3380,16 @@
 	        AcceptEntityInput(entity, "FireUser4");
 	}
 
-
+	stock bool:IsWitch(client)
+	{
+	    if(client > 0 && IsValidEntity(client) && IsValidEdict(client))
+	    {
+	        decl String:strClassName[64];
+	        GetEdictClassname(client, strClassName, sizeof(strClassName));
+	        return StrEqual(strClassName, "witch");
+	    }
+	    return false;
+	}
 	stock IsGhost(client)
 	{
 		return GetEntProp(client, Prop_Send, "m_isGhost");
@@ -3672,7 +3678,7 @@
 	public Action:HidePlayer(client)
 	{
 		g_bHide[client] = !g_bHide[client];
-		PrintHintText(client, "You are %s", g_bHide[client] ? "invisible" : "visible");
+		PrintHintText(client, "You are %s", g_bHide[client] ? "invisible" : "visible again");
 		
 		return Plugin_Handled;
 	}
