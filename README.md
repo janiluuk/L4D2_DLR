@@ -38,11 +38,12 @@ Changes:
 - Debug mode for admins
 
 Roadmap
-- Cleaner UI, menu option to turn hint texts off
+- Cleaner UI, menu option to turn hint texts off. Common HUD component which manages, prioritizes and combines the hint texts properly.
 - Integrate game instructor UI to be utilized for counters, and other live indicators. 
 - Engineer can build different types of defences
 - Smoker should have much more visible and thick cloud when gets killed.
 - Show specific glow on people being healed by medic, and notify them with progress bar.
+- Rewrite for missile plugin to fit better with this one
 - Support for external plugins as skills, integration through SDK to prevent misuse. For example airstrike, berzerk mode, jetpack, special grenades.
 - Incap players can fight with attacker with some keys, if indicator goes back to zero, player is freed.
 - When incapacitated without supplies and you have kit available, ask survivor if want to consume it.
