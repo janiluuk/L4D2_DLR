@@ -131,6 +131,8 @@
 	new g_iSED = -1;
 	new g_iSRS = -1;
 
+	new g_iShovePenalty = 0;
+
 	// Weapon rates
 
 	const Float:g_fl_SpasS = 0.5;
@@ -212,6 +214,8 @@
 	new Handle:SOLDIER_FIRE_RATE;
 	new Handle:SOLDIER_DAMAGE_REDUCE_RATIO;
 	new Handle:SOLDIER_SPEED;
+	new Handle:SOLDIER_SHOVE_PENALTY;
+
 
 	// Athlete
 	new Handle:ATHLETE_SPEED;
@@ -362,7 +366,7 @@
 		SOLDIER_FIRE_RATE = CreateConVar("talents_soldier_fire_rate", "0.6666", "How fast the soldier should fire. Lower values = faster");
 		SOLDIER_SPEED = CreateConVar("talents_soldier_speed", "1.15", "How fast soldier should run. A value of 1.0 = normal speed");
 		SOLDIER_DAMAGE_REDUCE_RATIO = CreateConVar("talents_soldier_damage_reduce_ratio", "0.5", "Ratio for how much to reduce damage for soldier");
-
+		SOLDIER_SHOVE_PENALTY = CreateConVar("talents_soldier_shove_penalty_enabled","0.0","Enables/Disables shove penalty for soldier. 0 = OFF, 1 = ON.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 		ATHLETE_JUMP_VEL = CreateConVar("talents_athlete_jump", "450.0", "How high a soldier should be able to jump. Make this higher to make them jump higher, or 0.0 for normal height");
 		ATHLETE_SPEED = CreateConVar("talents_athlete_speed", "1.20", "How fast athlete should run. A value of 1.0 = normal speed");
 		parachuteEnabled = CreateConVar("talents_athlete_enable_parachute","0.0","Enable parachute for athlete. Hold E in air to use it. 0 = OFF, 1 = ON.", FCVAR_NOTIFY, true, 0.0, true, 1.0);		
@@ -460,8 +464,9 @@
 
 		for (int i = 0; i < MAXPLAYERS +1; i++)
 			g_bHide[i] = false;
-
+		g_iShovePenalty = FindSendPropInfo("CTerrorPlayer", "m_iShovePenalty");
 	}
+
 
 	public OnMapEnd()
 	{
@@ -576,6 +581,8 @@
 				{
 
 					float hidingTime = GetGameTime() - ClientData[client].HideStartTime;
+					SetEntDataFloat(client, g_ioLMV, 1.8, true);
+
 					if (hidingTime >= GetConVarFloat(SABOTEUR_INVISIBLE_TIME)) {
 						if (InvisibilityTimestamp != RoundToFloor(hidingTime) && InvisibilityHint == false) 
 						{
@@ -583,7 +590,6 @@
 							//SetEntityRenderFx(client, RENDERFX_PULSE_SLOW);
 							InvisibilityTimestamp = RoundToFloor(hidingTime);
 							InvisibilityHint = true;
-							SetEntDataFloat(client, g_ioLMV, 1.8, true);
 
 						}
 					}
@@ -613,7 +619,7 @@
 						PrintHintText(client ,"Wait %i seconds to deploy", (GetConVarInt(MINIMUM_DROP_INTERVAL) - iDropTime));
 					} else {
 
-						if (CanDrop == true) && !IsPlayerInSaferoom(client) && !IsInEndingSaferoom(client))
+						if (CanDrop == true && !IsPlayerInSaferoom(client) && !IsInEndingSaferoom(client))
 						{
 							if (ClientData[client].BombsUsed >= GetConVarInt(SABOTEUR_MAX_BOMBS)) {
 								PrintHintText(client ,"You're out of mines");
@@ -647,8 +653,9 @@
 				}
 
 				if (buttons & IN_DUCK) {
-					if ((GetGameTime() - ClientData[client].HealStartTime) >= 2.5) {
 						SetEntDataFloat(client, g_ioLMV, 1.7, true);
+
+					if ((GetGameTime() - ClientData[client].HealStartTime) >= 2.5) {
 						if (MedicHint == false) {
 				 			PrintHintTextToAll("%N is healing everyone around him!", client);
 							MedicHint = true;
@@ -705,6 +712,30 @@
 		SetEntPropFloat(client, Prop_Send, "m_flProgressBarStartTime", GetGameTime());
 		SetEntPropFloat(client, Prop_Send, "m_flProgressBarDuration", 0.0);
 	}
+
+	
+	new String:Gauge1[2] = "-";
+	new String:Gauge3[2] = "#";
+	public ShowBar(client, String:msg[], Float:pos, Float:max)	 
+	{
+		new i;
+		new String:ChargeBar[100];
+		Format(ChargeBar, sizeof(ChargeBar), "");
+	 
+		new Float:GaugeNum = pos/max*100;
+		if(GaugeNum > 100.0)
+			GaugeNum = 100.0;
+		if(GaugeNum<0.0)
+			GaugeNum = 0.0;
+	 	for(i=0; i<100; i++)
+			ChargeBar[i] = Gauge1[0];
+		new p=RoundFloat( GaugeNum);
+		 
+		if(p>=0 && p<100)ChargeBar[p] = Gauge3[0]; 
+	 	/* Display gauge */
+		PrintHintText(client, "%s  %3.0f %\n<< %s >>", msg, GaugeNum, ChargeBar);
+	}
+
 
 	/*
 	DrawConfirmPanel(client, chosenClass)
@@ -1585,6 +1616,7 @@
 			CreateParticle(client, MEDIC_GLOW, true, 1.0);
 
 			decl Float:pos[3];
+			decl String:sMessage[256];	
 			GetClientAbsOrigin(client, pos);
 			
 			for (new i = 1; i <= MaxClients; i++)
@@ -1599,8 +1631,10 @@
 						// pre-heal set values
 						new MaxHealth = GetEntProp(i, Prop_Send, "m_iMaxHealth");
 						new TempHealth = GetClientTempHealth(i);
-						PrintHintText(i, "%N is healing you! (%i / %i)", client, GetClientHealth(i), MaxHealth);
 
+						Format(sMessage, sizeof(sMessage), "%N is healing you!", client);
+
+						ShowBar(i, sMessage, float(GetClientHealth(i)), float(MaxHealth));
 						SetEntityHealth(i, GetClientHealth(i) + GetConVarInt(MEDIC_HEALTH_VALUE));
 						SetClientTempHealth(i, TempHealth);
 						
@@ -1929,6 +1963,16 @@
 			|| ClientData[client].ChosenClass != SOLDIER)
 				continue;
 			
+			if(GetConVarBool(SOLDIER_SHOVE_PENALTY) == false)
+			{
+				//If the player is pressing the right click of the mouse, proceed
+				if(GetClientButtons(i) & IN_ATTACK2)
+				{
+					//This will reset the penalty, so it doesnt even get applied.
+					SetEntData(i, g_iShovePenalty, 0, 4);
+				}
+			}
+
 			bweapon = GetEntDataEnt2(client, g_oAW);
 			
 			if(bweapon <= 0) 
@@ -1946,7 +1990,7 @@
 				SetEntDataFloat(bweapon, g_iNPA, fNTC, true);
 				continue;
 			}
-			
+	
 			if (g_iEi[client] != bweapon)
 			{
 				g_iEi[client] = bweapon;
@@ -1955,7 +1999,7 @@
 			}
 		}
 	}
-	
+
 	public Action:OnTakeDamagePre(victim, &attacker, &inflictor, &Float:damage, &damagetype)
 	{
 		if (!IsServerProcessing())
