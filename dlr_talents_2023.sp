@@ -23,14 +23,15 @@ native int DLC_GetCurrentClass(int player);
 #endif
 
 bool	g_bLeft4Dead2, g_bLateLoad;
-bool 	g_bLeft4DHooks, g_bAirstrike, g_bAirstrikeValid, g_bMultiturret, g_bMultiturretValid;
+bool 	g_bAirstrike, g_bAirstrikeValid, g_bMultiturret, g_bMultiturretValid;
 
 #pragma semicolon 1
 #define DEBUG 1
 #include <sourcemod>
 #include <sdktools>
 #include <sdkhooks>
-	/**
+
+/**
 * CONFIGURABLE VARIABLES
 * Feel free to change the following code-related values.
 */
@@ -80,7 +81,7 @@ static bool:DEBUG_MODE = false;
 #define PARTICLE_DEFIB "item_defibrillator_body"
 #define PARTICLE_ELMOS "st_elmos_fire_cp0"
 
-	/**
+/**
 * OTHER GLOBAL VARIABLES
 * Do not change these unless you know what you are doing.
 */
@@ -184,7 +185,6 @@ new RndSession;
 // Convars (change these via the created cfg files)
 
 // CLASS RELATED STUFF
-new g_CollisionOffset;
 
 // Max classes
 new Handle:MAX_SOLDIER;
@@ -275,8 +275,7 @@ new Float:FirstAidDuration;
 new Float:ReviveDuration;
 new bool:BombActive = false;
 
-new String:Engineer_Turret_Spawn_Cmd[16] = "sm_machinemenu"; // sm_dlrmachinemulti";
-new String:Engineer_Turret_Remove_Cmd[16] = "sm_dlrpmkairm"; //sm_dlrmachinemultirm";
+new String:Engineer_Turret_Spawn_Cmd[16] = "sm_machinemenu"; 
 new Handle:SABOTEUR_ACTIVE_BOMB_COLOR;
 
 // Last class taken
@@ -292,7 +291,6 @@ new InvisibilityTimestamp = 0;
 new bool:isAdminUser = false;
 new bool:disableInfected = false;
 new bool:g_bHide[MAXPLAYERS+1];
-new g_iWeaponOwner[2048];
 
 ConVar healthModEnabled;
 ConVar parachuteEnabled;
@@ -340,7 +338,6 @@ public OnPluginStart( )
 	g_iVMStartTimeO = FindSendPropInfo("CTerrorViewModel","m_flLayerStartTime");
 	g_iViewModelO = FindSendPropInfo("CTerrorPlayer","m_hViewModel");
 	g_iVelocity = FindSendPropInfo("CBasePlayer", "m_vecVelocity[0]");
-	g_CollisionOffset = FindSendPropInfo( "CBaseEntity", "m_CollisionGroup" );
 	// Hooks
 	HookEvent("player_spawn", Event_PlayerSpawn);
 	HookEvent("player_hurt", Event_PlayerHurt);
@@ -514,7 +511,6 @@ public void F18_OnPluginState(int pluginstate)
 public void Multiturret_OnPluginState(int pluginstate)
 {
 	static int mystate;
-
 	if( pluginstate == 1 && mystate == 0 )
 	{
 		mystate = 1;
@@ -531,13 +527,9 @@ public void OnLibraryAdded(const char[] sName)
 {
 	if( strcmp(sName, "Multiturret") == 0 ) {
 		g_bMultiturret = true;
-
-		// Assuming valid for late load
 		if( g_bLateLoad )
 		g_bMultiturretValid = true;
 	}
-	else if( strcmp(sName, "left4dhooks") == 0 )
-	g_bLeft4DHooks = true;
 	else if( g_bLeft4Dead2 && strcmp(sName, "l4d2_airstrike") == 0 )
 	{
 		g_bAirstrike = true;
@@ -552,8 +544,6 @@ public void OnLibraryRemoved(const char[] sName)
 {
 	if( strcmp(sName, "Multiturret") == 0 )
 	g_bMultiturret = false;
-	else if( strcmp(sName, "left4dhooks") == 0 )
-	g_bLeft4DHooks = false;
 	else if( g_bLeft4Dead2 && strcmp(sName, "l4d2_airstrike") == 0 )
 	g_bAirstrike = false;
 }
@@ -828,7 +818,6 @@ public Action:TimerThink(Handle:hTimer, any:client)
 					return Plugin_Continue;
 				}	
 				char pendingMessage[128] = "Next possible strike available after %i seconds";
-				char outOfMessage[128] = "You're on your own, no more air support";
 				
 				if (ClientData[client].LastButtons != buttons && canUseSpecialSkill(client, pendingMessage)) {
 					ClientData[client].LastDropTime = GetGameTime();
@@ -841,7 +830,7 @@ public Action:TimerThink(Handle:hTimer, any:client)
 
 	ClientData[client].LastButtons = buttons;
 	return Plugin_Continue;
-}	
+}
 
 public bool canUseSpecialSkill(client, char[] pendingMessage)
 {
@@ -869,6 +858,7 @@ public bool canUseSpecialSkill(client, char[] pendingMessage)
 
 	return true;
 }
+
 public void CreateAirStrike(int client) {
 	
 	float vPos[3];
@@ -879,7 +869,7 @@ public void CreateAirStrike(int client) {
 		DispatchSpawn(entity);
 		ActivateEntity(entity);
 
-		CreateBeamRing(entity, { 255, 0, 255, 255 },0.1, 180, 5);
+		CreateBeamRing(entity, { 255, 0, 255, 255 },0.1, 180.0, 5);
 
 		PrintHintTextToAll("%N ordered airstrike, take cover!", client);
 		
@@ -890,7 +880,7 @@ public void CreateAirStrike(int client) {
 		WritePackFloat(pack, vPos[2]);
 		WritePackFloat(pack, GetGameTime());
 		WritePackCell(pack, entity);									
-		CreateTimer( 1, TimerAirstrike, pack, TIMER_FLAG_NO_MAPCHANGE ); 									
+		CreateTimer(1.0, TimerAirstrike, pack, TIMER_FLAG_NO_MAPCHANGE ); 									
 	} 
 }
 
@@ -1247,8 +1237,8 @@ public Action:CmdClassMenu(client, args)
 		PrintToChat(client, "%sOnly Survivors can choose a class.", PRINT_PREFIX);
 		return;
 	}
-		CreatePlayerClassMenu(client);
-	}
+	CreatePlayerClassMenu(client);
+}
 
 public int CountPlayersWithClass( class ) {
 	new count = 0;
@@ -1284,8 +1274,6 @@ public int GetMaxWithClass( class ) {
 		default:
 		return -1;
 	}
-
-	return -1;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////
@@ -1382,7 +1370,7 @@ public PanelHandler_DlrMenu(Handle:menu, MenuAction:action, client, param)
 					ResetConVar(FindConVar("z_smoker_limit"));
 					ResetConVar(FindConVar("z_spitter_limit"));  
 				}
-					PrintHintText(client,"Infected are now %s", disableInfected ? "DISABLED" : "ENABLED");
+				PrintHintText(client,"Infected are now %s", disableInfected ? "DISABLED" : "ENABLED");
 			}
 		}
 	}
@@ -1501,1430 +1489,1430 @@ public void CalculateEngineerPlacePos(client, type)
 	CloseHandle(trace);
 }
 
-	///////////////////////////////////////////////////////////////////////////////////
-	// Health modifiers & medic
-	///////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////
+// Health modifiers & medic
+///////////////////////////////////////////////////////////////////////////////////
 
-	public bool:CreatePlayerMedicMenu(client)
+public bool:CreatePlayerMedicMenu(client)
+{
+	if (!client)
+	return false;
+	
+	new Handle:hPanel;
+	
+	if((hPanel = CreatePanel()) == INVALID_HANDLE)
 	{
-		if (!client)
+		LogError("Cannot create hPanel on CreatePlayerMedicMenu");
 		return false;
-		
-		new Handle:hPanel;
-		
-		if((hPanel = CreatePanel()) == INVALID_HANDLE)
+	}
+	
+	SetPanelTitle(hPanel, "Medic:");
+	DrawPanelItem(hPanel, "Defibrillator");
+	DrawPanelItem(hPanel, "Medkit");
+	DrawPanelItem(hPanel, "Adrenaline");
+	DrawPanelItem(hPanel, "Pills");
+	DrawPanelItem(hPanel, "Exit");
+	
+	SendPanelToClient(hPanel, client, PanelHandler_SelectMedicItem, MENU_OPEN_TIME);
+	CloseHandle(hPanel);
+	
+	return true;
+}
+
+public PanelHandler_SelectMedicItem(Handle:menu, MenuAction:action, client, param)
+{
+	switch (action)
+	{
+		case MenuAction_Select:
 		{
-			LogError("Cannot create hPanel on CreatePlayerMedicMenu");
-			return false;
+			if( param >= 1 && param <= 4 )
+			CalculateMedicPlacePos(client, param - 1);
+			ClientData[client].LastDropTime = GetGameTime();
+		}
+	}
+}
+
+public void CalculateMedicPlacePos(client, type)
+{
+	decl Float:vAng[3], Float:vPos[3], Float:endPos[3];
+	
+	GetClientEyeAngles(client, vAng);
+	GetClientEyePosition(client, vPos);
+
+	new Handle:trace = TR_TraceRayFilterEx(vPos, vAng, MASK_SHOT, RayType_Infinite, TraceFilter, client);
+
+	if (TR_DidHit(trace))
+	{
+		TR_GetEndPosition(endPos, trace);
+		CloseHandle(trace);
+		
+		if (GetVectorDistance(endPos, vPos) <= GetConVarFloat(MEDIC_MAX_BUILD_RANGE))
+		{
+			vAng[0] = 0.0;
+			vAng[2] = 0.0;
+			
+			switch(type) {
+				case 0: {
+					new entity = CreateEntityByName("weapon_defibrillator");
+					DispatchKeyValue(entity, "solid", "0");
+					DispatchKeyValue(entity, "disableshadows", "1");
+					DispatchSpawn(entity);
+					TeleportEntity(entity, endPos, NULL_VECTOR, NULL_VECTOR);
+					PrintHintText(client ,"%N deployed a defibrillator", client);
+
+					ClientData[client].SpecialsUsed++;
+				}
+				case 1:{
+					new entity = CreateEntityByName("weapon_first_aid_kit");
+					DispatchKeyValue(entity, "solid", "0");
+					DispatchSpawn(entity);
+					TeleportEntity(entity, endPos, NULL_VECTOR, NULL_VECTOR);
+					PrintHintText(client ,"%N deployed a medkit", client);
+
+					ClientData[client].SpecialsUsed++;
+				}
+				case 2: {
+					new entity = CreateEntityByName("weapon_adrenaline_spawn");
+					DispatchKeyValue(entity, "solid", "0");
+					DispatchKeyValue(entity, "disableshadows", "1");
+					TeleportEntity(entity, endPos, NULL_VECTOR, NULL_VECTOR);
+					DispatchSpawn(entity);
+					ClientData[client].SpecialsUsed++;
+
+				}
+				case 3: {
+					new pills = CreateEntityByName("weapon_pain_pills_spawn", -1);
+					DispatchKeyValue(pills, "solid", "6");
+					DispatchKeyValue(pills, "disableshadows", "1");
+					TeleportEntity(pills, endPos, NULL_VECTOR, NULL_VECTOR);
+					DispatchSpawn(pills);
+					ClientData[client].SpecialsUsed++;
+
+				}				
+				default: {
+					CloseHandle( trace );
+					return;
+				}
+			}
+		}
+		else
+		PrintToChat(client, "%sCould not place the item because you were looking too far away.", PRINT_PREFIX);
+	}
+	else
+	CloseHandle(trace);
+}
+
+public UpgradeQuickHeal(client)
+{
+	if(ClientData[client].ChosenClass == MEDIC)
+	SetConVarFloat(g_VarFirstAidDuration, FirstAidDuration * GetConVarFloat(MEDIC_HEAL_RATIO), false, false);
+	else
+	SetConVarFloat(g_VarFirstAidDuration, FirstAidDuration * 1.0, false, false);
+}
+
+public UpgradeQuickRevive(client)
+{
+	if(ClientData[client].ChosenClass == MEDIC)
+	SetConVarFloat(g_VarReviveDuration, ReviveDuration * GetConVarFloat(MEDIC_REVIVE_RATIO), false, false);
+	else
+	SetConVarFloat(g_VarReviveDuration, ReviveDuration * 1.0, false, false);
+}
+
+public setPlayerHealth(client, MaxPossibleHP)
+{
+	if (!client) return;
+	new OldMaxHealth = GetEntProp(client, Prop_Send, "m_iMaxHealth");
+	new OldHealth = GetClientHealth(client);
+	new OldTempHealth = GetClientTempHealth(client);
+	if (MaxPossibleHP == OldMaxHealth) return;
+
+	SetEntProp(client, Prop_Send, "m_iMaxHealth", MaxPossibleHP);
+	SetEntityHealth(client, MaxPossibleHP - (OldMaxHealth - OldHealth));
+	SetClientTempHealth(client, OldTempHealth);
+	
+	if ((GetClientHealth(client) + GetClientTempHealth(client)) > MaxPossibleHP)
+	{
+		SetEntityHealth(client, MaxPossibleHP);
+		SetClientTempHealth(client, 0);
+	}
+}
+
+public setPlayerDefaultHealth(client)
+{
+	if (!client
+		|| !IsValidEntity(client)
+		|| !IsClientInGame(client)
+		|| !IsPlayerAlive(client)
+		|| GetClientTeam(client) != 2)
+	return;
+	
+	new MaxPossibleHP = GetConVarInt(NONE_HEALTH);
+	setPlayerHealth(client, MaxPossibleHP);
+}
+
+public void Event_ServerCvar( Event hEvent, const char[] sName, bool bDontBroadcast ) 
+{
+	if ( !healthModEnabled.BoolValue ) return;
+	
+	InitHealthModifiers();
+}
+
+public event_HealBegin(Handle:event, const String:name[], bool:Broadcast)
+{
+	new client = GetClientOfUserId(GetEventInt(event, "userid"));
+	UpgradeQuickHeal(client);
+}
+
+public event_ReviveBegin(Handle:event, const String:name[], bool:Broadcast)
+{
+	new client = GetClientOfUserId(GetEventInt(event, "userid"));
+	UpgradeQuickRevive(client);
+}
+
+public Action:TimerDetectHealthChanges(Handle:hTimer, any:client)
+{
+	if (!client
+		|| !IsValidEntity(client)
+		|| !IsClientInGame(client)
+		|| ClientData[client].ChosenClass != MEDIC)
+	return Plugin_Stop;
+	
+	if(!IsPlayerAlive(client) || GetClientTeam(client) != 2)
+	{	return Plugin_Continue; }
+	
+	new btns = GetClientButtons(client);
+
+	if (btns & IN_DUCK)
+	{
+		CreateParticle(client, MEDIC_GLOW, true, 1.0);
+
+		decl Float:pos[3];
+		decl String:sMessage[256];	
+		GetClientAbsOrigin(client, pos);
+		
+		for (new i = 1; i <= MaxClients; i++)
+		{
+			if (IsValidEntity(i) && IsClientInGame(i) && IsPlayerAlive(i) && GetClientTeam(i) == 2 && i != client)
+			{
+				decl Float:tpos[3];
+				GetClientAbsOrigin(i, tpos);
+				
+				if (GetVectorDistance(pos, tpos) <= GetConVarFloat(MEDIC_HEAL_DIST))
+				{
+					// pre-heal set values
+					new MaxHealth = GetEntProp(i, Prop_Send, "m_iMaxHealth");
+					new TempHealth = GetClientTempHealth(i);
+
+					Format(sMessage, sizeof(sMessage), "%N is healing you!", client);
+
+					ShowBar(i, sMessage, float(GetClientHealth(i)), float(MaxHealth));
+					SetEntityHealth(i, GetClientHealth(i) + GetConVarInt(MEDIC_HEALTH_VALUE));
+					SetClientTempHealth(i, TempHealth);
+					
+					// post-heal set values
+					new newHp = GetClientHealth(i);
+					new totalHp = newHp + TempHealth;
+					
+					if (totalHp > MaxHealth)
+					{
+						new diff = totalHp - MaxHealth;
+						
+						if (TempHealth >= diff)
+						{
+							SetClientTempHealth(i, TempHealth - diff);
+							continue;
+						}
+						
+						SetClientTempHealth(i, 0);
+						SetEntityHealth(i, MaxHealth);
+					}
+				}
+			}
+		}
+	} else {
+		MedicHint = false;
+	}
+	
+	return Plugin_Continue;
+}
+
+public ApplyHealthModifiers()
+{
+	FirstAidDuration = GetConVarFloat(FindConVar("first_aid_kit_use_duration"));
+	ReviveDuration = GetConVarFloat(FindConVar("survivor_revive_duration"));
+	g_VarFirstAidDuration = FindConVar("first_aid_kit_use_duration");
+	g_VarReviveDuration = FindConVar("survivor_revive_duration");
+}
+
+public InitHealthModifiers()
+{
+	FindConVar("first_aid_heal_percent").FloatValue = 1.0; 	
+	FindConVar("first_aid_kit_use_duration").IntValue = GetConVarInt(HEAL_DURATION); 
+	FindConVar("survivor_revive_duration").IntValue = GetConVarInt(REVIVE_DURATION);
+	FindConVar("survivor_revive_health").IntValue = GetConVarInt(REVIVE_HEALTH);
+	FindConVar("pain_pills_health_value").IntValue = GetConVarInt(PILLS_HEALTH_BUFFER);
+	FindConVar("adrenaline_duration").IntValue = GetConVarInt(ADRENALINE_DURATION); 
+	FindConVar("adrenaline_health_buffer").IntValue = GetConVarInt(ADRENALINE_HEALTH_BUFFER);
+	SetConVarFloat(FindConVar("first_aid_kit_use_duration"), GetConVarFloat(HEAL_DURATION), false, false);
+	SetConVarFloat(FindConVar("survivor_revive_duration"), GetConVarFloat(REVIVE_DURATION), false, false);	
+	ApplyHealthModifiers();	
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+// Commando
+///////////////////////////////////////////////////////////////////////////////////
+
+public Event_RelCommandoClass(Handle:event, String:name[], bool:dontBroadcast)
+{
+	new client = GetClientOfUserId(GetEventInt(event,"userid"));
+	
+	if (ClientData[client].ChosenClass != COMMANDO)
+	return;
+	
+	new weapon = GetEntDataEnt2(client, g_oAW);
+
+	if (!IsValidEntity(weapon))
+	return;
+	
+	new Float:flGT = GetGameTime();
+	decl String:bNetCl[64];
+	decl String:stClass[32];
+
+	GetEntityNetClass(weapon, bNetCl, sizeof(bNetCl));
+	GetEntityNetClass(weapon,stClass,32);
+
+	if (DEBUG_MODE)
+	PrintToChatAll("\x03-class of gun: \x01%s",stClass );
+
+	if (StrContains(bNetCl, "shotgun", false) == -1)
+	{
+		new Handle:hPack = CreateDataPack();
+		WritePackCell(hPack, weapon);
+
+		new Float:fRLRat = GetConVarFloat(COMMANDO_RELOAD_RATIO);
+		new Float:fNTC = (GetEntDataFloat(weapon, g_iNPA) - flGT) * fRLRat;
+		new Float:NA = fNTC + flGT;
+		new Float:flNextTime_ret = GetEntDataFloat(weapon, g_iNPA);
+		new Float:flStartTime_calc = flGT - ( flNextTime_ret - flGT ) * ( 1 - fRLRat ) ;
+		WritePackFloat(hPack, flStartTime_calc);
+		
+		if ( (fNTC - 0.4) > 0 )
+		CreateTimer( fNTC - 0.4, CommandoRelFireEnd2, hPack);
+		
+		SetEntDataFloat(weapon, g_ioPR, 1.0 / fRLRat, true);
+		SetEntDataFloat(weapon, g_ioTI, NA, true);
+		SetEntDataFloat(weapon, g_iNPA, NA, true);
+		SetEntDataFloat(client, g_ioNA, NA, true);
+		CreateTimer(fNTC, CommandoRelFireEnd, weapon);
+	}
+	else
+	{
+		new Handle:hPack = CreateDataPack();
+		WritePackCell(hPack, weapon);
+		if (DEBUG_MODE) 
+		PrintToChatAll("Class: %s", stClass);
+
+		if (StrContains(bNetCl, "shotgun_spas", false) != -1)
+		{
+			if (DEBUG_MODE) {
+				PrintToChatAll("\x03-spas ratio \x01%f\x03, startO \x01%f\x03, insertO \x01%f\x03, endO \x01%f", GetConVarFloat(COMMANDO_RELOAD_RATIO), g_fl_SpasS, g_fl_SpasI, 0.675000);
+			}
+			WritePackFloat(hPack, 0.293939);
+			WritePackFloat(hPack, 0.272999);
+			WritePackFloat(hPack, 0.675000);
+
+			CreateTimer(0.1, CommandoPumpShotReload, hPack);
+		}
+		else if (StrContains(bNetCl, "pumpshotgun", false) != -1)
+		{
+
+			WritePackFloat(hPack, 0.393939);
+			WritePackFloat(hPack, 0.472999);
+			WritePackFloat(hPack, 0.875000);
+
+			CreateTimer(0.1, CommandoPumpShotReload, hPack);
+		}
+		else if (StrContains(bNetCl, "autoshotgun", false) != -1)
+		{
+			WritePackFloat(hPack, 0.416666);
+			WritePackFloat(hPack, 0.395999);
+			WritePackFloat(hPack, 1.000000);
+
+			CreateTimer(0.1, CommandoPumpShotReload, hPack);
+		}
+		else
+		CloseHandle(hPack);
+	}
+}
+
+
+public Action:CommandoRelFireEnd(Handle:timer, any:weapon)
+{
+	if (weapon <= 0 || !IsValidEntity(weapon))
+	return Plugin_Stop;
+	
+	SetEntDataFloat(weapon, g_ioPR, 1.0, true);
+	KillTimer(timer);
+
+	return Plugin_Stop;
+}
+
+public Action:CommandoRelFireEnd2(Handle:timer, Handle:hPack)
+{
+	KillTimer(timer);
+	if (IsServerProcessing()==false)
+	{
+		CloseHandle(hPack);
+		return Plugin_Stop;
+	}
+	ResetPack(hPack);
+
+	new weapon = ReadPackCell(hPack);
+	new iCid = GetEntPropEnt(weapon, Prop_Data, "m_hOwner");
+	if (iCid <= 0 || IsValidEntity(iCid)==false || IsClientInGame(iCid)==false)
+	return Plugin_Stop;
+
+	new Float:flStartTime_calc = ReadPackFloat(hPack);
+	CloseHandle(hPack);
+	new iVMid = GetEntDataEnt2(iCid,g_iViewModelO);
+	SetEntDataFloat(iVMid, g_iVMStartTimeO, flStartTime_calc, true);
+	return Plugin_Stop;
+}
+
+public Action:CommandoPumpShotReload(Handle:timer, Handle:hOldPack)
+{
+	ResetPack(hOldPack);
+	new weapon = ReadPackCell(hOldPack);
+	new Float:fRLRat = GetConVarFloat(COMMANDO_RELOAD_RATIO);
+	new Float:start = ReadPackFloat(hOldPack);
+	new Float:insert = ReadPackFloat(hOldPack);
+	new Float:end = ReadPackFloat(hOldPack);
+
+	SetEntDataFloat(weapon,	g_iSSD,	start * fRLRat,	true);
+	SetEntDataFloat(weapon,	g_iSID,	insert * fRLRat,	true);
+	SetEntDataFloat(weapon,	g_iSED, end * fRLRat,	true);
+	SetEntDataFloat(weapon, g_ioPR, 1.0 / fRLRat, true);
+	
+	CloseHandle(hOldPack);
+	if (DEBUG_MODE == true) {
+		PrintToChatAll("\x03-spas shotgun detected, ratio \x01%i\x03, startO \x01%i\x03, insertO \x01%i\x03, endO \x01%i", fRLRat, g_iSSD, g_iSID, g_iSED);
+		PrintToChatAll("\x03- pre mod, start \x01%f\x03, insert \x01%f\x03, end \x01%f",g_fl_SpasS, g_fl_SpasI, g_fl_SpasE);
+	}
+	
+	new Handle:hPack = CreateDataPack();
+	WritePackCell(hPack, weapon);
+	
+	if (GetEntData(weapon, g_iSRS) != 2)
+	{
+		WritePackFloat(hPack, 0.2);
+		CreateTimer(0.3, CommandoShotCalculate, hPack, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+	}
+	else
+	{
+		WritePackFloat(hPack, 1.0);
+		CreateTimer(0.3, CommandoShotCalculate, hPack, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+	}
+	
+	return Plugin_Stop;
+}
+
+public Action:CommandoShotCalculate(Handle:timer, Handle:hPack)
+{
+	ResetPack(hPack);
+	new weapon = ReadPackCell(hPack);
+	new Float:addMod = ReadPackFloat(hPack);
+	
+	if (weapon <= 0 || !IsValidEntity(weapon))
+	{
+		CloseHandle(hPack);
+		KillTimer(timer);
+		return Plugin_Stop;
+	}
+	
+	if (GetEntData(weapon, g_iSRS) == 0 || GetEntData(weapon, g_iSRS) == 2 )
+	{
+		new Float:flNextTime = GetGameTime() + addMod;
+		
+		SetEntDataFloat(weapon, g_ioPR, 1.0, true);
+		SetEntDataFloat(GetEntPropEnt(weapon, Prop_Data, "m_hOwner"), g_ioNA, flNextTime, true);
+		SetEntDataFloat(weapon,	g_ioTI, flNextTime, true);
+		SetEntDataFloat(weapon,	g_iNPA, flNextTime, true);
+		KillTimer(timer);
+
+		CloseHandle(hPack);
+		return Plugin_Stop;
+	}
+	
+	return Plugin_Continue;
+}
+
+public Action:Event_WeaponFire(Handle:event, const String:name[], bool:dontBroadcast)
+{
+	new client = GetClientOfUserId(GetEventInt(event, "userid"));
+	
+	if (ClientData[client].ChosenClass == NONE && GetClientTeam(client) == 2)
+	{
+		if(client > 0 && client < MAXPLAYERS + 1 && ClassHint == false)
+		{
+			if (RoundStarted == true) {
+				ClassHint = true;
+			}
+			PrintHintText(client,"You really should pick a class, 1,5,7 are good for beginners.");
+			CreatePlayerClassMenu(client);
+		}
+	}
+	
+	if(ClientData[client].ChosenClass == COMMANDO)
+	{
+		GetEventString(event, "weapon", ClientData[client].EquippedGun, 64);
+		//PrintToChat(client,"weapon shot fired");	
+	}
+	return Plugin_Continue;
+}
+
+public getCommandoDamageBonus(client)
+{
+	if (StrContains(ClientData[client].EquippedGun,"grenade", false)!=-1)
+	{
+		return GetConVarInt(COMMANDO_DAMAGE_GRENADE);
+	}
+	if (StrContains(ClientData[client].EquippedGun,"shotgun", false)!=-1)
+	{
+		return GetConVarInt(COMMANDO_DAMAGE_SHOTGUN);
+	}
+	if (StrContains(ClientData[client].EquippedGun, "sniper", false)!=-1)
+	{
+		return GetConVarInt(COMMANDO_DAMAGE_SNIPER);
+	}
+	if (StrContains(ClientData[client].EquippedGun, "hunting", false)!=-1)
+	{
+		return GetConVarInt(COMMANDO_DAMAGE_HUNTING);
+	}
+	if (StrContains(ClientData[client].EquippedGun, "pistol", false)!=-1)
+	{
+		return GetConVarInt(COMMANDO_DAMAGE_PISTOL);
+	}
+	if (StrContains(ClientData[client].EquippedGun, "smg", false)!=-1)
+	{
+		return GetConVarInt(COMMANDO_DAMAGE_SMG);
+	}
+	if (StrContains(ClientData[client].EquippedGun,"rifle", false)!=-1)
+	{
+		return GetConVarInt(COMMANDO_DAMAGE_RIFLE);
+	}
+	// default
+	return GetConVarInt(COMMANDO_DAMAGE);
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+// Soldier
+///////////////////////////////////////////////////////////////////////////////////
+
+public OnGameFrame()
+{
+	if (!g_iRC)
+	return;
+
+	decl client;
+	decl bweapon;
+	decl Float:fNTC;
+	decl Float:fNTR;
+	new Float:fGT = GetGameTime();
+	
+	for (new i = 1; i <= g_iRC; i++)
+	{
+		client = g_iRI[i];
+		
+		if (!client
+			|| client >= MAXPLAYERS
+			|| !IsValidEntity(client)
+			|| !IsClientInGame(client)
+			|| !IsPlayerAlive(client)
+			|| GetClientTeam(client) != 2
+			|| ClientData[client].ChosenClass != SOLDIER)
+		continue;
+		
+		if(GetConVarBool(SOLDIER_SHOVE_PENALTY) == false)
+		{
+			//If the player is pressing the right click of the mouse, proceed
+			if(GetClientButtons(i) & IN_ATTACK2)
+			{
+				//This will reset the penalty, so it doesnt even get applied.
+				SetEntData(i, g_iShovePenalty, 0, 4);
+			}
+		}
+
+		bweapon = GetEntDataEnt2(client, g_oAW);
+		
+		if(bweapon <= 0) 
+		continue;
+		
+		fNTR = GetEntDataFloat(bweapon, g_iNPA);
+		
+		if (g_iEi[client] == bweapon && g_fNT[client] >= fNTR)
+		continue;
+		
+		if (g_iEi[client] == bweapon && g_fNT[client] < fNTR)
+		{
+			fNTC = ( fNTR - fGT ) * GetConVarFloat(SOLDIER_FIRE_RATE) + fGT;
+			g_fNT[client] = fNTC;
+			SetEntDataFloat(bweapon, g_iNPA, fNTC, true);
+			continue;
 		}
 		
-		SetPanelTitle(hPanel, "Medic:");
-		DrawPanelItem(hPanel, "Defibrillator");
-		DrawPanelItem(hPanel, "Medkit");
-		DrawPanelItem(hPanel, "Adrenaline");
-		DrawPanelItem(hPanel, "Pills");
-		DrawPanelItem(hPanel, "Exit");
-		
-		SendPanelToClient(hPanel, client, PanelHandler_SelectMedicItem, MENU_OPEN_TIME);
-		CloseHandle(hPanel);
-		
-		return true;
+		if (g_iEi[client] != bweapon)
+		{
+			g_iEi[client] = bweapon;
+			g_fNT[client] = fNTR;
+			continue;
+		}
+	}
+}
+
+public Action:OnTakeDamagePre(victim, &attacker, &inflictor, &Float:damage, &damagetype)
+{
+	if (!IsServerProcessing())
+	return Plugin_Continue;
+	
+	if (victim && attacker && IsValidEntity(attacker) && attacker <= MaxClients && IsValidEntity(victim) && victim <= MaxClients)
+	{
+
+		//PrintToChatAll("%s", m_attacker);
+		if(ClientData[victim].ChosenClass == SOLDIER && GetClientTeam(victim) == 2)
+		{
+			//PrintToChat(victim, "Damage: %f, New: %f", damage, damage*0.5);
+			damage = damage * GetConVarFloat(SOLDIER_DAMAGE_REDUCE_RATIO);
+			return Plugin_Changed;
+		}
+		if (ClientData[attacker].ChosenClass == COMMANDO && GetClientTeam(attacker) == 2 && GetClientTeam(victim) == 3)
+		{
+			damage = damage + getCommandoDamageBonus(attacker);
+			//PrintToChat(attacker,"%f",damage);
+			return Plugin_Changed;
+		}
+	}
+	
+	return Plugin_Continue;
+}
+
+// Get Position on map
+
+public bool SetClientLocation(int client, float vPos[3])
+{
+	GetClientEyePosition(client, vPos);
+	static float vAng[3];
+	GetClientEyeAngles(client, vAng);
+	static Handle trace;
+	trace = TR_TraceRayFilterEx(vPos, vAng, MASK_SHOT, RayType_Infinite, ExcludeSelf_Filter, client);
+
+	if( TR_DidHit(trace) )
+	{
+		TR_GetEndPosition(vPos, trace);
+
+		static float vDir[3];
+		GetAngleVectors(vAng, vDir, NULL_VECTOR, NULL_VECTOR);
+		vPos[0] -= vDir[0] * 10;
+		vPos[1] -= vDir[1] * 10;
+		vPos[2] -= vDir[2] * 10;
+	}
+	else
+	{
+		delete trace;
+		return false;
 	}
 
-	public PanelHandler_SelectMedicItem(Handle:menu, MenuAction:action, client, param)
-	{
-		switch (action)
+	delete trace;
+	return true;
+}
+
+public bool ExcludeSelf_Filter(int entity, int contentsMask, any client)
+{
+	if( entity == client )
+	return false;
+	return true;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////////////
+// Mines & Airstrikes
+///////////////////////////////////////////////////////////////////////////////////
+
+public void DropBomb(client)
+{
+	decl Float:pos[3];
+	GetClientAbsOrigin(client, pos);
+	int index = ClientData[client].SpecialsUsed;		
+
+	new Handle:hPack = CreateDataPack();
+
+	WritePackFloat(hPack, pos[0]);
+	WritePackFloat(hPack, pos[1]);
+	WritePackFloat(hPack, pos[2]);
+	WritePackCell(hPack, client);
+	WritePackCell(hPack, RndSession);
+	WritePackCell(hPack, index);
+
+	CreateTimer(GetConVarFloat(SABOTEUR_BOMB_ACTIVATE), TimerActivateBomb, hPack, TIMER_FLAG_NO_MAPCHANGE);
+
+	TE_SetupBeamRingPoint(pos, 10.0, 256.0, g_BeamSprite, g_HaloSprite, 0, 15, 0.5, 5.0, 0.0, greenColor, 10, 0);
+	TE_SendToAll();
+	TE_SetupBeamRingPoint(pos, 10.0, 256.0, g_BeamSprite, g_HaloSprite, 0, 10, 0.6, 10.0, 0.5, redColor, 10, 0);
+	TE_SendToAll();
+	BombActive = true;
+	BombIndex[index] = true;
+
+	ClientData[client].SpecialsUsed++;
+	CreateParticleInPos(pos, BOMB_GLOW, index);
+	EmitSoundToAll(SOUND_DROP_BOMB);
+	
+	PrintHintTextToAll("%N planted a mine! (%i/%i)", client, ClientData[client].SpecialsUsed, GetConVarInt(SABOTEUR_MAX_BOMBS));
+}
+
+public Action:TimerAirstrike(Handle timer, Handle:hPack)
+{
+
+	new Float:pos[3];
+	new Float:time;
+	int client;
+	int entity;
+	ResetPack(hPack);
+	client = ReadPackCell(hPack);		
+	pos[0] = ReadPackFloat(hPack);
+	pos[1] = ReadPackFloat(hPack);
+	pos[2] = ReadPackFloat(hPack);
+	time =  ReadPackFloat(hPack);
+	entity = ReadPackCell(hPack);
+	CloseHandle(hPack);
+
+	if (RoundToFloor(GetGameTime()-time) <= 10) {
+		PrintHintTextToAll("Airstrike in %i, take cover!",10-(RoundToFloor(GetGameTime()-time)));
+		new Handle:pack = CreateDataPack();
+		WritePackCell(pack, client);
+		WritePackFloat(pack, pos[0]);
+		WritePackFloat(pack, pos[1]);
+		WritePackFloat(pack, pos[2]);
+		WritePackFloat(pack, time);
+		WritePackCell(pack, entity);
+		CreateTimer(1.0, TimerAirstrike, pack, TIMER_FLAG_NO_MAPCHANGE ); 									
+
+	} else {
+		PrintHintTextToAll("Airstrike in %i, take cover!",0);
+		g_bAirstrikeValid = true;
+		if(IsValidEntity(entity))
 		{
-			case MenuAction_Select:
+			AcceptEntityInput(entity, "Kill");
+		}			
+
+		F18_ShowAirstrike(pos, GetRandomFloat(0.0, 180.0));
+		return Plugin_Stop;
+	}
+
+	return Plugin_Continue;
+}
+
+public Action:TimerActivateBomb(Handle:hTimer, Handle:hPack)
+{
+	CreateTimer(0.3, TimerCheckBombSensors, hPack, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+	
+	return Plugin_Stop;
+}
+
+public Action:TimerCheckBombSensors(Handle:hTimer, Handle:hPack)
+{
+	new Float:pos[3];
+	decl Float:clientpos[3];
+	
+	ResetPack(hPack);
+	pos[0] = ReadPackFloat(hPack);
+	pos[1] = ReadPackFloat(hPack);
+	pos[2] = ReadPackFloat(hPack);
+
+	new owner = ReadPackCell(hPack);
+	new session = ReadPackCell(hPack);
+	int index = ReadPackCell(hPack);
+
+	if (index < 0) index = 0;
+
+	if (session != RndSession)
+	return Plugin_Stop;
+	
+	for (new client = 1; client <= MaxClients; client++)
+	{
+		if (!IsValidEntity(client) || !IsClientInGame(client) || !IsPlayerAlive(client) || IsGhost(client))
+		continue;
+		if(GetClientTeam(client) == 3 || GetClientTeam(client) == 2)
+		{
+			GetClientAbsOrigin(client, clientpos);
+			
+			if (GetVectorDistance(pos, clientpos) < GetConVarFloat(SABOTEUR_BOMB_RADIUS))
 			{
-				if( param >= 1 && param <= 4 )
-				CalculateMedicPlacePos(client, param - 1);
-				ClientData[client].LastDropTime = GetGameTime();
+				if (GetClientTeam(client) == 3) {
+					PrintHintTextToAll("%N's mine detonated!", owner);
+					CreateExplosion(pos, owner, false);
+					BombActive = false;
+					BombIndex[index] = false;
+					CloseHandle(hPack);
+
+					return Plugin_Stop;
+				}
+				else if (GetClientTeam(client) == 2) {
+					PrintHintText(client, "Warning! You are nearby armed mine. Infected will blow it up");
+				}
+			}
+			
+		}
+	}
+	return Plugin_Continue;
+}
+
+public Action:timerHurtEntity(Handle:timer, Handle:pack)
+{
+	ResetPack(pack);
+	new client = ReadPackCell(pack);
+	new attacker = ReadPackCell(pack);
+	new Float:amount = ReadPackFloat(pack);
+	new type = ReadPackCell(pack);
+	CloseHandle(pack);
+	HurtEntity(client, attacker, amount, type);
+}
+stock DetonateMolotov(Float:pos[3], owner)
+{
+	pos[2]+=5.0;
+	new Handle:sdkDetonateFire;
+	StartPrepSDKCall(SDKCall_Static);
+	if (!PrepSDKCall_SetSignature(SDKLibrary_Server, "\x8B\x44**\x8B\x4C**\x53\x56\x57\x8B\x7C**\x57\x50\x51\x68****\xE8****\x8B\x5C**\xD9**\x83\xEC*\xDD***\x8B\xF0\xD9**\x8B\x44**\xDD***\xD9*\xDD***\xD9**\xDD***\xD9**\xDD***\xD9*\xDD**\x68****", 85))
+	PrepSDKCall_SetSignature(SDKLibrary_Server, "@_ZN18CMolotovProjectile6CreateERK6VectorRK6QAngleS2_S2_P20CBaseCombatCharacter", 0);
+	PrepSDKCall_AddParameter(SDKType_Vector, SDKPass_ByRef);
+	PrepSDKCall_AddParameter(SDKType_QAngle, SDKPass_ByRef);
+	PrepSDKCall_AddParameter(SDKType_Vector, SDKPass_ByRef);
+	PrepSDKCall_AddParameter(SDKType_Vector, SDKPass_ByRef);
+	PrepSDKCall_AddParameter(SDKType_CBasePlayer, SDKPass_Pointer);
+	sdkDetonateFire = EndPrepSDKCall();
+	if(sdkDetonateFire == INVALID_HANDLE)
+	{
+		LogError("Invalid Function Call at DetonateMolotov()");
+		CloseHandle(sdkDetonateFire);
+		return;
+	}
+	new Float:vec[3];
+	SDKCall(sdkDetonateFire, pos, vec, vec, vec, owner);
+	CloseHandle(sdkDetonateFire);
+}
+
+stock DealDamage(iVictim, iAttacker, Float:flAmount, iType = 0)
+{
+	new Handle:hPack = CreateDataPack();
+	WritePackCell(hPack, iVictim);
+	WritePackCell(hPack, iAttacker);
+	WritePackFloat(hPack, flAmount);
+	WritePackCell(hPack, iType);
+	CreateTimer(0.1, timerHurtEntity, hPack);
+}
+
+stock HurtEntity(client, attacker, Float:amount, type)
+{
+	new damage = RoundFloat(amount);
+	if (IsValidEntity(client))
+	{
+		decl String:sUser[256], String:sDamage[11], String:sType[11];
+		IntToString(client+25, sUser, sizeof(sUser));
+		IntToString(damage, sDamage, sizeof(sDamage));
+		IntToString(type, sType, sizeof(sType));
+		new iDmgEntity = CreateEntityByName("point_hurt");
+		DispatchKeyValue(client, "targetname", sUser);
+		DispatchKeyValue(iDmgEntity, "DamageTarget", sUser);
+		DispatchKeyValue(iDmgEntity, "Damage", sDamage);
+		DispatchKeyValue(iDmgEntity, "DamageType", sType);
+		DispatchSpawn(iDmgEntity);
+		if (IsValidEntity(iDmgEntity))
+		{
+			AcceptEntityInput(iDmgEntity, "Hurt", client);
+			AcceptEntityInput(iDmgEntity, "Kill");
+		}
+	}
+}
+
+stock CreateExplosion(Float:expPos[3], attacker = 0, bool:panic = true)
+{
+	decl String:sRadius[16], String:sPower[16], String:sInterval[11];
+	new Float:flMxDistance = 450.0;
+	new Float:power = GetConVarFloat(SABOTEUR_BOMB_POWER);
+	//new iDamageSurv = GetConVarInt(SABOTEUR_BOMB_DAMAGE_SURV);
+	new Float:iDamageInf = GetConVarFloat(SABOTEUR_BOMB_DAMAGE_INF);
+	new Float:flInterval = 0.1;
+	FloatToString(flInterval, sInterval, sizeof(sInterval));
+	IntToString(450, sRadius, sizeof(sRadius));
+	IntToString(800, sPower, sizeof(sPower));
+	
+	new exParticle2 = CreateEntityByName("info_particle_system");
+	new exParticle3 = CreateEntityByName("info_particle_system");
+	new exTrace = CreateEntityByName("info_particle_system");
+	new exPhys = CreateEntityByName("env_physexplosion");
+	new exHurt = CreateEntityByName("point_hurt");
+	new exParticle = CreateEntityByName("info_particle_system");
+	new exEntity = CreateEntityByName("env_explosion");
+	
+	//Set up the particle explosion
+	DispatchKeyValue(exParticle, "effect_name", EXPLOSION_PARTICLE);
+	DispatchSpawn(exParticle);
+	ActivateEntity(exParticle);
+	TeleportEntity(exParticle, expPos, NULL_VECTOR, NULL_VECTOR);
+	
+	DispatchKeyValue(exParticle2, "effect_name", EXPLOSION_PARTICLE2);
+	DispatchSpawn(exParticle2);
+	ActivateEntity(exParticle2);
+	TeleportEntity(exParticle2, expPos, NULL_VECTOR, NULL_VECTOR);
+	
+	DispatchKeyValue(exParticle3, "effect_name", EXPLOSION_PARTICLE3);
+	DispatchSpawn(exParticle3);
+	ActivateEntity(exParticle3);
+	TeleportEntity(exParticle3, expPos, NULL_VECTOR, NULL_VECTOR);
+	
+	DispatchKeyValue(exTrace, "effect_name", EFIRE_PARTICLE);
+	DispatchSpawn(exTrace);
+	ActivateEntity(exTrace);
+	TeleportEntity(exTrace, expPos, NULL_VECTOR, NULL_VECTOR);
+	
+	
+	//Set up explosion entity
+	DispatchKeyValue(exEntity, "fireballsprite", "sprites/muzzleflash4.vmt");
+	DispatchKeyValue(exEntity, "iMagnitude", "150");
+	DispatchKeyValue(exEntity, "iRadiusOverride", sRadius);
+	DispatchKeyValue(exEntity, "spawnflags", "828");
+	DispatchSpawn(exEntity);
+	TeleportEntity(exEntity, expPos, NULL_VECTOR, NULL_VECTOR);
+	
+	//Set up physics movement explosion
+	DispatchKeyValue(exPhys, "radius", sRadius);
+	DispatchKeyValue(exPhys, "magnitude", sPower);
+	DispatchKeyValue(exPhys, "spawnflags", "1");
+
+	DispatchSpawn(exPhys);
+	TeleportEntity(exPhys, expPos, NULL_VECTOR, NULL_VECTOR);
+	
+	
+	//Set up hurt point
+	DispatchKeyValue(exHurt, "DamageRadius", sRadius);
+	DispatchKeyValue(exHurt, "DamageDelay", sInterval);
+	DispatchKeyValue(exHurt, "Damage", "1");
+	DispatchKeyValue(exHurt, "DamageType", "128");
+	DispatchSpawn(exHurt);
+	TeleportEntity(exHurt, expPos, NULL_VECTOR, NULL_VECTOR);
+	
+	//DetonateMolotov(expPos, attacker);
+	
+	for(new i = 1; i <= 2; i++)
+	//DetonateMolotov(expPos, attacker);
+	
+	switch(GetRandomInt(1,3))
+	{
+		case 1:
+		EmitSoundToAll(EXPLOSION_SOUND);
+		
+		case 2:
+		EmitSoundToAll(EXPLOSION_SOUND2);
+		
+		case 3:
+		EmitSoundToAll(EXPLOSION_SOUND3);
+	}
+	
+	AcceptEntityInput(exParticle, "Start");
+	AcceptEntityInput(exParticle2, "Start");
+	AcceptEntityInput(exParticle3, "Start");
+	AcceptEntityInput(exTrace, "Start");
+	AcceptEntityInput(exEntity, "Explode");
+	AcceptEntityInput(exPhys, "Explode");
+	AcceptEntityInput(exHurt, "TurnOn");
+	
+	new Handle:pack2 = CreateDataPack();
+	WritePackCell(pack2, exParticle);
+	WritePackCell(pack2, exParticle2);
+	WritePackCell(pack2, exParticle3);
+	WritePackCell(pack2, exTrace);
+	WritePackCell(pack2, exEntity);
+	WritePackCell(pack2, exPhys);
+	WritePackCell(pack2, exHurt);
+	CreateTimer(6.0, TimerDeleteParticles, pack2, TIMER_FLAG_NO_MAPCHANGE);
+	
+	new Handle:pack = CreateDataPack();
+	WritePackCell(pack, exTrace);
+	WritePackCell(pack, exHurt);
+	CreateTimer(4.5, TimerStopFire, pack, TIMER_FLAG_NO_MAPCHANGE);
+	
+	decl Float:survivorPos[3], Float:traceVec[3], Float:resultingFling[3], Float:currentVelVec[3];
+	
+	for (new i = 1; i <= MaxClients; i++)
+	{
+		if (!IsClientInGame(i) || !IsPlayerAlive(i))
+		continue;
+
+		GetEntPropVector(i, Prop_Data, "m_vecOrigin", survivorPos);
+		
+		if (GetVectorDistance(expPos, survivorPos) <= flMxDistance)
+		{
+			MakeVectorFromPoints(expPos, survivorPos, traceVec);
+			GetVectorAngles(traceVec, resultingFling);
+			
+			resultingFling[0] = Cosine(DegToRad(resultingFling[1])) * power;
+			resultingFling[1] = Sine(DegToRad(resultingFling[1])) * power;
+			resultingFling[2] = power;
+			
+			GetEntPropVector(i, Prop_Data, "m_vecVelocity", currentVelVec);
+			resultingFling[0] += currentVelVec[0];
+			resultingFling[1] += currentVelVec[1];
+			resultingFling[2] += currentVelVec[2];
+			
+			TeleportEntity(i, NULL_VECTOR, NULL_VECTOR, resultingFling);
+			
+			if (attacker > 0)
+			{
+				if (GetClientTeam(i) == 2) {
+					//DealDamage(i, attacker, iDamageSurv, 8);
+				}
+				else
+				DealDamage(i, attacker, iDamageInf, 8);
 			}
 		}
 	}
 	
-	public void CalculateMedicPlacePos(client, type)
+	decl String:class[32];
+	for (new i=MaxClients+1; i<=2048; i++)
 	{
-		decl Float:vAng[3], Float:vPos[3], Float:endPos[3];
-		
-		GetClientEyeAngles(client, vAng);
-		GetClientEyePosition(client, vPos);
-
-		new Handle:trace = TR_TraceRayFilterEx(vPos, vAng, MASK_SHOT, RayType_Infinite, TraceFilter, client);
-
-		if (TR_DidHit(trace))
+		if (IsValidEntity(i))
 		{
-			TR_GetEndPosition(endPos, trace);
-			CloseHandle(trace);
-			
-			if (GetVectorDistance(endPos, vPos) <= GetConVarFloat(MEDIC_MAX_BUILD_RANGE))
+			GetEdictClassname(i, class, sizeof(class));
+			if (StrEqual(class, "prop_physics") || StrEqual(class, "prop_physics_multiplayer"))
 			{
-				vAng[0] = 0.0;
-				vAng[2] = 0.0;
+				GetEntPropVector(i, Prop_Data, "m_vecOrigin", survivorPos);
 				
-				switch(type) {
-					case 0: {
-						new entity = CreateEntityByName("weapon_defibrillator");
-						DispatchKeyValue(entity, "solid", "0");
-						DispatchKeyValue(entity, "disableshadows", "1");
-						DispatchSpawn(entity);
-						TeleportEntity(entity, endPos, NULL_VECTOR, NULL_VECTOR);
-						PrintHintText(client ,"%N deployed a defibrillator", client);
-
-						ClientData[client].SpecialsUsed++;
-					}
-					case 1:{
-						new entity = CreateEntityByName("weapon_first_aid_kit");
-						DispatchKeyValue(entity, "solid", "0");
-						DispatchSpawn(entity);
-						TeleportEntity(entity, endPos, NULL_VECTOR, NULL_VECTOR);
-						PrintHintText(client ,"%N deployed a medkit", client);
-
-						ClientData[client].SpecialsUsed++;
-					}
-					case 2: {
-						new entity = CreateEntityByName("weapon_adrenaline_spawn");
-						DispatchKeyValue(entity, "solid", "0");
-						DispatchKeyValue(entity, "disableshadows", "1");
-						TeleportEntity(entity, endPos, NULL_VECTOR, NULL_VECTOR);
-						DispatchSpawn(entity);
-						ClientData[client].SpecialsUsed++;
-
-					}
-					case 3: {
-						new pills = CreateEntityByName("weapon_pain_pills_spawn", -1);
-						DispatchKeyValue(pills, "solid", "6");
-						DispatchKeyValue(pills, "disableshadows", "1");
-						TeleportEntity(pills, endPos, NULL_VECTOR, NULL_VECTOR);
-						DispatchSpawn(pills);
-						ClientData[client].SpecialsUsed++;
-
-					}				
-					default: {
-						CloseHandle( trace );
-						return;
-					}
-				}
-			}
-			else
-			PrintToChat(client, "%sCould not place the item because you were looking too far away.", PRINT_PREFIX);
-		}
-		else
-		CloseHandle(trace);
-	}
-
-	public UpgradeQuickHeal(client)
-	{
-		if(ClientData[client].ChosenClass == MEDIC)
-		SetConVarFloat(g_VarFirstAidDuration, FirstAidDuration * GetConVarFloat(MEDIC_HEAL_RATIO), false, false);
-		else
-		SetConVarFloat(g_VarFirstAidDuration, FirstAidDuration * 1.0, false, false);
-	}
-
-	public UpgradeQuickRevive(client)
-	{
-		if(ClientData[client].ChosenClass == MEDIC)
-		SetConVarFloat(g_VarReviveDuration, ReviveDuration * GetConVarFloat(MEDIC_REVIVE_RATIO), false, false);
-		else
-		SetConVarFloat(g_VarReviveDuration, ReviveDuration * 1.0, false, false);
-	}
-
-	public setPlayerHealth(client, MaxPossibleHP)
-	{
-		if (!client) return;
-		new OldMaxHealth = GetEntProp(client, Prop_Send, "m_iMaxHealth");
-		new OldHealth = GetClientHealth(client);
-		new OldTempHealth = GetClientTempHealth(client);
-		if (MaxPossibleHP == OldMaxHealth) return;
-
-		SetEntProp(client, Prop_Send, "m_iMaxHealth", MaxPossibleHP);
-		SetEntityHealth(client, MaxPossibleHP - (OldMaxHealth - OldHealth));
-		SetClientTempHealth(client, OldTempHealth);
-		
-		if ((GetClientHealth(client) + GetClientTempHealth(client)) > MaxPossibleHP)
-		{
-			SetEntityHealth(client, MaxPossibleHP);
-			SetClientTempHealth(client, 0);
-		}
-	}
-
-	public setPlayerDefaultHealth(client)
-	{
-		if (!client
-			|| !IsValidEntity(client)
-			|| !IsClientInGame(client)
-			|| !IsPlayerAlive(client)
-			|| GetClientTeam(client) != 2)
-		return;
-		
-		new MaxPossibleHP = GetConVarInt(NONE_HEALTH);
-		setPlayerHealth(client, MaxPossibleHP);
-	}
-
-	public void Event_ServerCvar( Event hEvent, const char[] sName, bool bDontBroadcast ) 
-	{
-		if ( !healthModEnabled.BoolValue ) return;
-		
-		InitHealthModifiers();
-	}
-
-	public event_HealBegin(Handle:event, const String:name[], bool:Broadcast)
-	{
-		new client = GetClientOfUserId(GetEventInt(event, "userid"));
-		UpgradeQuickHeal(client);
-	}
-
-	public event_ReviveBegin(Handle:event, const String:name[], bool:Broadcast)
-	{
-		new client = GetClientOfUserId(GetEventInt(event, "userid"));
-		UpgradeQuickRevive(client);
-	}
-
-	public Action:TimerDetectHealthChanges(Handle:hTimer, any:client)
-	{
-		if (!client
-			|| !IsValidEntity(client)
-			|| !IsClientInGame(client)
-			|| ClientData[client].ChosenClass != MEDIC)
-		return Plugin_Stop;
-		
-		if(!IsPlayerAlive(client) || GetClientTeam(client) != 2)
-		{	return Plugin_Continue; }
-		
-		new btns = GetClientButtons(client);
-
-		if (btns & IN_DUCK)
-		{
-			CreateParticle(client, MEDIC_GLOW, true, 1.0);
-
-			decl Float:pos[3];
-			decl String:sMessage[256];	
-			GetClientAbsOrigin(client, pos);
-			
-			for (new i = 1; i <= MaxClients; i++)
-			{
-				if (IsValidEntity(i) && IsClientInGame(i) && IsPlayerAlive(i) && GetClientTeam(i) == 2 && i != client)
+				//Vector and radius distance calcs by AtomicStryker!
+				if (GetVectorDistance(expPos, survivorPos) <= flMxDistance)
 				{
-					decl Float:tpos[3];
-					GetClientAbsOrigin(i, tpos);
+					MakeVectorFromPoints(expPos, survivorPos, traceVec);
+					GetVectorAngles(traceVec, resultingFling);
 					
-					if (GetVectorDistance(pos, tpos) <= GetConVarFloat(MEDIC_HEAL_DIST))
-					{
-						// pre-heal set values
-						new MaxHealth = GetEntProp(i, Prop_Send, "m_iMaxHealth");
-						new TempHealth = GetClientTempHealth(i);
-
-						Format(sMessage, sizeof(sMessage), "%N is healing you!", client);
-
-						ShowBar(i, sMessage, float(GetClientHealth(i)), float(MaxHealth));
-						SetEntityHealth(i, GetClientHealth(i) + GetConVarInt(MEDIC_HEALTH_VALUE));
-						SetClientTempHealth(i, TempHealth);
-						
-						// post-heal set values
-						new newHp = GetClientHealth(i);
-						new totalHp = newHp + TempHealth;
-						
-						if (totalHp > MaxHealth)
-						{
-							new diff = totalHp - MaxHealth;
-							
-							if (TempHealth >= diff)
-							{
-								SetClientTempHealth(i, TempHealth - diff);
-								continue;
-							}
-							
-							SetClientTempHealth(i, 0);
-							SetEntityHealth(i, MaxHealth);
-						}
-					}
-				}
-			}
-		} else {
-			MedicHint = false;
-		}
-		
-		return Plugin_Continue;
-	}
-
-	public ApplyHealthModifiers()
-	{
-		FirstAidDuration = GetConVarFloat(FindConVar("first_aid_kit_use_duration"));
-		ReviveDuration = GetConVarFloat(FindConVar("survivor_revive_duration"));
-		g_VarFirstAidDuration = FindConVar("first_aid_kit_use_duration");
-		g_VarReviveDuration = FindConVar("survivor_revive_duration");
-	}
-
-	public InitHealthModifiers()
-	{
-		FindConVar("first_aid_heal_percent").FloatValue = 1.0; 	
-		FindConVar("first_aid_kit_use_duration").IntValue = GetConVarInt(HEAL_DURATION); 
-		FindConVar("survivor_revive_duration").IntValue = GetConVarInt(REVIVE_DURATION);
-		FindConVar("survivor_revive_health").IntValue = GetConVarInt(REVIVE_HEALTH);
-		FindConVar("pain_pills_health_value").IntValue = GetConVarInt(PILLS_HEALTH_BUFFER);
-		FindConVar("adrenaline_duration").IntValue = GetConVarInt(ADRENALINE_DURATION); 
-		FindConVar("adrenaline_health_buffer").IntValue = GetConVarInt(ADRENALINE_HEALTH_BUFFER);
-		SetConVarFloat(FindConVar("first_aid_kit_use_duration"), GetConVarFloat(HEAL_DURATION), false, false);
-		SetConVarFloat(FindConVar("survivor_revive_duration"), GetConVarFloat(REVIVE_DURATION), false, false);	
-		ApplyHealthModifiers();	
-	}
-
-	///////////////////////////////////////////////////////////////////////////////////
-	// Commando
-	///////////////////////////////////////////////////////////////////////////////////
-
-	public Event_RelCommandoClass(Handle:event, String:name[], bool:dontBroadcast)
-	{
-		new client = GetClientOfUserId(GetEventInt(event,"userid"));
-		
-		if (ClientData[client].ChosenClass != COMMANDO)
-		return;
-		
-		new weapon = GetEntDataEnt2(client, g_oAW);
-
-		if (!IsValidEntity(weapon))
-		return;
-		
-		new Float:flGT = GetGameTime();
-		decl String:bNetCl[64];
-		decl String:stClass[32];
-
-		GetEntityNetClass(weapon, bNetCl, sizeof(bNetCl));
-		GetEntityNetClass(weapon,stClass,32);
-
-		if (DEBUG_MODE)
-		PrintToChatAll("\x03-class of gun: \x01%s",stClass );
-
-		if (StrContains(bNetCl, "shotgun", false) == -1)
-		{
-			new Handle:hPack = CreateDataPack();
-			WritePackCell(hPack, weapon);
-
-			new Float:fRLRat = GetConVarFloat(COMMANDO_RELOAD_RATIO);
-			new Float:fNTC = (GetEntDataFloat(weapon, g_iNPA) - flGT) * fRLRat;
-			new Float:NA = fNTC + flGT;
-			new Float:flNextTime_ret = GetEntDataFloat(weapon, g_iNPA);
-			new Float:flStartTime_calc = flGT - ( flNextTime_ret - flGT ) * ( 1 - fRLRat ) ;
-			WritePackFloat(hPack, flStartTime_calc);
-			
-			if ( (fNTC - 0.4) > 0 )
-			CreateTimer( fNTC - 0.4, CommandoRelFireEnd2, hPack);
-			
-			SetEntDataFloat(weapon, g_ioPR, 1.0 / fRLRat, true);
-			SetEntDataFloat(weapon, g_ioTI, NA, true);
-			SetEntDataFloat(weapon, g_iNPA, NA, true);
-			SetEntDataFloat(client, g_ioNA, NA, true);
-			CreateTimer(fNTC, CommandoRelFireEnd, weapon);
-		}
-		else
-		{
-			new Handle:hPack = CreateDataPack();
-			WritePackCell(hPack, weapon);
-			if (DEBUG_MODE) 
-			PrintToChatAll("Class: %s", stClass);
-
-			if (StrContains(bNetCl, "shotgun_spas", false) != -1)
-			{
-				if (DEBUG_MODE) {
-					PrintToChatAll("\x03-spas ratio \x01%f\x03, startO \x01%f\x03, insertO \x01%f\x03, endO \x01%f", GetConVarFloat(COMMANDO_RELOAD_RATIO), g_fl_SpasS, g_fl_SpasI, 0.675000);
-				}
-				WritePackFloat(hPack, 0.293939);
-				WritePackFloat(hPack, 0.272999);
-				WritePackFloat(hPack, 0.675000);
-
-				CreateTimer(0.1, CommandoPumpShotReload, hPack);
-			}
-			else if (StrContains(bNetCl, "pumpshotgun", false) != -1)
-			{
-
-				WritePackFloat(hPack, 0.393939);
-				WritePackFloat(hPack, 0.472999);
-				WritePackFloat(hPack, 0.875000);
-
-				CreateTimer(0.1, CommandoPumpShotReload, hPack);
-			}
-			else if (StrContains(bNetCl, "autoshotgun", false) != -1)
-			{
-				WritePackFloat(hPack, 0.416666);
-				WritePackFloat(hPack, 0.395999);
-				WritePackFloat(hPack, 1.000000);
-
-				CreateTimer(0.1, CommandoPumpShotReload, hPack);
-			}
-			else
-			CloseHandle(hPack);
-		}
-	}
-
-
-	public Action:CommandoRelFireEnd(Handle:timer, any:weapon)
-	{
-		if (weapon <= 0 || !IsValidEntity(weapon))
-		return Plugin_Stop;
-		
-		SetEntDataFloat(weapon, g_ioPR, 1.0, true);
-		KillTimer(timer);
-
-		return Plugin_Stop;
-	}
-
-	public Action:CommandoRelFireEnd2(Handle:timer, Handle:hPack)
-	{
-		KillTimer(timer);
-		if (IsServerProcessing()==false)
-		{
-			CloseHandle(hPack);
-			return Plugin_Stop;
-		}
-		ResetPack(hPack);
-
-		new weapon = ReadPackCell(hPack);
-		new iCid = GetEntPropEnt(weapon, Prop_Data, "m_hOwner");
-		if (iCid <= 0 || IsValidEntity(iCid)==false || IsClientInGame(iCid)==false)
-		return Plugin_Stop;
-
-		new Float:flStartTime_calc = ReadPackFloat(hPack);
-		CloseHandle(hPack);
-		new iVMid = GetEntDataEnt2(iCid,g_iViewModelO);
-		SetEntDataFloat(iVMid, g_iVMStartTimeO, flStartTime_calc, true);
-		return Plugin_Stop;
-	}
-
-	public Action:CommandoPumpShotReload(Handle:timer, Handle:hOldPack)
-	{
-		ResetPack(hOldPack);
-		new weapon = ReadPackCell(hOldPack);
-		new Float:fRLRat = GetConVarFloat(COMMANDO_RELOAD_RATIO);
-		new Float:start = ReadPackFloat(hOldPack);
-		new Float:insert = ReadPackFloat(hOldPack);
-		new Float:end = ReadPackFloat(hOldPack);
-
-		SetEntDataFloat(weapon,	g_iSSD,	start * fRLRat,	true);
-		SetEntDataFloat(weapon,	g_iSID,	insert * fRLRat,	true);
-		SetEntDataFloat(weapon,	g_iSED, end * fRLRat,	true);
-		SetEntDataFloat(weapon, g_ioPR, 1.0 / fRLRat, true);
-		
-		CloseHandle(hOldPack);
-		if (DEBUG_MODE == true) {
-			PrintToChatAll("\x03-spas shotgun detected, ratio \x01%i\x03, startO \x01%i\x03, insertO \x01%i\x03, endO \x01%i", fRLRat, g_iSSD, g_iSID, g_iSED);
-			PrintToChatAll("\x03- pre mod, start \x01%f\x03, insert \x01%f\x03, end \x01%f",g_fl_SpasS, g_fl_SpasI, g_fl_SpasE);
-		}
-		
-		new Handle:hPack = CreateDataPack();
-		WritePackCell(hPack, weapon);
-		
-		if (GetEntData(weapon, g_iSRS) != 2)
-		{
-			WritePackFloat(hPack, 0.2);
-			CreateTimer(0.3, CommandoShotCalculate, hPack, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
-		}
-		else
-		{
-			WritePackFloat(hPack, 1.0);
-			CreateTimer(0.3, CommandoShotCalculate, hPack, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
-		}
-		
-		return Plugin_Stop;
-	}
-
-	public Action:CommandoShotCalculate(Handle:timer, Handle:hPack)
-	{
-		ResetPack(hPack);
-		new weapon = ReadPackCell(hPack);
-		new Float:addMod = ReadPackFloat(hPack);
-		
-		if (weapon <= 0 || !IsValidEntity(weapon))
-		{
-			CloseHandle(hPack);
-			KillTimer(timer);
-			return Plugin_Stop;
-		}
-		
-		if (GetEntData(weapon, g_iSRS) == 0 || GetEntData(weapon, g_iSRS) == 2 )
-		{
-			new Float:flNextTime = GetGameTime() + addMod;
-			
-			SetEntDataFloat(weapon, g_ioPR, 1.0, true);
-			SetEntDataFloat(GetEntPropEnt(weapon, Prop_Data, "m_hOwner"), g_ioNA, flNextTime, true);
-			SetEntDataFloat(weapon,	g_ioTI, flNextTime, true);
-			SetEntDataFloat(weapon,	g_iNPA, flNextTime, true);
-			KillTimer(timer);
-
-			CloseHandle(hPack);
-			return Plugin_Stop;
-		}
-		
-		return Plugin_Continue;
-	}
-
-	public Action:Event_WeaponFire(Handle:event, const String:name[], bool:dontBroadcast)
-	{
-		new client = GetClientOfUserId(GetEventInt(event, "userid"));
-		
-		if (ClientData[client].ChosenClass == NONE && GetClientTeam(client) == 2)
-		{
-			if(client > 0 && client < MAXPLAYERS + 1 && ClassHint == false)
-			{
-				if (RoundStarted == true) {
-					ClassHint = true;
-				}
-				PrintHintText(client,"You really should pick a class, 1,5,7 are good for beginners.");
-				CreatePlayerClassMenu(client);
-			}
-		}
-		
-		if(ClientData[client].ChosenClass == COMMANDO)
-		{
-			GetEventString(event, "weapon", ClientData[client].EquippedGun, 64);
-			//PrintToChat(client,"weapon shot fired");	
-		}
-		return Plugin_Continue;
-	}
-
-	public getCommandoDamageBonus(client)
-	{
-		if (StrContains(ClientData[client].EquippedGun,"grenade", false)!=-1)
-		{
-			return GetConVarInt(COMMANDO_DAMAGE_GRENADE);
-		}
-		if (StrContains(ClientData[client].EquippedGun,"shotgun", false)!=-1)
-		{
-			return GetConVarInt(COMMANDO_DAMAGE_SHOTGUN);
-		}
-		if (StrContains(ClientData[client].EquippedGun, "sniper", false)!=-1)
-		{
-			return GetConVarInt(COMMANDO_DAMAGE_SNIPER);
-		}
-		if (StrContains(ClientData[client].EquippedGun, "hunting", false)!=-1)
-		{
-			return GetConVarInt(COMMANDO_DAMAGE_HUNTING);
-		}
-		if (StrContains(ClientData[client].EquippedGun, "pistol", false)!=-1)
-		{
-			return GetConVarInt(COMMANDO_DAMAGE_PISTOL);
-		}
-		if (StrContains(ClientData[client].EquippedGun, "smg", false)!=-1)
-		{
-			return GetConVarInt(COMMANDO_DAMAGE_SMG);
-		}
-		if (StrContains(ClientData[client].EquippedGun,"rifle", false)!=-1)
-		{
-			return GetConVarInt(COMMANDO_DAMAGE_RIFLE);
-		}
-		// default
-		return GetConVarInt(COMMANDO_DAMAGE);
-	}
-
-
-
-	///////////////////////////////////////////////////////////////////////////////////
-	// Soldier
-	///////////////////////////////////////////////////////////////////////////////////
-
-	public OnGameFrame()
-	{
-		if (!g_iRC)
-		return;
-
-		decl client;
-		decl bweapon;
-		decl Float:fNTC;
-		decl Float:fNTR;
-		new Float:fGT = GetGameTime();
-		
-		for (new i = 1; i <= g_iRC; i++)
-		{
-			client = g_iRI[i];
-			
-			if (!client
-				|| client >= MAXPLAYERS
-				|| !IsValidEntity(client)
-				|| !IsClientInGame(client)
-				|| !IsPlayerAlive(client)
-				|| GetClientTeam(client) != 2
-				|| ClientData[client].ChosenClass != SOLDIER)
-			continue;
-			
-			if(GetConVarBool(SOLDIER_SHOVE_PENALTY) == false)
-			{
-				//If the player is pressing the right click of the mouse, proceed
-				if(GetClientButtons(i) & IN_ATTACK2)
-				{
-					//This will reset the penalty, so it doesnt even get applied.
-					SetEntData(i, g_iShovePenalty, 0, 4);
-				}
-			}
-
-			bweapon = GetEntDataEnt2(client, g_oAW);
-			
-			if(bweapon <= 0) 
-			continue;
-			
-			fNTR = GetEntDataFloat(bweapon, g_iNPA);
-			
-			if (g_iEi[client] == bweapon && g_fNT[client] >= fNTR)
-			continue;
-			
-			if (g_iEi[client] == bweapon && g_fNT[client] < fNTR)
-			{
-				fNTC = ( fNTR - fGT ) * GetConVarFloat(SOLDIER_FIRE_RATE) + fGT;
-				g_fNT[client] = fNTC;
-				SetEntDataFloat(bweapon, g_iNPA, fNTC, true);
-				continue;
-			}
-			
-			if (g_iEi[client] != bweapon)
-			{
-				g_iEi[client] = bweapon;
-				g_fNT[client] = fNTR;
-				continue;
-			}
-		}
-	}
-
-	public Action:OnTakeDamagePre(victim, &attacker, &inflictor, &Float:damage, &damagetype)
-	{
-		if (!IsServerProcessing())
-		return Plugin_Continue;
-		
-		if (victim && attacker && IsValidEntity(attacker) && attacker <= MaxClients && IsValidEntity(victim) && victim <= MaxClients)
-		{
-
-			//PrintToChatAll("%s", m_attacker);
-			if(ClientData[victim].ChosenClass == SOLDIER && GetClientTeam(victim) == 2)
-			{
-				//PrintToChat(victim, "Damage: %f, New: %f", damage, damage*0.5);
-				damage = damage * GetConVarFloat(SOLDIER_DAMAGE_REDUCE_RATIO);
-				return Plugin_Changed;
-			}
-			if (ClientData[attacker].ChosenClass == COMMANDO && GetClientTeam(attacker) == 2 && GetClientTeam(victim) == 3)
-			{
-				damage = damage + getCommandoDamageBonus(attacker);
-				//PrintToChat(attacker,"%f",damage);
-				return Plugin_Changed;
-			}
-		}
-		
-		return Plugin_Continue;
-	}
-
-	// Get Position on map
-
-	public bool SetClientLocation(int client, float vPos[3])
-	{
-		GetClientEyePosition(client, vPos);
-		static float vAng[3];
-		GetClientEyeAngles(client, vAng);
-		static Handle trace;
-		trace = TR_TraceRayFilterEx(vPos, vAng, MASK_SHOT, RayType_Infinite, ExcludeSelf_Filter, client);
-
-		if( TR_DidHit(trace) )
-		{
-			TR_GetEndPosition(vPos, trace);
-
-			static float vDir[3];
-			GetAngleVectors(vAng, vDir, NULL_VECTOR, NULL_VECTOR);
-			vPos[0] -= vDir[0] * 10;
-			vPos[1] -= vDir[1] * 10;
-			vPos[2] -= vDir[2] * 10;
-		}
-		else
-		{
-			delete trace;
-			return false;
-		}
-
-		delete trace;
-		return true;
-	}
-
-	public bool ExcludeSelf_Filter(int entity, int contentsMask, any client)
-	{
-		if( entity == client )
-		return false;
-		return true;
-	}
-
-	//////////////////////////////////////////////////////////////////////////////////////////////////////
-	//////////////////////////////////////////////////////////////////////////////////////////////////////
-	//////////////////////////////////////////////////////////////////////////////////////////////////////
-	//////////////////////////////////////////////////////////////////////////////////////////////////////
-	//////////////////////////////////////////////////////////////////////////////////////////////////////
-	//////////////////////////////////////////////////////////////////////////////////////////////////////
-
-	///////////////////////////////////////////////////////////////////////////////////
-	// Mines & Airstrikes
-	///////////////////////////////////////////////////////////////////////////////////
-
-	public void DropBomb(client)
-	{
-		decl Float:pos[3];
-		GetClientAbsOrigin(client, pos);
-		int index = ClientData[client].SpecialsUsed;		
-
-		new Handle:hPack = CreateDataPack();
-
-		WritePackFloat(hPack, pos[0]);
-		WritePackFloat(hPack, pos[1]);
-		WritePackFloat(hPack, pos[2]);
-		WritePackCell(hPack, client);
-		WritePackCell(hPack, RndSession);
-		WritePackCell(hPack, index);
-
-		CreateTimer(GetConVarFloat(SABOTEUR_BOMB_ACTIVATE), TimerActivateBomb, hPack, TIMER_FLAG_NO_MAPCHANGE);
-
-		TE_SetupBeamRingPoint(pos, 10.0, 256.0, g_BeamSprite, g_HaloSprite, 0, 15, 0.5, 5.0, 0.0, greenColor, 10, 0);
-		TE_SendToAll();
-		TE_SetupBeamRingPoint(pos, 10.0, 256.0, g_BeamSprite, g_HaloSprite, 0, 10, 0.6, 10.0, 0.5, redColor, 10, 0);
-		TE_SendToAll();
-		BombActive = true;
-		BombIndex[index] = true;
-
-		ClientData[client].SpecialsUsed++;
-		CreateParticleInPos(pos, BOMB_GLOW, index);
-		EmitSoundToAll(SOUND_DROP_BOMB);
-		
-		PrintHintTextToAll("%N planted a mine! (%i/%i)", client, ClientData[client].SpecialsUsed, GetConVarInt(SABOTEUR_MAX_BOMBS));
-	}
-
-	public Action:TimerAirstrike(Handle timer, Handle:hPack)
-	{
-
-		new Float:pos[3];
-		new Float:time;
-		int client;
-		int entity;
-		ResetPack(hPack);
-		client = ReadPackCell(hPack);		
-		pos[0] = ReadPackFloat(hPack);
-		pos[1] = ReadPackFloat(hPack);
-		pos[2] = ReadPackFloat(hPack);
-		time =  ReadPackFloat(hPack);
-		entity = ReadPackCell(hPack);
-		CloseHandle(hPack);
-
-		if (RoundToFloor(GetGameTime()-time) <= 10) {
-			PrintHintTextToAll("Airstrike in %i, take cover!",10-(RoundToFloor(GetGameTime()-time)));
-			new Handle:pack = CreateDataPack();
-			WritePackCell(pack, client);
-			WritePackFloat(pack, pos[0]);
-			WritePackFloat(pack, pos[1]);
-			WritePackFloat(pack, pos[2]);
-			WritePackFloat(pack, time);
-			WritePackCell(pack, entity);
-			CreateTimer( 1, TimerAirstrike, pack, TIMER_FLAG_NO_MAPCHANGE ); 									
-
-		} else {
-			PrintHintTextToAll("Airstrike in %i, take cover!",0);
-			g_bAirstrikeValid = true;
-			if(IsValidEntity(entity))
-			{
-				AcceptEntityInput(entity, "Kill");
-			}			
-
-			F18_ShowAirstrike(pos, GetRandomFloat(0.0, 180.0));
-			return Plugin_Stop;	
-		}
-
-	return Plugin_Continue;
-	}
-
-	public Action:TimerActivateBomb(Handle:hTimer, Handle:hPack)
-	{
-		CreateTimer(0.3, TimerCheckBombSensors, hPack, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
-		
-		return Plugin_Stop;
-	}
-
-	public Action:TimerCheckBombSensors(Handle:hTimer, Handle:hPack)
-	{
-		new Float:pos[3];
-		decl Float:clientpos[3];
-		
-		ResetPack(hPack);
-		pos[0] = ReadPackFloat(hPack);
-		pos[1] = ReadPackFloat(hPack);
-		pos[2] = ReadPackFloat(hPack);
-
-		new owner = ReadPackCell(hPack);
-		new session = ReadPackCell(hPack);
-		int index = ReadPackCell(hPack);
-
-		if (index < 0) index = 0;
-
-		if (session != RndSession)
-		return Plugin_Stop;
-		
-		for (new client = 1; client <= MaxClients; client++)
-		{
-			if (!IsValidEntity(client) || !IsClientInGame(client) || !IsPlayerAlive(client) || IsGhost(client))
-			continue;
-			if(GetClientTeam(client) == 3 || GetClientTeam(client) == 2)
-			{
-				GetClientAbsOrigin(client, clientpos);
-				
-				if (GetVectorDistance(pos, clientpos) < GetConVarFloat(SABOTEUR_BOMB_RADIUS))
-				{
-					if (GetClientTeam(client) == 3) {
-						PrintHintTextToAll("%N's mine detonated!", owner);
-						CreateExplosion(pos, owner, false);
-						BombActive = false;
-						BombIndex[index] = false;
-						CloseHandle(hPack);
-
-						return Plugin_Stop;
-					}
-					else if (GetClientTeam(client) == 2) {
-						PrintHintText(client, "Warning! You are nearby armed mine. Infected will blow it up");
-					}
-				}
-				
-			}
-		}
-		return Plugin_Continue;
-	}
-
-	public Action:timerHurtEntity(Handle:timer, Handle:pack)
-	{
-		ResetPack(pack);
-		new client = ReadPackCell(pack);
-		new attacker = ReadPackCell(pack);
-		new Float:amount = ReadPackFloat(pack);
-		new type = ReadPackCell(pack);
-		CloseHandle(pack);
-		HurtEntity(client, attacker, amount, type);
-	}
-	stock DetonateMolotov(Float:pos[3], owner)
-	{
-		pos[2]+=5.0;
-		new Handle:sdkDetonateFire;
-		StartPrepSDKCall(SDKCall_Static);
-		if (!PrepSDKCall_SetSignature(SDKLibrary_Server, "\x8B\x44**\x8B\x4C**\x53\x56\x57\x8B\x7C**\x57\x50\x51\x68****\xE8****\x8B\x5C**\xD9**\x83\xEC*\xDD***\x8B\xF0\xD9**\x8B\x44**\xDD***\xD9*\xDD***\xD9**\xDD***\xD9**\xDD***\xD9*\xDD**\x68****", 85))
-		PrepSDKCall_SetSignature(SDKLibrary_Server, "@_ZN18CMolotovProjectile6CreateERK6VectorRK6QAngleS2_S2_P20CBaseCombatCharacter", 0);
-		PrepSDKCall_AddParameter(SDKType_Vector, SDKPass_ByRef);
-		PrepSDKCall_AddParameter(SDKType_QAngle, SDKPass_ByRef);
-		PrepSDKCall_AddParameter(SDKType_Vector, SDKPass_ByRef);
-		PrepSDKCall_AddParameter(SDKType_Vector, SDKPass_ByRef);
-		PrepSDKCall_AddParameter(SDKType_CBasePlayer, SDKPass_Pointer);
-		sdkDetonateFire = EndPrepSDKCall();
-		if(sdkDetonateFire == INVALID_HANDLE)
-		{
-			LogError("Invalid Function Call at DetonateMolotov()");
-			CloseHandle(sdkDetonateFire);
-			return;
-		}
-		new Float:vec[3];
-		SDKCall(sdkDetonateFire, pos, vec, vec, vec, owner);
-		CloseHandle(sdkDetonateFire);
-	}
-
-	stock DealDamage(iVictim, iAttacker, Float:flAmount, iType = 0)
-	{
-		new Handle:hPack = CreateDataPack();
-		WritePackCell(hPack, iVictim);
-		WritePackCell(hPack, iAttacker);
-		WritePackFloat(hPack, flAmount);
-		WritePackCell(hPack, iType);
-		CreateTimer(0.1, timerHurtEntity, hPack);
-	}
-
-	stock HurtEntity(client, attacker, Float:amount, type)
-	{
-		new damage = RoundFloat(amount);
-		if (IsValidEntity(client))
-		{
-			decl String:sUser[256], String:sDamage[11], String:sType[11];
-			IntToString(client+25, sUser, sizeof(sUser));
-			IntToString(damage, sDamage, sizeof(sDamage));
-			IntToString(type, sType, sizeof(sType));
-			new iDmgEntity = CreateEntityByName("point_hurt");
-			DispatchKeyValue(client, "targetname", sUser);
-			DispatchKeyValue(iDmgEntity, "DamageTarget", sUser);
-			DispatchKeyValue(iDmgEntity, "Damage", sDamage);
-			DispatchKeyValue(iDmgEntity, "DamageType", sType);
-			DispatchSpawn(iDmgEntity);
-			if (IsValidEntity(iDmgEntity))
-			{
-				AcceptEntityInput(iDmgEntity, "Hurt", client);
-				AcceptEntityInput(iDmgEntity, "Kill");
-			}
-		}
-	}
-
-	stock CreateExplosion(Float:expPos[3], attacker = 0, bool:panic = true)
-	{
-		decl String:sRadius[16], String:sPower[16], String:sInterval[11];
-		new Float:flMxDistance = 450.0;
-		new Float:power = GetConVarFloat(SABOTEUR_BOMB_POWER);
-		//new iDamageSurv = GetConVarInt(SABOTEUR_BOMB_DAMAGE_SURV);
-		new Float:iDamageInf = GetConVarFloat(SABOTEUR_BOMB_DAMAGE_INF);
-		new Float:flInterval = 0.1;
-		FloatToString(flInterval, sInterval, sizeof(sInterval));
-		IntToString(450, sRadius, sizeof(sRadius));
-		IntToString(800, sPower, sizeof(sPower));
-		
-		new exParticle2 = CreateEntityByName("info_particle_system");
-		new exParticle3 = CreateEntityByName("info_particle_system");
-		new exTrace = CreateEntityByName("info_particle_system");
-		new exPhys = CreateEntityByName("env_physexplosion");
-		new exHurt = CreateEntityByName("point_hurt");
-		new exParticle = CreateEntityByName("info_particle_system");
-		new exEntity = CreateEntityByName("env_explosion");
-		
-		//Set up the particle explosion
-		DispatchKeyValue(exParticle, "effect_name", EXPLOSION_PARTICLE);
-		DispatchSpawn(exParticle);
-		ActivateEntity(exParticle);
-		TeleportEntity(exParticle, expPos, NULL_VECTOR, NULL_VECTOR);
-		
-		DispatchKeyValue(exParticle2, "effect_name", EXPLOSION_PARTICLE2);
-		DispatchSpawn(exParticle2);
-		ActivateEntity(exParticle2);
-		TeleportEntity(exParticle2, expPos, NULL_VECTOR, NULL_VECTOR);
-		
-		DispatchKeyValue(exParticle3, "effect_name", EXPLOSION_PARTICLE3);
-		DispatchSpawn(exParticle3);
-		ActivateEntity(exParticle3);
-		TeleportEntity(exParticle3, expPos, NULL_VECTOR, NULL_VECTOR);
-		
-		DispatchKeyValue(exTrace, "effect_name", EFIRE_PARTICLE);
-		DispatchSpawn(exTrace);
-		ActivateEntity(exTrace);
-		TeleportEntity(exTrace, expPos, NULL_VECTOR, NULL_VECTOR);
-		
-		
-		//Set up explosion entity
-		DispatchKeyValue(exEntity, "fireballsprite", "sprites/muzzleflash4.vmt");
-		DispatchKeyValue(exEntity, "iMagnitude", "150");
-		DispatchKeyValue(exEntity, "iRadiusOverride", sRadius);
-		DispatchKeyValue(exEntity, "spawnflags", "828");
-		DispatchSpawn(exEntity);
-		TeleportEntity(exEntity, expPos, NULL_VECTOR, NULL_VECTOR);
-		
-		//Set up physics movement explosion
-		DispatchKeyValue(exPhys, "radius", sRadius);
-		DispatchKeyValue(exPhys, "magnitude", sPower);
-		DispatchKeyValue(exPhys, "spawnflags", "1");
-
-		DispatchSpawn(exPhys);
-		TeleportEntity(exPhys, expPos, NULL_VECTOR, NULL_VECTOR);
-		
-		
-		//Set up hurt point
-		DispatchKeyValue(exHurt, "DamageRadius", sRadius);
-		DispatchKeyValue(exHurt, "DamageDelay", sInterval);
-		DispatchKeyValue(exHurt, "Damage", "1");
-		DispatchKeyValue(exHurt, "DamageType", "128");
-		DispatchSpawn(exHurt);
-		TeleportEntity(exHurt, expPos, NULL_VECTOR, NULL_VECTOR);
-		
-		//DetonateMolotov(expPos, attacker);
-		
-		for(new i = 1; i <= 2; i++)
-		//DetonateMolotov(expPos, attacker);
-		
-		switch(GetRandomInt(1,3))
-		{
-			case 1:
-			EmitSoundToAll(EXPLOSION_SOUND);
-			
-			case 2:
-			EmitSoundToAll(EXPLOSION_SOUND2);
-			
-			case 3:
-			EmitSoundToAll(EXPLOSION_SOUND3);
-		}
-		
-		AcceptEntityInput(exParticle, "Start");
-		AcceptEntityInput(exParticle2, "Start");
-		AcceptEntityInput(exParticle3, "Start");
-		AcceptEntityInput(exTrace, "Start");
-		AcceptEntityInput(exEntity, "Explode");
-		AcceptEntityInput(exPhys, "Explode");
-		AcceptEntityInput(exHurt, "TurnOn");
-		
-		new Handle:pack2 = CreateDataPack();
-		WritePackCell(pack2, exParticle);
-		WritePackCell(pack2, exParticle2);
-		WritePackCell(pack2, exParticle3);
-		WritePackCell(pack2, exTrace);
-		WritePackCell(pack2, exEntity);
-		WritePackCell(pack2, exPhys);
-		WritePackCell(pack2, exHurt);
-		CreateTimer(6.0, TimerDeleteParticles, pack2, TIMER_FLAG_NO_MAPCHANGE);
-		
-		new Handle:pack = CreateDataPack();
-		WritePackCell(pack, exTrace);
-		WritePackCell(pack, exHurt);
-		CreateTimer(4.5, TimerStopFire, pack, TIMER_FLAG_NO_MAPCHANGE);
-		
-		decl Float:survivorPos[3], Float:traceVec[3], Float:resultingFling[3], Float:currentVelVec[3];
-		
-		for (new i = 1; i <= MaxClients; i++)
-		{
-			if (!IsClientInGame(i) || !IsPlayerAlive(i))
-			continue;
-
-			GetEntPropVector(i, Prop_Data, "m_vecOrigin", survivorPos);
-			
-			if (GetVectorDistance(expPos, survivorPos) <= flMxDistance)
-			{
-				MakeVectorFromPoints(expPos, survivorPos, traceVec);
-				GetVectorAngles(traceVec, resultingFling);
-				
-				resultingFling[0] = Cosine(DegToRad(resultingFling[1])) * power;
-				resultingFling[1] = Sine(DegToRad(resultingFling[1])) * power;
-				resultingFling[2] = power;
-				
-				GetEntPropVector(i, Prop_Data, "m_vecVelocity", currentVelVec);
-				resultingFling[0] += currentVelVec[0];
-				resultingFling[1] += currentVelVec[1];
-				resultingFling[2] += currentVelVec[2];
-				
-				TeleportEntity(i, NULL_VECTOR, NULL_VECTOR, resultingFling);
-				
-				if (attacker > 0)
-				{
-					if (GetClientTeam(i) == 2) {
-						//DealDamage(i, attacker, iDamageSurv, 8);
-					}
-					else
-					DealDamage(i, attacker, iDamageInf, 8);
-				}
-			}
-		}
-		
-		decl String:class[32];
-		for (new i=MaxClients+1; i<=2048; i++)
-		{
-			if (IsValidEntity(i))
-			{
-				GetEdictClassname(i, class, sizeof(class));
-				if (StrEqual(class, "prop_physics") || StrEqual(class, "prop_physics_multiplayer"))
-				{
-					GetEntPropVector(i, Prop_Data, "m_vecOrigin", survivorPos);
+					resultingFling[0] = Cosine(DegToRad(resultingFling[1])) * power;
+					resultingFling[1] = Sine(DegToRad(resultingFling[1])) * power;
+					resultingFling[2] = power;
 					
-					//Vector and radius distance calcs by AtomicStryker!
-					if (GetVectorDistance(expPos, survivorPos) <= flMxDistance)
-					{
-						MakeVectorFromPoints(expPos, survivorPos, traceVec);
-						GetVectorAngles(traceVec, resultingFling);
-						
-						resultingFling[0] = Cosine(DegToRad(resultingFling[1])) * power;
-						resultingFling[1] = Sine(DegToRad(resultingFling[1])) * power;
-						resultingFling[2] = power;
-						
-						GetEntPropVector(i, Prop_Data, "m_vecVelocity", currentVelVec);
-						resultingFling[0] += currentVelVec[0];
-						resultingFling[1] += currentVelVec[1];
-						resultingFling[2] += currentVelVec[2];
-						
-						TeleportEntity(i, NULL_VECTOR, NULL_VECTOR, resultingFling);
-					}
+					GetEntPropVector(i, Prop_Data, "m_vecVelocity", currentVelVec);
+					resultingFling[0] += currentVelVec[0];
+					resultingFling[1] += currentVelVec[1];
+					resultingFling[2] += currentVelVec[2];
+					
+					TeleportEntity(i, NULL_VECTOR, NULL_VECTOR, resultingFling);
 				}
 			}
 		}
 	}
+}
 
-	public Action:TimerStopFire(Handle:timer, Handle:pack)
+public Action:TimerStopFire(Handle:timer, Handle:pack)
+{
+	ResetPack(pack);
+	new particle = ReadPackCell(pack);
+	new hurt = ReadPackCell(pack);
+	CloseHandle(pack);
+	
+	if(IsValidEntity(particle))
 	{
-		ResetPack(pack);
-		new particle = ReadPackCell(pack);
-		new hurt = ReadPackCell(pack);
-		CloseHandle(pack);
-		
-		if(IsValidEntity(particle))
-		{
-			AcceptEntityInput(particle, "Stop");
-		}
-		
-		if(IsValidEntity(hurt))
-		{
-			AcceptEntityInput(hurt, "TurnOff");
-		}
+		AcceptEntityInput(particle, "Stop");
 	}
-
-	public Action:TimerDeleteParticles(Handle:timer, Handle:pack)
+	
+	if(IsValidEntity(hurt))
 	{
-		ResetPack(pack);
-		
-		new entity;
-		for (new i = 1; i <= 7; i++)
-		{
-			entity = ReadPackCell(pack);
-			
-			if(IsValidEntity(entity))
-			{
-				AcceptEntityInput(entity, "Kill");
-			}
-		}
-		
-		CloseHandle(pack);
+		AcceptEntityInput(hurt, "TurnOff");
 	}
+}
 
-
-	stock PrecacheParticle(const String:ParticleName[])
+public Action:TimerDeleteParticles(Handle:timer, Handle:pack)
+{
+	ResetPack(pack);
+	
+	new entity;
+	for (new i = 1; i <= 7; i++)
 	{
-		new Particle = CreateEntityByName("info_particle_system");
-		if (IsValidEntity(Particle) && IsValidEdict(Particle))
-		{
-			DispatchKeyValue(Particle, "effect_name", ParticleName);
-			DispatchSpawn(Particle);
-			ActivateEntity(Particle);
-			AcceptEntityInput(Particle, "start");
-			CreateTimer(0.3, TimerRemovePrecacheParticle, Particle, TIMER_FLAG_NO_MAPCHANGE);
-		}
-	}
-
-	public Action:TimerRemovePrecacheParticle(Handle:timer, any:Particle)
-	{
-		if (IsValidEdict(Particle))
-		AcceptEntityInput(Particle, "Kill");
-	}
-
-	stock CreateParticleInPos(Float:pos[3], String:Particle_Name[], int index)
-	{
-		new Particle = CreateEntityByName("info_particle_system");
-		TeleportEntity(Particle, pos, NULL_VECTOR, NULL_VECTOR);
-		DispatchKeyValue(Particle, "effect_name", Particle_Name);
+		entity = ReadPackCell(pack);
 		
-		DispatchSpawn(Particle);
-		DispatchSpawn(Particle);
-
-		ActivateEntity(Particle);
-		AcceptEntityInput(Particle, "start");
-		new Handle:pack = CreateDataPack();
-		WritePackCell(pack, Particle);
-		WritePackCell(pack, index);
-
-		CreateTimer(5.0, TimerStopAndRemoveBombParticle, pack, TIMER_FLAG_NO_MAPCHANGE);
-
-	}
-
-	stock CreateParticle(client, String:Particle_Name[], bool:Parent, Float:duration)
-	{
-		decl Float:pos[3], String:sName[64], String:sTargetName[64];
-		new Particle = CreateEntityByName("info_particle_system");
-		GetEntPropVector(client, Prop_Send, "m_vecOrigin", pos);
-		TeleportEntity(Particle, pos, NULL_VECTOR, NULL_VECTOR);
-		DispatchKeyValue(Particle, "effect_name", Particle_Name);
-		
-		if (Parent)
-		{
-			Format(sName, sizeof(sName), "%d", client+25);
-			DispatchKeyValue(client, "targetname", sName);
-			GetEntPropString(client, Prop_Data, "m_iName", sName, sizeof(sName));
-			
-			Format(sTargetName, sizeof(sTargetName), "%d", client+1000);
-			DispatchKeyValue(Particle, "targetname", sTargetName);
-			DispatchKeyValue(Particle, "parentname", sName);
-		}
-		
-		DispatchSpawn(Particle);
-		DispatchSpawn(Particle);
-		
-		if (Parent)
-		{
-			SetVariantString(sName);
-			AcceptEntityInput(Particle, "SetParent", Particle, Particle);
-		}
-		
-		ActivateEntity(Particle);
-		AcceptEntityInput(Particle, "start");
-		CreateTimer(duration, TimerActivateBombParticle, Particle, TIMER_FLAG_NO_MAPCHANGE);
-	}
-
-	public Action:TimerActivateBombParticle(Handle:timer, any:entity)
-	{
-		if (entity > 0 && IsValidEntity(entity))
+		if(IsValidEntity(entity))
 		{
 			AcceptEntityInput(entity, "Kill");
 		}
-
 	}
-	public Action:TimerStopAndRemoveParticle(Handle:timer, any:entity)
+	
+	CloseHandle(pack);
+}
+
+
+stock PrecacheParticle(const String:ParticleName[])
+{
+	new Particle = CreateEntityByName("info_particle_system");
+	if (IsValidEntity(Particle) && IsValidEdict(Particle))
 	{
-		if (entity > 0 && IsValidEntity(entity))
-		{
-			if (BombActive == true) {
-				CreateTimer(5.0, TimerStopAndRemoveParticle, entity, TIMER_FLAG_NO_MAPCHANGE);			
-				} else {
-					AcceptEntityInput(entity, "Kill");
-				}
-			}		
-		}
-	public Action:TimerStopAndRemoveBombParticle(Handle:timer, Handle:pack)
+		DispatchKeyValue(Particle, "effect_name", ParticleName);
+		DispatchSpawn(Particle);
+		ActivateEntity(Particle);
+		AcceptEntityInput(Particle, "start");
+		CreateTimer(0.3, TimerRemovePrecacheParticle, Particle, TIMER_FLAG_NO_MAPCHANGE);
+	}
+}
+
+public Action:TimerRemovePrecacheParticle(Handle:timer, any:Particle)
+{
+	if (IsValidEdict(Particle))
+	AcceptEntityInput(Particle, "Kill");
+}
+
+stock CreateParticleInPos(Float:pos[3], String:Particle_Name[], int index)
+{
+	new Particle = CreateEntityByName("info_particle_system");
+	TeleportEntity(Particle, pos, NULL_VECTOR, NULL_VECTOR);
+	DispatchKeyValue(Particle, "effect_name", Particle_Name);
+	
+	DispatchSpawn(Particle);
+	DispatchSpawn(Particle);
+
+	ActivateEntity(Particle);
+	AcceptEntityInput(Particle, "start");
+	new Handle:pack = CreateDataPack();
+	WritePackCell(pack, Particle);
+	WritePackCell(pack, index);
+
+	CreateTimer(5.0, TimerStopAndRemoveBombParticle, pack, TIMER_FLAG_NO_MAPCHANGE);
+
+}
+
+stock CreateParticle(client, String:Particle_Name[], bool:Parent, Float:duration)
+{
+	decl Float:pos[3], String:sName[64], String:sTargetName[64];
+	new Particle = CreateEntityByName("info_particle_system");
+	GetEntPropVector(client, Prop_Send, "m_vecOrigin", pos);
+	TeleportEntity(Particle, pos, NULL_VECTOR, NULL_VECTOR);
+	DispatchKeyValue(Particle, "effect_name", Particle_Name);
+	
+	if (Parent)
 	{
-		ResetPack(pack);
-		int entity = ReadPackCell(pack);
-		int index = ReadPackCell(pack);
-		CloseHandle(pack);
-		if (entity > 0 && IsValidEntity(entity)) 
-		{
-			if (BombActive == false) {
-				AcceptEntityInput(entity, "Kill");
+		Format(sName, sizeof(sName), "%d", client+25);
+		DispatchKeyValue(client, "targetname", sName);
+		GetEntPropString(client, Prop_Data, "m_iName", sName, sizeof(sName));
+		
+		Format(sTargetName, sizeof(sTargetName), "%d", client+1000);
+		DispatchKeyValue(Particle, "targetname", sTargetName);
+		DispatchKeyValue(Particle, "parentname", sName);
+	}
+	
+	DispatchSpawn(Particle);
+	DispatchSpawn(Particle);
+	
+	if (Parent)
+	{
+		SetVariantString(sName);
+		AcceptEntityInput(Particle, "SetParent", Particle, Particle);
+	}
+	
+	ActivateEntity(Particle);
+	AcceptEntityInput(Particle, "start");
+	CreateTimer(duration, TimerActivateBombParticle, Particle, TIMER_FLAG_NO_MAPCHANGE);
+}
+
+public Action:TimerActivateBombParticle(Handle:timer, any:entity)
+{
+	if (entity > 0 && IsValidEntity(entity))
+	{
+		AcceptEntityInput(entity, "Kill");
+	}
+
+}
+public Action:TimerStopAndRemoveParticle(Handle:timer, any:entity)
+{
+	if (entity > 0 && IsValidEntity(entity))
+	{
+		if (BombActive == true) {
+			CreateTimer(5.0, TimerStopAndRemoveParticle, entity, TIMER_FLAG_NO_MAPCHANGE);			
 			} else {
-				AcceptEntityInput(entity, "stop");
-				BombActive = true;
-				static float vPos[3];
-				char color[12];
-				new Handle:hPack = CreateDataPack();
-				WritePackCell(hPack, index);
-				WritePackCell(hPack, entity);
-				GetConVarString(SABOTEUR_ACTIVE_BOMB_COLOR, color, sizeof(color));
-				SetupPrjEffects(entity, vPos, color); // Red
-				int defibParticle;
-				int elmosParticle;
-
-				// Particle
-				defibParticle = DisplayParticle(false, PARTICLE_DEFIB, vPos, NULL_VECTOR);				
-				WritePackCell(hPack, defibParticle);
-
-				if (defibParticle) InputKill(defibParticle, 2.0);
-				elmosParticle = DisplayParticle(defibParticle, PARTICLE_ELMOS, vPos, NULL_VECTOR);
-				if (elmosParticle) InputKill(elmosParticle, 3.0);
-				WritePackCell(hPack, elmosParticle);
-
-				CreateTimer(15.0, TimerDeleteBombs, hPack, TIMER_FLAG_NO_MAPCHANGE);			
+				AcceptEntityInput(entity, "Kill");
 			}
-		}
+		}		
 	}
-
-	public Action:TimerDeleteBombs(Handle:timer, Handle:pack)
-	{		
-
-		ResetPack(pack);
-		int index = ReadPackCell(pack);
-		bool removed = false;
-
-		if (BombIndex[index] == false) {
-			for (new i = 0; i <= 2; i++)
-			{
-				int entity = ReadPackCell(pack);
-				if(entity > 0 && IsValidEntity(entity))
-				{
-					AcceptEntityInput(entity, "Kill");
-					removed = true;
-				}
-			}
+public Action:TimerStopAndRemoveBombParticle(Handle:timer, Handle:pack)
+{
+	ResetPack(pack);
+	int entity = ReadPackCell(pack);
+	int index = ReadPackCell(pack);
+	CloseHandle(pack);
+	if (entity > 0 && IsValidEntity(entity)) 
+	{
+		if (BombActive == false) {
+			AcceptEntityInput(entity, "Kill");
 		} else {
-			CloseHandle(pack);
+			AcceptEntityInput(entity, "stop");
+			BombActive = true;
+			static float vPos[3];
+			char color[12];
 			new Handle:hPack = CreateDataPack();
 			WritePackCell(hPack, index);
-			int entity = ReadPackCell(pack);
 			WritePackCell(hPack, entity);
-			int defibParticle = ReadPackCell(pack);
+			GetConVarString(SABOTEUR_ACTIVE_BOMB_COLOR, color, sizeof(color));
+			SetupPrjEffects(entity, vPos, color); // Red
+			int defibParticle;
+			int elmosParticle;
+
+			// Particle
+			defibParticle = DisplayParticle(false, PARTICLE_DEFIB, vPos, NULL_VECTOR);				
 			WritePackCell(hPack, defibParticle);
-			int elmosParticle = ReadPackCell(pack);
+
+			if (defibParticle) InputKill(defibParticle, 2.0);
+			elmosParticle = DisplayParticle(defibParticle, PARTICLE_ELMOS, vPos, NULL_VECTOR);
+			if (elmosParticle) InputKill(elmosParticle, 3.0);
 			WritePackCell(hPack, elmosParticle);
-			CreateTimer(5.0, TimerDeleteBombs, hPack, TIMER_FLAG_NO_MAPCHANGE);		
-			return Plugin_Continue;
+
+			CreateTimer(15.0, TimerDeleteBombs, hPack, TIMER_FLAG_NO_MAPCHANGE);			
 		}
-		if (removed == true) {
-			KillTimer(timer);
-			return Plugin_Stop;
-		} 
 	}
+}
 
-	///////////////////////////////////////////////////////////////////////////////////	
-	// Graphics & effects
-	///////////////////////////////////////////////////////////////////////////////////
+public Action:TimerDeleteBombs(Handle:timer, Handle:pack)
+{		
 
-	public ShowParticle(Float:pos[3], Float:ang[3],String:particlename[], Float:time)
-	{
-		new particle = CreateEntityByName("info_particle_system");
-		if (IsValidEdict(particle))
+	ResetPack(pack);
+	int index = ReadPackCell(pack);
+	bool removed = false;
+
+	if (BombIndex[index] == false) {
+		for (new i = 0; i <= 2; i++)
 		{
-			DispatchKeyValue(particle, "effect_name", particlename); 
-			DispatchSpawn(particle);
-			ActivateEntity(particle);
-			TeleportEntity(particle, pos, ang, NULL_VECTOR);
-			AcceptEntityInput(particle, "start");		
-			CreateTimer(time, DeleteParticles, particle, TIMER_FLAG_NO_MAPCHANGE);
-			return particle;
-		}  
-		return 0;
-	}
-
-	public Action:DeleteParticles(Handle:timer, any:particle)
-	{
-		if (IsValidEntity(particle))
-		{
-			decl String:classname[64];
-			GetEdictClassname(particle, classname, sizeof(classname));
-			if (StrEqual(classname, "info_particle_system", false))
+			int entity = ReadPackCell(pack);
+			if(entity > 0 && IsValidEntity(entity))
 			{
-				AcceptEntityInput(particle, "stop");
-				AcceptEntityInput(particle, "kill");
-				RemoveEdict(particle);
+				AcceptEntityInput(entity, "Kill");
+				removed = true;
 			}
 		}
+	} else {
+		CloseHandle(pack);
+		new Handle:hPack = CreateDataPack();
+		WritePackCell(hPack, index);
+		int entity = ReadPackCell(pack);
+		WritePackCell(hPack, entity);
+		int defibParticle = ReadPackCell(pack);
+		WritePackCell(hPack, defibParticle);
+		int elmosParticle = ReadPackCell(pack);
+		WritePackCell(hPack, elmosParticle);
+		CreateTimer(5.0, TimerDeleteBombs, hPack, TIMER_FLAG_NO_MAPCHANGE);		
+		return Plugin_Continue;
 	}
+	if (removed == true) {
+		KillTimer(timer);
+		return Plugin_Stop;
+	} 
+}
 
+///////////////////////////////////////////////////////////////////////////////////	
+// Graphics & effects
+///////////////////////////////////////////////////////////////////////////////////
 
-	void SetupPrjEffects(int entity, float vPos[3], const char[] color)
+public ShowParticle(Float:pos[3], Float:ang[3],String:particlename[], Float:time)
+{
+	new particle = CreateEntityByName("info_particle_system");
+	if (IsValidEdict(particle))
 	{
-		// Grenade Pos
-		GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", vPos);
+		DispatchKeyValue(particle, "effect_name", particlename); 
+		DispatchSpawn(particle);
+		ActivateEntity(particle);
+		TeleportEntity(particle, pos, ang, NULL_VECTOR);
+		AcceptEntityInput(particle, "start");		
+		CreateTimer(time, DeleteParticles, particle, TIMER_FLAG_NO_MAPCHANGE);
+		return particle;
+	}  
+	return 0;
+}
 
-		// Sprite
-		CreateEnvSprite(entity, color);
-
-		// Steam
-		static float vAng[3];
-		GetEntPropVector(entity, Prop_Data, "m_angRotation", vAng);
-		MakeEnvSteam(entity, vPos, vAng, color);
-
-		// Light
-		int light = MakeLightDynamic(entity, vPos);
-		SetVariantEntity(light);
-		SetVariantString(color);
-		AcceptEntityInput(light, "color");
-		AcceptEntityInput(light, "TurnOn");
-	}
-	void CreateBeamRing(int entity, int iColor[4], float min, float max, max_rings)
+public Action:DeleteParticles(Handle:timer, any:particle)
+{
+	if (IsValidEntity(particle))
 	{
-		// Grenade Pos
-		static float vPos[3];
-		GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", vPos);
-
-		// Make beam rings
-		for( int i = 1; i <= max_rings; i++ )
+		decl String:classname[64];
+		GetEdictClassname(particle, classname, sizeof(classname));
+		if (StrEqual(classname, "info_particle_system", false))
 		{
-			vPos[2] += 20;
-			TE_SetupBeamRingPoint(vPos, min, max, g_BeamSprite, g_HaloSprite, 0, 15, 1.0, 1.0, 2.0, iColor, 20, 0);
-			TE_SendToAll();
+			AcceptEntityInput(particle, "stop");
+			AcceptEntityInput(particle, "kill");
+			RemoveEdict(particle);
 		}
 	}
-	void MakeEnvSteam(int target, const float vPos[3], const float vAng[3], const char[] sColor)
+}
+
+
+void SetupPrjEffects(int entity, float vPos[3], const char[] color)
+{
+	// Grenade Pos
+	GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", vPos);
+
+	// Sprite
+	CreateEnvSprite(entity, color);
+
+	// Steam
+	static float vAng[3];
+	GetEntPropVector(entity, Prop_Data, "m_angRotation", vAng);
+	MakeEnvSteam(entity, vPos, vAng, color);
+
+	// Light
+	int light = MakeLightDynamic(entity, vPos);
+	SetVariantEntity(light);
+	SetVariantString(color);
+	AcceptEntityInput(light, "color");
+	AcceptEntityInput(light, "TurnOn");
+}
+void CreateBeamRing(int entity, int iColor[4], float min, float max, max_rings)
+{
+	// Grenade Pos
+	static float vPos[3];
+	GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", vPos);
+
+	// Make beam rings
+	for( int i = 1; i <= max_rings; i++ )
 	{
-		int entity = CreateEntityByName("env_steam");
-		if( entity == -1 )
-		{
-			LogError("Failed to create 'env_steam'");
-			return;
-		}
-		static char sTemp[16];
-		Format(sTemp, sizeof(sTemp), "silv_steam_%d", target);
-		DispatchKeyValue(entity, "targetname", sTemp);
-		DispatchKeyValue(entity, "SpawnFlags", "1");
-		DispatchKeyValue(entity, "rendercolor", sColor);
-		DispatchKeyValue(entity, "SpreadSpeed", "10");
-		DispatchKeyValue(entity, "Speed", "100");
-		DispatchKeyValue(entity, "StartSize", "5");
-		DispatchKeyValue(entity, "EndSize", "10");
-		DispatchKeyValue(entity, "Rate", "50");
-		DispatchKeyValue(entity, "JetLength", "100");
-		DispatchKeyValue(entity, "renderamt", "150");
-		DispatchKeyValue(entity, "InitialState", "1");
-		DispatchSpawn(entity);
-		AcceptEntityInput(entity, "TurnOn");
-		TeleportEntity(entity, vPos, vAng, NULL_VECTOR);
+		vPos[2] += 20;
+		TE_SetupBeamRingPoint(vPos, min, max, g_BeamSprite, g_HaloSprite, 0, 15, 1.0, 1.0, 2.0, iColor, 20, 0);
+		TE_SendToAll();
+	}
+}
+void MakeEnvSteam(int target, const float vPos[3], const float vAng[3], const char[] sColor)
+{
+	int entity = CreateEntityByName("env_steam");
+	if( entity == -1 )
+	{
+		LogError("Failed to create 'env_steam'");
+		return;
+	}
+	static char sTemp[16];
+	Format(sTemp, sizeof(sTemp), "silv_steam_%d", target);
+	DispatchKeyValue(entity, "targetname", sTemp);
+	DispatchKeyValue(entity, "SpawnFlags", "1");
+	DispatchKeyValue(entity, "rendercolor", sColor);
+	DispatchKeyValue(entity, "SpreadSpeed", "10");
+	DispatchKeyValue(entity, "Speed", "100");
+	DispatchKeyValue(entity, "StartSize", "5");
+	DispatchKeyValue(entity, "EndSize", "10");
+	DispatchKeyValue(entity, "Rate", "50");
+	DispatchKeyValue(entity, "JetLength", "100");
+	DispatchKeyValue(entity, "renderamt", "150");
+	DispatchKeyValue(entity, "InitialState", "1");
+	DispatchSpawn(entity);
+	AcceptEntityInput(entity, "TurnOn");
+	TeleportEntity(entity, vPos, vAng, NULL_VECTOR);
 
-		// Attach
-		if( target )
-		{
-			SetVariantString("!activator");
-			AcceptEntityInput(entity, "SetParent", target);
-		}
+	// Attach
+	if( target )
+	{
+		SetVariantString("!activator");
+		AcceptEntityInput(entity, "SetParent", target);
+	}
 
+	return;
+}
+
+void CreateEnvSprite(int target, const char[] sColor)
+{
+	int entity = CreateEntityByName("env_sprite");
+	if( entity == -1)
+	{
+		LogError("Failed to create 'env_sprite'");
 		return;
 	}
 
-	void CreateEnvSprite(int target, const char[] sColor)
+	DispatchKeyValue(entity, "rendercolor", sColor);
+	DispatchKeyValue(entity, "model", MODEL_SPRITE);
+	DispatchKeyValue(entity, "spawnflags", "3");
+	DispatchKeyValue(entity, "rendermode", "9");
+	DispatchKeyValue(entity, "GlowProxySize", "0.1");
+	DispatchKeyValue(entity, "renderamt", "175");
+	DispatchKeyValue(entity, "scale", "0.1");
+	DispatchSpawn(entity);
+
+	// Attach
+	if( target )
 	{
-		int entity = CreateEntityByName("env_sprite");
-		if( entity == -1)
-		{
-			LogError("Failed to create 'env_sprite'");
-			return;
-		}
+		SetVariantString("!activator");
+		AcceptEntityInput(entity, "SetParent", target);
+	}
+}
 
-		DispatchKeyValue(entity, "rendercolor", sColor);
-		DispatchKeyValue(entity, "model", MODEL_SPRITE);
-		DispatchKeyValue(entity, "spawnflags", "3");
-		DispatchKeyValue(entity, "rendermode", "9");
-		DispatchKeyValue(entity, "GlowProxySize", "0.1");
-		DispatchKeyValue(entity, "renderamt", "175");
-		DispatchKeyValue(entity, "scale", "0.1");
-		DispatchSpawn(entity);
-
-		// Attach
-		if( target )
-		{
-			SetVariantString("!activator");
-			AcceptEntityInput(entity, "SetParent", target);
-		}
+int MakeLightDynamic(int target, const float vPos[3])
+{
+	int entity = CreateEntityByName("light_dynamic");
+	if( entity == -1 )
+	{
+		LogError("Failed to create 'light_dynamic'");
+		return 0;
 	}
 
-	int MakeLightDynamic(int target, const float vPos[3])
+	DispatchKeyValue(entity, "_light", "0 255 0 0");
+	DispatchKeyValue(entity, "brightness", "0.1");
+	DispatchKeyValueFloat(entity, "spotlight_radius", 32.0);
+	DispatchKeyValueFloat(entity, "distance", 600.0);
+	DispatchKeyValue(entity, "style", "6");
+	DispatchSpawn(entity);
+	AcceptEntityInput(entity, "TurnOff");
+
+	TeleportEntity(entity, vPos, NULL_VECTOR, NULL_VECTOR);
+	// Attach
+	if( target )
 	{
-		int entity = CreateEntityByName("light_dynamic");
-		if( entity == -1 )
-		{
-			LogError("Failed to create 'light_dynamic'");
-			return 0;
-		}
+		SetVariantString("!activator");
+		AcceptEntityInput(entity, "SetParent", target);
+	}
+	return entity;
+}
 
-		DispatchKeyValue(entity, "_light", "0 255 0 0");
-		DispatchKeyValue(entity, "brightness", "0.1");
-		DispatchKeyValueFloat(entity, "spotlight_radius", 32.0);
-		DispatchKeyValueFloat(entity, "distance", 600.0);
-		DispatchKeyValue(entity, "style", "6");
-		DispatchSpawn(entity);
-		AcceptEntityInput(entity, "TurnOff");
-
-		TeleportEntity(entity, vPos, NULL_VECTOR, NULL_VECTOR);
-		// Attach
-		if( target )
-		{
-			SetVariantString("!activator");
-			AcceptEntityInput(entity, "SetParent", target);
-		}
-		return entity;
+int DisplayParticle(int target, const char[] sParticle, const float vPos[3], const float vAng[3], float refire = 0.0)
+{
+	int entity = CreateEntityByName("info_particle_system");	
+	if( entity == -1)
+	{
+		LogError("Failed to create 'info_particle_system'");
+		return 0;
 	}
 
-	int DisplayParticle(int target, const char[] sParticle, const float vPos[3], const float vAng[3], float refire = 0.0)
+	DispatchKeyValue(entity, "effect_name", sParticle);
+	DispatchSpawn(entity);
+	ActivateEntity(entity);
+	AcceptEntityInput(entity, "start");
+	TeleportEntity(entity, vPos, vAng, NULL_VECTOR);
+
+	// Refire
+	if( refire )
 	{
-		int entity = CreateEntityByName("info_particle_system");	
-		if( entity == -1)
-		{
-			LogError("Failed to create 'info_particle_system'");
-			return 0;
-		}
-
-		DispatchKeyValue(entity, "effect_name", sParticle);
-		DispatchSpawn(entity);
-		ActivateEntity(entity);
-		AcceptEntityInput(entity, "start");
-		TeleportEntity(entity, vPos, vAng, NULL_VECTOR);
-
-		// Refire
-		if( refire )
-		{
-			static char sTemp[48];
-			Format(sTemp, sizeof(sTemp), "OnUser1 !self:Stop::%f:-1", refire - 0.05);
-			SetVariantString(sTemp);
-			AcceptEntityInput(entity, "AddOutput");
-			Format(sTemp, sizeof(sTemp), "OnUser1 !self:FireUser2::%f:-1", refire);
-			SetVariantString(sTemp);
-			AcceptEntityInput(entity, "AddOutput");
-			AcceptEntityInput(entity, "FireUser1");
-			SetVariantString("OnUser2 !self:Start::0:-1");
-			AcceptEntityInput(entity, "AddOutput");
-			SetVariantString("OnUser2 !self:FireUser1::0:-1");
-			AcceptEntityInput(entity, "AddOutput");
-		}
-		// Attach
-		if( target )
-		{
-			SetVariantString("!activator");
-			AcceptEntityInput(entity, "SetParent", target);
-		}
-
-		return entity;
+		static char sTemp[48];
+		Format(sTemp, sizeof(sTemp), "OnUser1 !self:Stop::%f:-1", refire - 0.05);
+		SetVariantString(sTemp);
+		AcceptEntityInput(entity, "AddOutput");
+		Format(sTemp, sizeof(sTemp), "OnUser1 !self:FireUser2::%f:-1", refire);
+		SetVariantString(sTemp);
+		AcceptEntityInput(entity, "AddOutput");
+		AcceptEntityInput(entity, "FireUser1");
+		SetVariantString("OnUser2 !self:Start::0:-1");
+		AcceptEntityInput(entity, "AddOutput");
+		SetVariantString("OnUser2 !self:FireUser1::0:-1");
+		AcceptEntityInput(entity, "AddOutput");
 	}
+	// Attach
+	if( target )
+	{
+		SetVariantString("!activator");
+		AcceptEntityInput(entity, "SetParent", target);
+	}
+
+	return entity;
+}
 
 /**
 * STOCK FUNCTIONS
