@@ -1,4 +1,4 @@
-	/**
+/**
 	x * vim: set ts=4 :
 * =============================================================================
 * Talents Plugin by DLR / Neil / Spirit / panxiaohai / Yani
@@ -18,9 +18,8 @@
 #undef REQUIRE_PLUGIN
 #tryinclude <MultiTurrets>
 #define REQUIRE_PLUGIN
-
 #if !defined _DLRCore_included
-native int LMC_GetEntityOverlayModel(int iEntity);
+native int DLC_GetCurrentClass(int player);
 #endif
 
 bool	g_bLeft4Dead2, g_bLateLoad;
@@ -38,13 +37,9 @@ bool 	g_bLeft4DHooks, g_bAirstrike, g_bAirstrikeValid, g_bMultiturret, g_bMultit
 
 /// MENU AND UI RELATED STUFF
 
-// This is what to display on the class selection menu.
 static const String:MENU_OPTIONS[][] =
 {
-	// What should be displayed if the player does not have a class?
 	"None",
-	
-	// You can change how the menus display here.
 	"Soldier",
 	"Athlete",
 	"Medic",
@@ -102,13 +97,14 @@ const MAXCLASSES=view_as<int>(8);
 
 enum struct PlayerInfo 
 {
-	int BombsUsed;
-	int ItemsBuilt;
+	int SpecialsUsed;
 	float HideStartTime;
 	float HealStartTime;
 	int LastButtons;
 	int ChosenClass;
 	float LastDropTime;
+	int SpecialDropInterval;
+	int SpecialLimit;	
 	char EquippedGun[64];
 
 }
@@ -316,112 +312,15 @@ public Plugin:myinfo =
 
 // Optional native from L4D2 Airstrike
 native void F18_ShowAirstrike(float origin[3], float direction);
+
 // Optional native from Multiturret
-native void DLR_Multiturret(int client, int type);	
+native void DLR_Multiturret(int client, int type);
 
 // ====================================================================================================
 //					L4D2 - F-18 AIRSTRIKE
 // ====================================================================================================
-public void F18_OnPluginState(int pluginstate)
-{
-	static int mystate;
 
-	if( pluginstate == 1 && mystate == 0 )
-	{
-		mystate = 1;
-		g_bAirstrikeValid = true;
-	}
-	else if( pluginstate == 0 && mystate == 1 )
-	{
-		mystate = 0;
-		g_bAirstrikeValid = false;
-	}
-}
-// ====================================================================================================
-//					L4D2 - Multiturret
-// ====================================================================================================
-public void Multiturret_OnPluginState(int pluginstate)
-{
-	static int mystate;
-
-	if( pluginstate == 1 && mystate == 0 )
-	{
-		mystate = 1;
-		g_bMultiturretValid = true;
-	}
-	else if( pluginstate == 0 && mystate == 1 )
-	{
-		mystate = 0;
-		g_bMultiturretValid = false;
-	}
-}
-
-public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
-{
-	EngineVersion test = GetEngineVersion();
-	if( test == Engine_Left4Dead ) g_bLeft4Dead2 = false;
-	else if( test == Engine_Left4Dead2 ) g_bLeft4Dead2 = true;
-	else
-	{
-		strcopy(error, err_max, "Plugin only supports Left 4 Dead 1 & 2.");
-		return APLRes_SilentFailure;
-	}
-
-	MarkNativeAsOptional("DLR_Airstrike");
-	MarkNativeAsOptional("DLR_Multiturret");
-	
-	g_bLateLoad = late;
-	return APLRes_Success;
-}
-
-public void OnLibraryAdded(const char[] sName)
-{
-	if( strcmp(sName, "Multiturret") == 0 ) {
-		g_bMultiturret = true;
-
-		// Assuming valid for late load
-		if( g_bLateLoad )
-		g_bMultiturretValid = true;
-	}
-	else if( strcmp(sName, "left4dhooks") == 0 )
-	g_bLeft4DHooks = true;
-	else if( g_bLeft4Dead2 && strcmp(sName, "l4d2_airstrike") == 0 )
-	{
-		g_bAirstrike = true;
-
-		// Assuming valid for late load
-		if( g_bLateLoad )
-		g_bAirstrikeValid = true;
-	}
-}
-
-public void OnLibraryRemoved(const char[] sName)
-{
-	if( strcmp(sName, "Multiturret") == 0 )
-	g_bMultiturret = false;
-	else if( strcmp(sName, "left4dhooks") == 0 )
-	g_bLeft4DHooks = false;
-	else if( g_bLeft4Dead2 && strcmp(sName, "l4d2_airstrike") == 0 )
-	g_bAirstrike = false;
-}
-
-
-public void F18_OnRoundState(int roundstate)
-{
-	static int mystate;
-
-	if( roundstate == 1 && mystate == 0 )
-	{
-		mystate = 1;
-		g_bAirstrikeValid = true;
-	}
-	else if( roundstate == 0 && mystate == 1 )
-	{
-		mystate = 0;
-		g_bAirstrikeValid = false;
-	}
-}
-	/**
+/**
 * PLUGIN LOGIC
 */
 
@@ -537,21 +436,126 @@ public OnPluginStart( )
 	ADRENALINE_DURATION =  CreateConVar("talents_adrenaline_duration", "30.0", "Default adrenaline duration");
 	ADRENALINE_HEALTH_BUFFER =  CreateConVar("talents_adrenaline_health_buffer", "75.0", "Default health given on adrenaline");
 
-	ResetAllState();//turrets stuff	
 	AutoExecConfig(true, "talents");
 	ApplyHealthModifiers();	
 }
 
 public ResetClientVariables(client)
 {
-	ClientData[client].BombsUsed = 0;
-	ClientData[client].ItemsBuilt = 0;
+	ClientData[client].SpecialsUsed = 0;	
 	ClientData[client].HideStartTime= GetGameTime();
 	ClientData[client].HealStartTime= GetGameTime();
 	ClientData[client].LastButtons = 0;
+	ClientData[client].SpecialDropInterval = 0;
 	ClientData[client].ChosenClass = NONE;
 	ClientData[client].LastDropTime = 0.0;
 	g_bInSaferoom[client] = false;
+}
+
+
+// ====================================================================================================
+//					Register plugins
+// ====================================================================================================
+
+public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
+{
+	EngineVersion test = GetEngineVersion();
+	if( test == Engine_Left4Dead ) g_bLeft4Dead2 = false;
+	else if( test == Engine_Left4Dead2 ) g_bLeft4Dead2 = true;
+	else
+	{
+		strcopy(error, err_max, "Plugin only supports Left 4 Dead 1 & 2.");
+		return APLRes_SilentFailure;
+	}
+
+	MarkNativeAsOptional("DLR_Airstrike");
+	MarkNativeAsOptional("DLR_Multiturret");
+	//MarkNativeAsOptional("DLR_Berzerk");
+	//MarkNativeAsOptional("DLR_Infected2023");
+
+	g_bLateLoad = late;
+	return APLRes_Success;
+}
+
+
+public void F18_OnRoundState(int roundstate)
+{
+	static int mystate;
+
+	if(roundstate == 1 && mystate == 0 )
+	{
+		mystate = 1;
+		g_bAirstrikeValid = true;
+	}
+	else if(roundstate == 0 && mystate == 1)
+	{
+		mystate = 0;
+		g_bAirstrikeValid = false;
+	}
+}
+public void F18_OnPluginState(int pluginstate)
+{
+	static int mystate;
+
+	if(pluginstate == 1 && mystate == 0)
+	{
+		mystate = 1;
+		g_bAirstrikeValid = true;
+	}
+	else if(pluginstate == 0 && mystate == 1)
+	{
+		mystate = 0;
+		g_bAirstrikeValid = false;
+	}
+}
+// ====================================================================================================
+//					DLR - Multiturret
+// ====================================================================================================
+public void Multiturret_OnPluginState(int pluginstate)
+{
+	static int mystate;
+
+	if( pluginstate == 1 && mystate == 0 )
+	{
+		mystate = 1;
+		g_bMultiturretValid = true;
+	}
+	else if( pluginstate == 0 && mystate == 1 )
+	{
+		mystate = 0;
+		g_bMultiturretValid = false;
+	}
+}
+
+public void OnLibraryAdded(const char[] sName)
+{
+	if( strcmp(sName, "Multiturret") == 0 ) {
+		g_bMultiturret = true;
+
+		// Assuming valid for late load
+		if( g_bLateLoad )
+		g_bMultiturretValid = true;
+	}
+	else if( strcmp(sName, "left4dhooks") == 0 )
+	g_bLeft4DHooks = true;
+	else if( g_bLeft4Dead2 && strcmp(sName, "l4d2_airstrike") == 0 )
+	{
+		g_bAirstrike = true;
+
+		// Assuming valid for late load
+		if( g_bLateLoad )
+		g_bAirstrikeValid = true;
+	}
+}
+
+public void OnLibraryRemoved(const char[] sName)
+{
+	if( strcmp(sName, "Multiturret") == 0 )
+	g_bMultiturret = false;
+	else if( strcmp(sName, "left4dhooks") == 0 )
+	g_bLeft4DHooks = false;
+	else if( g_bLeft4Dead2 && strcmp(sName, "l4d2_airstrike") == 0 )
+	g_bAirstrike = false;
 }
 
 public OnMapStart()
@@ -581,7 +585,6 @@ public OnMapStart()
 	ClearCache();
 	RoundStarted = false;
 	ClassHint = false;
-	PrecacheTurret();//turretstuff
 
 	for (int i = 0; i < 2; i++)
 	PrecacheModel(g_sModels[i]);
@@ -661,13 +664,13 @@ public OnClientDisconnect(client)
 public Action:TimerThink(Handle:hTimer, any:client)
 {
 	if (!IsValidEntity(client) || !IsClientInGame(client) || IsFakeClient(client) || !IsPlayerAlive(client) || GetClientTeam(client) != 2)
-	return Plugin_Stop;
-	
-	new flags = GetEntityFlags(client);
+	{
+		return Plugin_Stop;
+	}
 	
 	new buttons = GetClientButtons(client);
 	new Float:fCanDropTime = (GetGameTime() - ClientData[client].LastDropTime);
-	new bool:CanDrop = (fCanDropTime >= GetConVarFloat(MINIMUM_DROP_INTERVAL));
+	new bool:CanDrop = (fCanDropTime >= ClientData[client].SpecialDropInterval);
 	decl Float:pos[3];
 	GetClientAbsOrigin(client, pos);
 	int iDropTime = RoundToFloor(fCanDropTime);
@@ -675,7 +678,8 @@ public Action:TimerThink(Handle:hTimer, any:client)
 	switch (ClientData[client].ChosenClass)
 	{
 		case ATHLETE:
-		{
+		{	
+			new flags = GetEntityFlags(client);
 			SetEntDataFloat(client, g_ioLMV, GetConVarFloat(ATHLETE_SPEED), true);
 		}
 		
@@ -746,7 +750,7 @@ public Action:TimerThink(Handle:hTimer, any:client)
 
 					if (CanDrop == true && !IsPlayerInSaferoom(client) && !IsInEndingSaferoom(client))
 					{
-						if (ClientData[client].BombsUsed >= GetConVarInt(SABOTEUR_MAX_BOMBS)) {
+						if (ClientData[client].SpecialsUsed >= GetConVarInt(SABOTEUR_MAX_BOMBS)) {
 							PrintHintText(client ,"You're out of mines");
 						} else {
 							ClientData[client].LastDropTime = GetGameTime();								
@@ -764,10 +768,10 @@ public Action:TimerThink(Handle:hTimer, any:client)
 				if (CanDrop) 
 				{	
 
-					if (ClientData[client].ItemsBuilt > GetConVarInt(MEDIC_MAX_ITEMS)) {
+					if (ClientData[client].SpecialsUsed > GetConVarInt(MEDIC_MAX_ITEMS)) {
 						PrintHintText(client ,"You're out of items (Max %i)", GetConVarInt(MEDIC_MAX_ITEMS));
 					}
-					if (ClientData[client].ItemsBuilt < GetConVarInt(MEDIC_MAX_ITEMS))
+					if (ClientData[client].SpecialsUsed < GetConVarInt(MEDIC_MAX_ITEMS))
 					{	
 						CreatePlayerMedicMenu(client);	
 					}
@@ -796,14 +800,13 @@ public Action:TimerThink(Handle:hTimer, any:client)
 		case ENGINEER:
 		{
 
-			if (buttons & IN_SPEED && RoundStarted == true)// && ClientData[client].ItemsBuilt < GetConVarInt(ENGINEER_MAX_BUILDS)) 
+			if (buttons & IN_SPEED && RoundStarted == true)// && ClientData[client].SpecialsUsed < GetConVarInt(ENGINEER_MAX_BUILDS)) 
 			{	
 				if (CanDrop == false && (iDropTime < GetConVarInt(MINIMUM_DROP_INTERVAL))) {
 					PrintHintText(client ,"Wait %i seconds to deploy", (GetConVarInt(MINIMUM_DROP_INTERVAL) - iDropTime));
 				}
-
 				if (CanDrop == true) {
-					if(ClientData[client].ItemsBuilt < GetConVarInt(ENGINEER_MAX_BUILDS))
+					if(ClientData[client].SpecialsUsed < GetConVarInt(ENGINEER_MAX_BUILDS))
 					{
 						CreatePlayerEngineerMenu(client);	
 						ClientData[client].LastDropTime = GetGameTime();
@@ -811,7 +814,6 @@ public Action:TimerThink(Handle:hTimer, any:client)
 					else
 					{
 						PrintHintText(client ,"You're out of items (Max %i)", GetConVarInt(ENGINEER_MAX_BUILDS));
-						CreateRemoveTurretMenu(client);
 					}
 				}					
 			}
@@ -824,34 +826,50 @@ public Action:TimerThink(Handle:hTimer, any:client)
 			{
 				if (g_bAirstrike && g_bAirstrikeValid == false) {
 					return Plugin_Continue;
-				}					
-				if (CanDrop == false && (iDropTime < GetConVarInt(MINIMUM_AIRSTRIKE_INTERVAL))) 
-				{
-					PrintHintText(client ,"New possible strike available after %i seconds", (GetConVarInt(MINIMUM_AIRSTRIKE_INTERVAL) - iDropTime));
-				} else {
-
-					if (CanDrop == true && !IsPlayerInSaferoom(client) && !IsInEndingSaferoom(client))
-					{
-						if (ClientData[client].BombsUsed >= GetConVarInt(SOLDIER_MAX_AIRSTRIKES)) {
-							PrintHintText(client ,"You're on your own, no more air support");
-						} else {
-							
-							ClientData[client].LastDropTime = GetGameTime();
-							g_bAirstrikeValid = false;
-							CreateAirStrike(client);
-						}
-					}
+				}	
+				char pendingMessage[128] = "Next possible strike available after %i seconds";
+				char outOfMessage[128] = "You're on your own, no more air support";
+				
+				if (ClientData[client].LastButtons != buttons && canUseSpecialSkill(client, pendingMessage)) {
+					ClientData[client].LastDropTime = GetGameTime();
+					g_bAirstrikeValid = false;
+					CreateAirStrike(client);
 				}
 			}
-	
 		}
-	}		
+	}
+
 	ClientData[client].LastButtons = buttons;
 	return Plugin_Continue;
-	
 }	
 
-void CreateAirStrike(int client) {
+public bool canUseSpecialSkill(client, char[] pendingMessage)
+{
+	new Float:fCanDropTime = (GetGameTime() - ClientData[client].LastDropTime);
+	new bool:CanDrop = (fCanDropTime >= ClientData[client].SpecialDropInterval);
+	char pendMsg[128];
+	char outOfMsg[128];
+
+	int iDropTime = RoundToFloor(fCanDropTime);
+
+	if (IsPlayerInSaferoom(client) || IsInEndingSaferoom(client)) {
+			PrintHintText(client, "Cannot deploy inside safe areas");
+			return false;
+	}
+	else if (CanDrop == false)
+	{
+		Format(pendMsg, sizeof(pendMsg), pendingMessage, (ClientData[client].SpecialDropInterval-iDropTime));
+		PrintHintText(client, pendingMessage);
+		return false;
+	} else if (ClientData[client].SpecialsUsed >= ClientData[client].SpecialLimit) {
+		Format(outOfMsg, sizeof(outOfMsg), "You're out of supplies! (Max %i / round)", ClientData[client].SpecialLimit);
+		PrintHintText(client, pendingMessage);
+		return false;
+	} 
+
+	return true;
+}
+public void CreateAirStrike(int client) {
 	
 	float vPos[3];
 
@@ -861,10 +879,10 @@ void CreateAirStrike(int client) {
 		DispatchSpawn(entity);
 		ActivateEntity(entity);
 
-		CreateBeamRing(entity, { 255, 0, 255, 255 },0.1, 80, 5);
+		CreateBeamRing(entity, { 255, 0, 255, 255 },0.1, 180, 5);
 
 		PrintHintTextToAll("%N ordered airstrike, take cover!", client);
-		PrintDebug(client, "Ordering airstrike");
+		
 		new Handle:pack = CreateDataPack();
 		WritePackCell(pack, client);
 		WritePackFloat(pack, vPos[0]);
@@ -875,6 +893,7 @@ void CreateAirStrike(int client) {
 		CreateTimer( 1, TimerAirstrike, pack, TIMER_FLAG_NO_MAPCHANGE ); 									
 	} 
 }
+
 stock SetupProgressBar(client, Float:time)
 {
 	SetEntPropFloat(client, Prop_Send, "m_flProgressBarStartTime", GetGameTime());
@@ -910,61 +929,6 @@ public ShowBar(client, String:msg[], Float:pos, Float:max)
 	PrintHintText(client, "%s  %3.0f %\n<< %s >>", msg, GaugeNum, ChargeBar);
 }
 
-
-/*
-DrawConfirmPanel(client, chosenClass)
-{
-	if (!client || chosenClass >= MAXCLASSES)
-		return false;
-	
-	LastChosenClass[client] = chosenClass;
-	
-	new Handle:hPanel;
-	decl String:buffer[256];
-	
-	if((hPanel = CreatePanel()) == INVALID_HANDLE)
-	{
-		LogError("Cannot create hPanel on CreatePlayerClassMenu");
-		return false;
-	}
-	
-	Format(buffer, sizeof(buffer), "Select the %s talent?", MENU_OPTIONS[chosenClass]);
-	SetPanelTitle(hPanel, buffer);
-	
-	
-	DrawPanelItem(hPanel, "Yes");
-	DrawPanelItem(hPanel, "No");
-	
-	SendPanelToClient(hPanel, client, PanelHandler_ConfirmClass, MENU_OPEN_TIME);
-	CloseHandle(hPanel);
-	
-	return true;
-}
-
-public PanelHandler_ConfirmClass(Handle:menu, MenuAction:action, client, param)
-{
-	switch (action)
-	{
-		case MenuAction_Select:
-		{
-			new class = LastChosenClass[client];
-			
-			if( param == 1 && class < MAXCLASSES && ( CountPlayersWithClass( class ) < GetMaxWithClass( class ) || ClientData[client].ChosenClass != class || GetMaxWithClass( class ) < 0 ) )
-			{
-				LastClassConfirmed[client] = class;
-				
-				PrintToConsole(client, "Class is setting up");
-				
-				SetupClasses(client, class);
-				EmitSoundToClient(client, SOUND_CLASS_SELECTED);
-				PrintToChat(client, "%sYou are now a \x04%s", PRINT_PREFIX, MENU_OPTIONS[class]);
-			}
-			else
-				CreatePlayerClassMenu(client);
-		}
-	}
-}
-*/
 
 public ClearCache()
 {
@@ -1005,7 +969,6 @@ public Event_RoundChange(Handle:event, String:name[], bool:dontBroadcast)
 	RndSession++;
 	RoundStarted = false;
 
-	ResetAllState();//turrets stuff
 }
 
 public Event_PlayerSpawn(Handle:hEvent, String:sName[], bool:bDontBroadcast)
@@ -1209,20 +1172,30 @@ public void SetupClasses(client, class)
 	return;
 	
 	ClientData[client].ChosenClass = class;
+	ClientData[client].SpecialDropInterval = GetConVarInt(MINIMUM_DROP_INTERVAL);	
 	new MaxPossibleHP = GetConVarInt(NONE_HEALTH);
 	
+
 	switch (class)
 	{
 		case SOLDIER:	
 		{
-			PrintHintText(client,"You have armor, increased attack rate and move faster!");
+			char text[64];
+			if (g_bAirstrike == true) {
+				text = "Press SHIFT for Airstrike!";
+			}
+
+			PrintHintText(client,"You have armor, fast attack rate and movement %s", text );
+			ClientData[client].SpecialDropInterval = GetConVarInt(MINIMUM_AIRSTRIKE_INTERVAL);
+			ClientData[client].SpecialLimit = GetConVarInt(SOLDIER_MAX_AIRSTRIKES);
 			MaxPossibleHP = GetConVarInt(SOLDIER_HEALTH);
 		}
 		
 		case MEDIC:
 		{
-			PrintHintText(client,"Hold CROUCH to heal others, Press SHIFT to drop medkits and more!!");
+			PrintHintText(client,"Hold CROUCH to heal others, Press SHIFT to drop medkits & supplies");
 			CreateTimer(GetConVarFloat(MEDIC_HEALTH_INTERVAL), TimerDetectHealthChanges, client, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+			ClientData[client].SpecialLimit = GetConVarInt(MEDIC_MAX_ITEMS);
 			MaxPossibleHP = GetConVarInt(MEDIC_HEALTH);
 		}
 		
@@ -1231,7 +1204,7 @@ public void SetupClasses(client, class)
 			decl String:text[64];
 			text = "";
 			if (parachuteEnabled.BoolValue) {
-				text = "While in air, press E to use parachute!";
+				text = "While in air, hold E to use parachute!";
 			}
 			PrintHintText(client,"You move faster, Hold JUMP to bunny hop! %s", text);
 			MaxPossibleHP = GetConVarInt(ATHLETE_HEALTH);
@@ -1245,14 +1218,16 @@ public void SetupClasses(client, class)
 		
 		case ENGINEER:
 		{
-			PrintHintText(client,"Press SHIFT to drop ammo or movable auto-turret!");
+			PrintHintText(client,"Press SHIFT to drop ammo supplies and auto turrets!");
 			MaxPossibleHP = GetConVarInt(ENGINEER_HEALTH);
+			ClientData[client].SpecialLimit = GetConVarInt(ENGINEER_MAX_BUILDS);
 		}
 		
 		case SABOTEUR:
 		{
-			PrintHintText(client,"Press SHIFT to drop mines! Hold CROUCH over 5 sec to go invisible (For humans)");
+			PrintHintText(client,"Press SHIFT to drop mines! Hold CROUCH over 5 sec to go invisible");
 			MaxPossibleHP = GetConVarInt(SABOTEUR_HEALTH);
+			ClientData[client].SpecialLimit = GetConVarInt(SABOTEUR_MAX_BOMBS);			
 		}
 		
 		case BRAWLER:
@@ -1272,12 +1247,6 @@ public Action:CmdClassMenu(client, args)
 		PrintToChat(client, "%sOnly Survivors can choose a class.", PRINT_PREFIX);
 		return;
 	}
-	
-	//if (ClientData[client].ChosenClass != NONE)
-	//{
-		//	PrintToChat(client, "%sYou have already chosen a class this round.", PRINT_PREFIX);
-		//	return;
-		//}
 		CreatePlayerClassMenu(client);
 	}
 
@@ -1402,64 +1371,26 @@ public PanelHandler_DlrMenu(Handle:menu, MenuAction:action, client, param)
 					SetConVarInt(FindConVar("z_jockey_limit"), 0);
 					SetConVarInt(FindConVar("z_smoker_limit"), 0);
 					SetConVarInt(FindConVar("z_spitter_limit"), 0);
-					} else {
-						ResetConVar(FindConVar("director_no_bosses"));
-						ResetConVar(FindConVar("director_no_mobs"));
-						ResetConVar(FindConVar("z_common_limit"));
-						ResetConVar(FindConVar("z_boomer_limit"));
-						ResetConVar(FindConVar("z_charger_limit"));
-						ResetConVar(FindConVar("z_hunter_limit"));
-						ResetConVar(FindConVar("z_jockey_limit"));
-						ResetConVar(FindConVar("z_smoker_limit"));
-						ResetConVar(FindConVar("z_spitter_limit"));  
-					}
-					PrintHintText(client,"Infected are now %s", disableInfected ? "DISABLED" : "ENABLED");
+				} else {
+					ResetConVar(FindConVar("director_no_bosses"));
+					ResetConVar(FindConVar("director_no_mobs"));
+					ResetConVar(FindConVar("z_common_limit"));
+					ResetConVar(FindConVar("z_boomer_limit"));
+					ResetConVar(FindConVar("z_charger_limit"));
+					ResetConVar(FindConVar("z_hunter_limit"));
+					ResetConVar(FindConVar("z_jockey_limit"));
+					ResetConVar(FindConVar("z_smoker_limit"));
+					ResetConVar(FindConVar("z_spitter_limit"));  
 				}
+					PrintHintText(client,"Infected are now %s", disableInfected ? "DISABLED" : "ENABLED");
 			}
 		}
 	}
+}
 
 ///////////////////////////////////////////////////////////////////////////////////
 // Engineer 
 ///////////////////////////////////////////////////////////////////////////////////
-
-public bool:CreateRemoveTurretMenu(client)
-{
-	if (!client)
-	return false;
-	
-	new Handle:hPanel;
-	
-	if((hPanel = CreatePanel()) == INVALID_HANDLE)
-	{
-		LogError("Cannot create hPanel on CreateRemoveTurretMenu");
-		return false;
-	}
-	
-	SetPanelTitle(hPanel, "Turret:");
-	DrawPanelItem(hPanel, "Remove ");
-	DrawPanelText(hPanel, " ");
-	DrawPanelItem(hPanel, "Exit");
-	
-	SendPanelToClient(hPanel, client, PanelHandler_RemoveTurretMenu, MENU_OPEN_TIME);
-	CloseHandle(hPanel);
-	
-	return true;
-}
-
-public PanelHandler_RemoveTurretMenu(Handle:menu, MenuAction:action, client, param)
-{
-	switch (action)
-	{
-		case MenuAction_Select:
-		{
-			if( param == 1 && removemachine(client))//was 5
-			{
-				ClientData[client].ItemsBuilt--;
-			}	
-		}
-	}
-}
 
 public CreatePlayerEngineerMenu(client)
 {
@@ -1524,20 +1455,16 @@ public void CalculateEngineerPlacePos(client, type)
 					new ammo = CreateEntityByName("weapon_ammo_spawn");
 					DispatchSpawn(ammo);
 					TeleportEntity(ammo, endPos, NULL_VECTOR, NULL_VECTOR);
-					ClientData[client].ItemsBuilt++;
+					ClientData[client].SpecialsUsed++;
 
 				}
 				case 1:{
 
-					if (GetConVarInt(ENGINEER_TURRET_EXTERNAL_PLUGIN) > 0) 
-					{
-						ClientCommand(client, Engineer_Turret_Spawn_Cmd);
-						} else {
+						if (GetConVarInt(ENGINEER_TURRET_EXTERNAL_PLUGIN) > 0) 
+						{
+							ClientCommand(client, Engineer_Turret_Spawn_Cmd);
+							ClientData[client].SpecialsUsed++;
 
-							if(CreateMachine(client))
-							{
-								ClientData[client].ItemsBuilt++;
-							}
 						}
 					}
 					case 3: {
@@ -1547,8 +1474,7 @@ public void CalculateEngineerPlacePos(client, type)
 						DispatchSpawn(upgrade);
 						PrintHintText(client ,"%N deployed explosive ammo", client);
 
-						ClientData[client].ItemsBuilt++;
-
+						ClientData[client].SpecialsUsed++;
 					}
 					case 2: {
 						new upgrade = CreateEntityByName("upgrade_ammo_incendiary");
@@ -1556,7 +1482,7 @@ public void CalculateEngineerPlacePos(client, type)
 						TeleportEntity(upgrade, endPos, NULL_VECTOR, NULL_VECTOR);
 						PrintHintText(client ,"%N deployed incendiary ammo", client);
 
-						ClientData[client].ItemsBuilt++;
+						ClientData[client].SpecialsUsed++;
 						DispatchSpawn(upgrade);
 
 					}
@@ -1617,41 +1543,7 @@ public void CalculateEngineerPlacePos(client, type)
 			}
 		}
 	}
-
-	bool SetClientLocation(int client, float vPos[3])
-	{
-		GetClientEyePosition(client, vPos);
-		static float vAng[3];
-		GetClientEyeAngles(client, vAng);
-		static Handle trace;
-		trace = TR_TraceRayFilterEx(vPos, vAng, MASK_SHOT, RayType_Infinite, ExcludeSelf_Filter, client);
-
-		if( TR_DidHit(trace) )
-		{
-			TR_GetEndPosition(vPos, trace);
-
-			static float vDir[3];
-			GetAngleVectors(vAng, vDir, NULL_VECTOR, NULL_VECTOR);
-			vPos[0] -= vDir[0] * 10;
-			vPos[1] -= vDir[1] * 10;
-			vPos[2] -= vDir[2] * 10;
-		}
-		else
-		{
-			delete trace;
-			return false;
-		}
-
-		delete trace;
-		return true;
-	}
-	bool ExcludeSelf_Filter(int entity, int contentsMask, any client)
-	{
-		if( entity == client )
-		return false;
-		return true;
-	}
-
+	
 	public void CalculateMedicPlacePos(client, type)
 	{
 		decl Float:vAng[3], Float:vPos[3], Float:endPos[3];
@@ -1680,7 +1572,7 @@ public void CalculateEngineerPlacePos(client, type)
 						TeleportEntity(entity, endPos, NULL_VECTOR, NULL_VECTOR);
 						PrintHintText(client ,"%N deployed a defibrillator", client);
 
-						ClientData[client].ItemsBuilt++;
+						ClientData[client].SpecialsUsed++;
 					}
 					case 1:{
 						new entity = CreateEntityByName("weapon_first_aid_kit");
@@ -1689,7 +1581,7 @@ public void CalculateEngineerPlacePos(client, type)
 						TeleportEntity(entity, endPos, NULL_VECTOR, NULL_VECTOR);
 						PrintHintText(client ,"%N deployed a medkit", client);
 
-						ClientData[client].ItemsBuilt++;
+						ClientData[client].SpecialsUsed++;
 					}
 					case 2: {
 						new entity = CreateEntityByName("weapon_adrenaline_spawn");
@@ -1697,7 +1589,7 @@ public void CalculateEngineerPlacePos(client, type)
 						DispatchKeyValue(entity, "disableshadows", "1");
 						TeleportEntity(entity, endPos, NULL_VECTOR, NULL_VECTOR);
 						DispatchSpawn(entity);
-						ClientData[client].ItemsBuilt++;
+						ClientData[client].SpecialsUsed++;
 
 					}
 					case 3: {
@@ -1706,7 +1598,7 @@ public void CalculateEngineerPlacePos(client, type)
 						DispatchKeyValue(pills, "disableshadows", "1");
 						TeleportEntity(pills, endPos, NULL_VECTOR, NULL_VECTOR);
 						DispatchSpawn(pills);
-						ClientData[client].ItemsBuilt++;
+						ClientData[client].SpecialsUsed++;
 
 					}				
 					default: {
@@ -1714,7 +1606,6 @@ public void CalculateEngineerPlacePos(client, type)
 						return;
 					}
 				}
-				
 			}
 			else
 			PrintToChat(client, "%sCould not place the item because you were looking too far away.", PRINT_PREFIX);
@@ -1742,7 +1633,6 @@ public void CalculateEngineerPlacePos(client, type)
 	public setPlayerHealth(client, MaxPossibleHP)
 	{
 		if (!client) return;
-		// HEALTH
 		new OldMaxHealth = GetEntProp(client, Prop_Send, "m_iMaxHealth");
 		new OldHealth = GetClientHealth(client);
 		new OldTempHealth = GetClientTempHealth(client);
@@ -1776,7 +1666,7 @@ public void CalculateEngineerPlacePos(client, type)
 	{
 		if ( !healthModEnabled.BoolValue ) return;
 		
-		LoadSettings();
+		InitHealthModifiers();
 	}
 
 	public event_HealBegin(Handle:event, const String:name[], bool:Broadcast)
@@ -1866,7 +1756,7 @@ public void CalculateEngineerPlacePos(client, type)
 		g_VarReviveDuration = FindConVar("survivor_revive_duration");
 	}
 
-	public LoadSettings()
+	public InitHealthModifiers()
 	{
 		FindConVar("first_aid_heal_percent").FloatValue = 1.0; 	
 		FindConVar("first_aid_kit_use_duration").IntValue = GetConVarInt(HEAL_DURATION); 
@@ -2219,6 +2109,43 @@ public void CalculateEngineerPlacePos(client, type)
 		return Plugin_Continue;
 	}
 
+	// Get Position on map
+
+	public bool SetClientLocation(int client, float vPos[3])
+	{
+		GetClientEyePosition(client, vPos);
+		static float vAng[3];
+		GetClientEyeAngles(client, vAng);
+		static Handle trace;
+		trace = TR_TraceRayFilterEx(vPos, vAng, MASK_SHOT, RayType_Infinite, ExcludeSelf_Filter, client);
+
+		if( TR_DidHit(trace) )
+		{
+			TR_GetEndPosition(vPos, trace);
+
+			static float vDir[3];
+			GetAngleVectors(vAng, vDir, NULL_VECTOR, NULL_VECTOR);
+			vPos[0] -= vDir[0] * 10;
+			vPos[1] -= vDir[1] * 10;
+			vPos[2] -= vDir[2] * 10;
+		}
+		else
+		{
+			delete trace;
+			return false;
+		}
+
+		delete trace;
+		return true;
+	}
+
+	public bool ExcludeSelf_Filter(int entity, int contentsMask, any client)
+	{
+		if( entity == client )
+		return false;
+		return true;
+	}
+
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2227,14 +2154,14 @@ public void CalculateEngineerPlacePos(client, type)
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	///////////////////////////////////////////////////////////////////////////////////
-	// Mines
+	// Mines & Airstrikes
 	///////////////////////////////////////////////////////////////////////////////////
 
 	public void DropBomb(client)
 	{
 		decl Float:pos[3];
 		GetClientAbsOrigin(client, pos);
-		int index = ClientData[client].BombsUsed;		
+		int index = ClientData[client].SpecialsUsed;		
 
 		new Handle:hPack = CreateDataPack();
 
@@ -2254,11 +2181,11 @@ public void CalculateEngineerPlacePos(client, type)
 		BombActive = true;
 		BombIndex[index] = true;
 
-		ClientData[client].BombsUsed++;
+		ClientData[client].SpecialsUsed++;
 		CreateParticleInPos(pos, BOMB_GLOW, index);
 		EmitSoundToAll(SOUND_DROP_BOMB);
 		
-		PrintHintTextToAll("%N planted a mine! (%i/%i)", client, ClientData[client].BombsUsed, GetConVarInt(SABOTEUR_MAX_BOMBS));
+		PrintHintTextToAll("%N planted a mine! (%i/%i)", client, ClientData[client].SpecialsUsed, GetConVarInt(SABOTEUR_MAX_BOMBS));
 	}
 
 	public Action:TimerAirstrike(Handle timer, Handle:hPack)
@@ -2781,147 +2708,43 @@ public void CalculateEngineerPlacePos(client, type)
 					removed = true;
 				}
 			}
-			} else {
-				CloseHandle(pack);
-				new Handle:hPack = CreateDataPack();
-				WritePackCell(hPack, index);
-				int entity = ReadPackCell(pack);
-				WritePackCell(hPack, entity);
-				int defibParticle = ReadPackCell(pack);
-				WritePackCell(hPack, defibParticle);
-				int elmosParticle = ReadPackCell(pack);
-				WritePackCell(hPack, elmosParticle);
-				CreateTimer(5.0, TimerDeleteBombs, hPack, TIMER_FLAG_NO_MAPCHANGE);		
-				return Plugin_Continue;
-			}
-			if (removed == true) {
-				KillTimer(timer);
-				return Plugin_Stop;
-			} 
+		} else {
+			CloseHandle(pack);
+			new Handle:hPack = CreateDataPack();
+			WritePackCell(hPack, index);
+			int entity = ReadPackCell(pack);
+			WritePackCell(hPack, entity);
+			int defibParticle = ReadPackCell(pack);
+			WritePackCell(hPack, defibParticle);
+			int elmosParticle = ReadPackCell(pack);
+			WritePackCell(hPack, elmosParticle);
+			CreateTimer(5.0, TimerDeleteBombs, hPack, TIMER_FLAG_NO_MAPCHANGE);		
+			return Plugin_Continue;
 		}
-
-	//////////////////////////////////////////////////////////////////////////////////////////////////////
-	//////////////////////////////////////////////////////////////////////////////////////////////////////
-	//////////////////////////////////////////////////////////////////////////////////////////////////////
-	//////////////////////////////////////////////////////////////////////////////////////////////////////
-	//////////////////////////////////////////////////////////////////////////////////////////////////////
-
-	#include <sdktools_functions>
-
-	#define Pai 3.14159265358979323846 
-
-	#define PARTICLE_MUZZLE_FLASH		"weapon_muzzle_flash_autoshotgun"  
-	#define PARTICLE_WEAPON_TRACER		"weapon_tracers" 
-	#define PARTICLE_WEAPON_TRACER2		"weapon_tracers_50cal"//weapon_tracers_50cal" //"weapon_tracers_explosive" weapon_tracers_50cal
-	
-	#define PARTICLE_BLOOD		"blood_impact_red_01"
-	#define PARTICLE_BLOOD2		"blood_impact_headshot_01"
-
-	#define SOUND_IMPACT1		"physics/flesh/flesh_impact_bullet1.wav"  
-	#define SOUND_IMPACT2		"physics/concrete/concrete_impact_bullet1.wav"  
-	#define SOUND_FIRE		"weapons/50cal/50cal_shoot.wav"  
-	#define MODEL_GUN "models/w_models/weapons/w_minigun.mdl"
-
-	new MachineCount = 0;
-
-	#define EnemyArraySize 300
-	new InfectedsArray[EnemyArraySize];
-	new InfectedCount;
-
-	new UseCount[MAXPLAYERS+1]; 
-
-	new Float:ScanTime=0.0;
-
-	new Gun[MAXPLAYERS+1];
-	new GunOwner[MAXPLAYERS+1];
-	new GunEnemy[MAXPLAYERS+1];
-
-	new Float:GunFireStopTime[MAXPLAYERS+1];
-	new Float:GunFireTime[MAXPLAYERS+1];
-	new Float:GunFireTotolTime[MAXPLAYERS+1];
-	new GunScanIndex[MAXPLAYERS+1]; 
-	new Float:LastTime[MAXPLAYERS+1]; 
-
-
-	new Float:FireInterval=0.08; 
-	new Float:FireOverHeatTime=10.0;
-	new Float:FireRange=1000.0;
-
-	GetMinigun(client )
-	{ 
-		new ent= GetClientAimTarget(client, false);
-		if(ent>0)
-		{			
-			decl String:classname[64];
-			GetEdictClassname(ent, classname, 64);			
-			if(StrEqual(classname, "prop_minigun") || StrEqual(classname, "prop_minigun_l4d1"))
-			{
-			}
-			else ent=0;
-		}  
-		return ent;
-	}
-	
-	machine(client)
-	{
-		if(ClientData[client].ItemsBuilt>=4)
-		{
-			PrintToChat(client, "You can use it more than %d times",4);
-			return;
-		}
-		if(client>0 && IsClientInGame(client) && IsPlayerAlive(client))
-		{
-			CreateMachine(client);
-		}
-	}
-	bool:removemachine(client)
-	{
-		if(client>0 && IsClientInGame(client) && IsPlayerAlive(client))
-		{
-			new gun=GetMinigun(client);
-			new index=FindGunIndex(gun);
-			if(index<0)
-			{
-				return false;
-			}
-			else
-			{
-				RemoveMachine(index);
-				return true;
-			}
-		}
-		return false;
-	} 
-
-	public bool:TraceRayDontHitSelf(entity, mask, any:data)
-	{
-		if(entity == data) 
-		{
-			return false; 
+		if (removed == true) {
+			KillTimer(timer);
+			return Plugin_Stop;
 		} 
-		return true;
-	}
-	CopyVector(Float:source[3], Float:target[3])
-	{
-		target[0]=source[0];
-		target[1]=source[1];
-		target[2]=source[2];
 	}
 
-	public void PrecacheTurret()
-	{
-		PrecacheModel(MODEL_GUN);
-		
-		PrecacheSound(SOUND_FIRE);
-		PrecacheSound(SOUND_IMPACT1);	
-		PrecacheSound(SOUND_IMPACT2);
-		
-		PrecacheParticle(PARTICLE_MUZZLE_FLASH);
-		
-		PrecacheParticle(PARTICLE_WEAPON_TRACER2);
-		PrecacheParticle(PARTICLE_BLOOD);
-		PrecacheParticle(PARTICLE_BLOOD2);
+	///////////////////////////////////////////////////////////////////////////////////	
+	// Graphics & effects
+	///////////////////////////////////////////////////////////////////////////////////
 
+	public ShowParticle(Float:pos[3], Float:ang[3],String:particlename[], Float:time)
+	{
+		new particle = CreateEntityByName("info_particle_system");
+		if (IsValidEdict(particle))
+		{
+			DispatchKeyValue(particle, "effect_name", particlename); 
+			DispatchSpawn(particle);
+			ActivateEntity(particle);
+			TeleportEntity(particle, pos, ang, NULL_VECTOR);
+			AcceptEntityInput(particle, "start");		
+			CreateTimer(time, DeleteParticles, particle, TIMER_FLAG_NO_MAPCHANGE);
+			return particle;
+		}  
+		return 0;
 	}
 
 	public Action:DeleteParticles(Handle:timer, any:particle)
@@ -2939,489 +2762,6 @@ public void CalculateEngineerPlacePos(client, type)
 		}
 	}
 
-	ShowMuzzleFlash(Float:pos[3],  Float:angle[3])
-	{  
-		new particle = CreateEntityByName("info_particle_system");
-		DispatchKeyValue(particle, "effect_name", PARTICLE_MUZZLE_FLASH); 
-		DispatchSpawn(particle);
-		ActivateEntity(particle); 
-		TeleportEntity(particle, pos, angle, NULL_VECTOR);
-		AcceptEntityInput(particle, "start");	
-		CreateTimer(0.01, DeleteParticles, particle, TIMER_FLAG_NO_MAPCHANGE);	
-	}
-	ResetAllState()
-	{
-		MachineCount=0;
-		ScanTime=0.0;
-		for(new i=1; i<=MaxClients; i++)
-		{ 
-			UseCount[i]=0;
-		}
-		for (new i = 0; i < 16; i++)
-		{
-			BombIndex[i] = false;
-		}
-		for (int i = 0; i < MaxClients; i++)
-		g_bHide[i] = false;
-
-		InfectedCount=0;	
-	} 
-	ScanEnemys()
-	{	
-		if(IsWitch(InfectedsArray[0]))
-		{
-			InfectedCount=1;
-		}
-		else InfectedCount=0;
-		
-		for(new i=1 ; i<=MaxClients; i++)
-		{
-			if(IsClientInGame(i) && IsPlayerAlive(i))
-			{
-				InfectedsArray[InfectedCount++]=i;
-			}
-		}
-		new ent=-1;
-		while ((ent = FindEntityByClassname(ent,  "infected" )) != -1 && InfectedCount<EnemyArraySize-1)
-		{
-			InfectedsArray[InfectedCount++]=ent;
-		} 
-	}
-	bool:CreateMachine(client)
-	{
-		if(MachineCount >= 4)
-		{
-			PrintToChat(client, "There are too many machine");
-			return false;
-		} 
-		if(IsClientInGame(client) && IsPlayerAlive(client))
-		{
-			if(!(GetEntityFlags(client) & FL_ONGROUND))return false;
-			Gun[MachineCount]=SpawnMiniGun(client);  
-			LastTime[MachineCount]=GetEngineTime();
-			
-			GunScanIndex[MachineCount]=0;
-			GunEnemy[MachineCount]=0;
-			GunFireTime[MachineCount]=0.0;
-			GunFireStopTime[MachineCount]=0.0;
-			GunFireTotolTime[MachineCount]=0.0;
-			GunOwner[MachineCount]=client;		
-			
-			SDKUnhook( Gun[MachineCount], SDKHook_Think,  PreThinkGun); 
-			SDKHook( Gun[MachineCount], SDKHook_Think,  PreThinkGun); 
-
-			UseCount[client]++;
-			if(MachineCount==0)
-			{
-				ScanEnemys();
-			} 
-			MachineCount++;
-			return true;
-		}
-		return false;
-	}
-	RemoveMachine(index)
-	{
-		SDKUnhook( Gun[index], SDKHook_Think,  PreThinkGun);   
-		if(Gun[index]>0 && IsValidEdict(Gun[index]) && IsValidEntity(Gun[index]))AcceptEntityInput((Gun[index]), "Kill");
-		Gun[index]=0;
-		if(MachineCount>1)
-		{		
-			Gun[index]=Gun[MachineCount-1];
-			LastTime[index]=LastTime[MachineCount-1];
-			
-			GunScanIndex[index]=GunScanIndex[MachineCount-1];
-			GunEnemy[index]=GunEnemy[MachineCount-1];
-			GunFireTime[index]=GunFireTime[MachineCount-1];
-			GunFireStopTime[index]=GunFireStopTime[MachineCount-1];
-			GunFireTotolTime[index]=GunFireTotolTime[MachineCount-1];
-			GunOwner[index]=GunOwner[MachineCount-1];
-		}
-		MachineCount--;
-		
-		if(MachineCount<0)MachineCount=0; 
-	}
-
-	SpawnMiniGun(client)
-	{
-		decl Float:VecOrigin[3], Float:VecAngles[3], Float:VecDirection[3]; 
-		new gun=0;
-		gun=CreateEntityByName ( "prop_minigun"); 
-		SetEntityModel (gun, MODEL_GUN);		
-		DispatchSpawn(gun);
-		GetClientAbsOrigin(client, VecOrigin);
-		GetClientEyeAngles(client, VecAngles);
-		GetAngleVectors(VecAngles, VecDirection, NULL_VECTOR, NULL_VECTOR);
-		VecOrigin[0] += VecDirection[0] * 45;
-		VecOrigin[1] += VecDirection[1] * 45;
-		VecOrigin[2] += VecDirection[2] * 1;   
-		VecAngles[0] = 0.0;
-		VecAngles[2] = 0.0;
-		DispatchKeyValueFloat(gun, "MaxPitch", 360.00);
-		DispatchKeyValueFloat(gun, "MinPitch", -360.00);
-		DispatchKeyValueFloat(gun, "MaxYaw", 90.00);
-		DispatchKeyValueVector(gun, "Angles", VecAngles);
-		SetEntData(gun, g_CollisionOffset, 1, 4, true );
-		TeleportEntity(gun, VecOrigin, NULL_VECTOR, NULL_VECTOR);
-		SetEntProp(gun, Prop_Send, "m_iTeamNum", 2);  
-		SetColor(gun);
-		return gun;
-	}
-	SetColor(gun)
-	{
-		SetEntProp(gun, Prop_Send, "m_iGlowType", 3);
-		SetEntProp(gun, Prop_Send, "m_nGlowRange", 0);
-		SetEntProp(gun, Prop_Send, "m_nGlowRangeMin", 1);
-		new red=0;
-		new gree=250;
-		new blue=0;
-		SetEntProp(gun, Prop_Send, "m_glowColorOverride", red + (gree * 256) + (blue* 65536));	
-	}
-
-	FindGunIndex(gun)
-	{
-		new index=-1;
-		for(new i=0; i<MachineCount; i++)
-		{
-			if(Gun[i]==gun)
-			{
-				index=i;
-				break;
-			}
-		}
-		return index;
-	}
-
-	public PreThinkGun(gun)
-	{	
-		new index=FindGunIndex(gun);	
-		if(index!=-1)
-		{
-			new Float:time=GetEngineTime( );
-			new Float:interval=time-LastTime[index];  
-			LastTime[index]=time; 
-			ScanAndShootEnemy(index, time, interval); 
-		}
-	}
-	ScanAndShootEnemy(index , Float:time, Float:interval)
-	{
-		new gun1=Gun[index]; 
-		new user=GunOwner[index];
-		if(user>0 && IsClientInGame(user))user=user+0;
-		else user=0;
-		
-		if(time-ScanTime>1.0)
-		{
-			ScanTime=time;
-			ScanEnemys(); 
-		}	
-		
-		decl Float:gun1pos[3];
-		decl Float:gun1angle[3];
-		decl Float:hitpos[3];
-		decl Float:temp[3];
-		decl Float:shotangle[3];
-		decl Float:gunDir[3];
-		
-		GetEntPropVector(gun1, Prop_Send, "m_vecOrigin", gun1pos);	
-		GetEntPropVector(gun1, Prop_Send, "m_angRotation", gun1angle);	
-		
-		GetAngleVectors(gun1angle, gunDir, NULL_VECTOR, NULL_VECTOR );
-		NormalizeVector(gunDir, gunDir);
-		CopyVector(gunDir, temp);	
-		ScaleVector(temp, 50.0);
-		AddVectors(gun1pos, temp ,gun1pos);
-		GetAngleVectors(gun1angle, NULL_VECTOR, NULL_VECTOR, temp );
-		NormalizeVector(temp, temp);
-		//ShowDir(2, gun1pos, temp, 0.06);
-		ScaleVector(temp, 43.0);
-		
-		AddVectors(gun1pos, temp ,gun1pos);
-		
-		new newenemy=GunEnemy[index];
-		if( IsValidEnemy(newenemy))
-		{
-			newenemy = IsEnemyVisible(gun1, newenemy, gun1pos, hitpos,shotangle);		
-		}
-		else newenemy=0;
-		
-		if(InfectedCount>0 && newenemy==0)
-		{
-			if(GunScanIndex[index]>=InfectedCount)
-			{
-				GunScanIndex[index]=0;
-			}
-			GunEnemy[index]=InfectedsArray[GunScanIndex[index]];
-			GunScanIndex[index]++;
-			newenemy=0;
-			
-		}
-
-		if(newenemy==0)
-		{
-			SetEntProp(gun1, Prop_Send, "m_firing", 0);
-
-			return;
-		}
-		decl Float:enemyDir[3]; 
-		decl Float:newGunAngle[3]; 
-		if(newenemy>0)
-		{
-			SubtractVectors(hitpos, gun1pos, enemyDir);				
-		}
-		else
-		{
-			CopyVector(gunDir, enemyDir); 
-			enemyDir[2]=0.0; 
-		}
-		NormalizeVector(enemyDir,enemyDir);
-		
-		decl Float:targetAngle[3]; 
-		GetVectorAngles(enemyDir, targetAngle);
-		new Float:diff0=AngleDiff(targetAngle[0], gun1angle[0]);
-		new Float:diff1=AngleDiff(targetAngle[1], gun1angle[1]);
-		
-		new Float:turn0=45.0*Sign(diff0)*interval;
-		new Float:turn1=180.0*Sign(diff1)*interval;
-		if(FloatAbs(turn0)>=FloatAbs(diff0))
-		{
-			turn0=diff0;
-		}
-		if(FloatAbs(turn1)>=FloatAbs(diff1))
-		{
-			turn1=diff1;
-		}
-		
-		newGunAngle[0]=gun1angle[0]+turn0;
-		newGunAngle[1]=gun1angle[1]+turn1; 
-		
-		newGunAngle[2]=0.0; 
-		
-		DispatchKeyValueVector(gun1, "Angles", newGunAngle);
-		new overheated=GetEntProp(gun1, Prop_Send, "m_overheated");
-		
-		GetAngleVectors(newGunAngle, gunDir, NULL_VECTOR, NULL_VECTOR); 
-		
-		if(overheated==0)
-		{
-			if( newenemy>0 && FloatAbs(diff1)<40.0)
-			{ 
-				if(time>=GunFireTime[index] )
-				{
-					GunFireTime[index]=time+FireInterval;  								
-					Shot(user,index, gun1, gun1pos, newGunAngle); 
-					
-					GunFireStopTime[index]=time+0.05; 	
-				} 
-			} 
-		}
-		new Float:heat=GetEntPropFloat(gun1, Prop_Send, "m_heat"); 
-		
-		if(time<GunFireStopTime[index])
-		{
-			GunFireTotolTime[index]+=interval;
-			heat=GunFireTotolTime[index]/FireOverHeatTime;
-			if(heat>=1.0)heat=1.0;
-			SetEntProp(gun1, Prop_Send, "m_firing", 1); 		
-			SetEntPropFloat(gun1, Prop_Send, "m_heat", heat);
-		}
-		else 
-		{
-			SetEntProp(gun1, Prop_Send, "m_firing", 0); 	
-			heat=heat-interval/4.0;
-			if(heat<0.0)
-			{
-				heat=0.0;
-				SetEntProp(gun1, Prop_Send, "m_overheated", 0);
-				SetEntPropFloat(gun1, Prop_Send, "m_heat", 0.0 );
-			}
-			else SetEntPropFloat(gun1, Prop_Send, "m_heat", heat ); 
-			GunFireTotolTime[index]=FireOverHeatTime*heat; 
-		}
-
-		return;
-	}
-	IsEnemyVisible( gun, ent, Float:gunpos[3], Float:hitpos[3], Float:angle[3])
-	{		
-		if(ent<=0)return 0;
-		
-		GetEntPropVector(ent, Prop_Send, "m_vecOrigin", hitpos);
-		hitpos[2]+=35.0; 
-
-		SubtractVectors(hitpos, gunpos, angle);
-		GetVectorAngles(angle, angle); 
-		new Handle:trace=TR_TraceRayFilterEx(gunpos, angle, MASK_SHOT, RayType_Infinite, TraceRayDontHitSelf, gun); 
-
-		new newenemy=0;
-		
-		if(TR_DidHit(trace))
-		{	
-			TR_GetEndPosition(hitpos, trace);
-			newenemy = TR_GetEntityIndex(trace);  
-			if(GetVectorDistance(gunpos, hitpos)>FireRange)newenemy=0;
-		}
-		else
-		{
-			newenemy=ent;
-		}
-		if(newenemy>0)
-		{	
-			if(newenemy<=MaxClients)
-			{
-				if(!(IsClientInGame(newenemy) && IsPlayerAlive(newenemy) && GetClientTeam(newenemy)== 3))
-				newenemy = 0;
-			}
-			else	
-			{
-				decl String:classname[32];
-				GetEdictClassname(newenemy, classname,32);
-				if(StrEqual(classname, "infected", true) || StrEqual(classname, "witch", true) )
-				{
-					newenemy=newenemy+0;
-				}
-				else newenemy=0;
-			}
-		} 
-		CloseHandle(trace); 
-		return newenemy;
-	}
-	Shot(client, index  ,gun, Float:gunpos[3],  Float:shotangle[3])
-	{
-		decl Float:temp[3];
-		decl Float:ang[3];
-		GetAngleVectors(shotangle, temp, NULL_VECTOR,NULL_VECTOR); 
-		NormalizeVector(temp, temp); 
-		
-		new Float:acc=0.020; // add some spread
-		temp[0] += GetRandomFloat(-1.0, 1.0)*acc;
-		temp[1] += GetRandomFloat(-1.0, 1.0)*acc;
-		temp[2] += GetRandomFloat(-1.0, 1.0)*acc;
-		GetVectorAngles(temp, ang);
-
-		new Handle:trace= TR_TraceRayFilterEx(gunpos, ang, MASK_SHOT, RayType_Infinite, TraceRayDontHitSelf, gun); 
-		new enemy=0;	
-		
-		if(TR_DidHit(trace))
-		{			
-			decl Float:hitpos[3];	
-			TR_GetEndPosition(hitpos, trace);		
-			enemy=TR_GetEntityIndex(trace); 
-			
-			if(enemy>0)
-			{			
-				decl String:classname[32];
-				GetEdictClassname(enemy, classname, 32);	
-				if(enemy >=1 && enemy<=MaxClients)//if enemy is a client
-				{
-					if(GetClientTeam(enemy)==2 ) {enemy=0;}	
-				}
-				else if(StrEqual(classname, "infected") || StrEqual(classname, "witch" ) )
-				{
-
-				} 	
-				else enemy=0;
-			} 
-			if(enemy>0)
-			{
-				if(client>0 && IsPlayerAlive(client))client=client+0;
-				else client=0;
-				HurtEntity(enemy, client, 25.0, 0);
-				decl Float:Direction[3];
-				GetAngleVectors(ang, Direction, NULL_VECTOR, NULL_VECTOR);
-				ScaleVector(Direction, -1.0);
-				GetVectorAngles(Direction,Direction);
-				ShowParticle(hitpos, Direction, PARTICLE_BLOOD, 0.1);				
-				EmitSoundToAll(SOUND_IMPACT1, 0,  SNDCHAN_AUTO, SNDLEVEL_NORMAL, SND_NOFLAGS,1.0, SNDPITCH_NORMAL, -1,hitpos, NULL_VECTOR,true, 0.0);
-			}
-			else
-			{		
-				decl Float:Direction[3];
-				Direction[0] = GetRandomFloat(-1.0, 1.0);
-				Direction[1] = GetRandomFloat(-1.0, 1.0);
-				Direction[2] = GetRandomFloat(-1.0, 1.0);
-				TE_SetupSparks(hitpos,Direction,1,3);
-				TE_SendToAll();
-				EmitSoundToAll(SOUND_IMPACT2, 0,  SNDCHAN_AUTO, SNDLEVEL_NORMAL, SND_NOFLAGS,1.0, SNDPITCH_NORMAL, -1,hitpos, NULL_VECTOR,true, 0.0);
-			}
-			ShowMuzzleFlash(gunpos, ang);
-			EmitSoundToAll(SOUND_FIRE, 0,  SNDCHAN_WEAPON, SNDLEVEL_NORMAL, SND_NOFLAGS,1.0, SNDPITCH_NORMAL, -1,gunpos, NULL_VECTOR,true, 0.0);
-		}
-		CloseHandle(trace);
-	}
-
-	Float:AngleDiff(Float:a, Float:b)
-	{
-		new Float:d=0.0;
-		if(a>=b)
-		{
-			d=a-b;
-			if(d>=180.0)d=d-360.0;
-		}
-		else
-		{
-			d=a-b;
-			if(d<=-180.0)d=360+d;
-		}
-		return d;
-	}
-
-	Float:Sign(Float:v)
-	{	// positive or negitive number returns 1, 0 ,-1
-		if(v==0.0)return 0.0;
-		else if(v>0.0)return 1.0;
-		else return -1.0;
-	}
-
-	bool:IsValidEnemy(enemy)
-	{	
-		new bool:r=false;
-		if(enemy<=0)return r;
-		if( enemy<=MaxClients)
-		{ //if enemy is a client
-			if(IsClientInGame(enemy) && IsPlayerAlive(enemy) && GetClientTeam(enemy)== 3)
-			{
-				r=true;
-			} 
-		}
-		else if( IsValidEntity(enemy) && IsValidEdict(enemy))
-		{
-			decl String:classname[32];
-			GetEdictClassname(enemy, classname,32);
-			if(StrEqual(classname, "infected", true) )
-			{
-				r=true;
-				new flag=GetEntProp(enemy, Prop_Send, "m_bIsBurning");
-				if(flag==1)
-				{
-					r=false; 
-				}
-			}
-			else if (StrEqual(classname, "witch", true))
-			{
-				r=true;
-			}
-		} 
-		return r;
-	}
-
-	///////////////////////////////////////////////////////////////////////////////////	
-	// Graphics & effects
-	///////////////////////////////////////////////////////////////////////////////////
-	public ShowParticle(Float:pos[3], Float:ang[3],String:particlename[], Float:time)
-	{
-		new particle = CreateEntityByName("info_particle_system");
-		if (IsValidEdict(particle))
-		{
-			DispatchKeyValue(particle, "effect_name", particlename); 
-			DispatchSpawn(particle);
-			ActivateEntity(particle);
-			TeleportEntity(particle, pos, ang, NULL_VECTOR);
-			AcceptEntityInput(particle, "start");		
-			CreateTimer(time, DeleteParticles, particle, TIMER_FLAG_NO_MAPCHANGE);
-			return particle;
-		}  
-		return 0;
-	}
 
 	void SetupPrjEffects(int entity, float vPos[3], const char[] color)
 	{
