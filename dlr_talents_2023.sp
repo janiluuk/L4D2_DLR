@@ -376,7 +376,7 @@ public OnPluginStart( )
 	SOLDIER_SPEED = CreateConVar("talents_soldier_speed", "1.15", "How fast soldier should run. A value of 1.0 = normal speed");
 	SOLDIER_DAMAGE_REDUCE_RATIO = CreateConVar("talents_soldier_damage_reduce_ratio", "0.7", "Ratio for how much armor reduces damage for soldier");
 	SOLDIER_SHOVE_PENALTY = CreateConVar("talents_soldier_shove_penalty_enabled","0.0","Enables/Disables shove penalty for soldier. 0 = OFF, 1 = ON.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
-	SOLDIER_MAX_AIRSTRIKES = CreateConVar("talents_soldier_max_airstrikes","0.0","Number of tactical airstrikes per round. 0 = OFF", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+	SOLDIER_MAX_AIRSTRIKES = CreateConVar("talents_soldier_max_airstrikes","3.0","Number of tactical airstrikes per round. 0 = OFF", FCVAR_NOTIFY, true, 0.0, true, 16.0);
 
 	ATHLETE_JUMP_VEL = CreateConVar("talents_athlete_jump", "450.0", "How high a soldier should be able to jump. Make this higher to make them jump higher, or 0.0 for normal height");
 	ATHLETE_SPEED = CreateConVar("talents_athlete_speed", "1.20", "How fast athlete should run. A value of 1.0 = normal speed");
@@ -473,7 +473,6 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 public void F18_OnRoundState(int roundstate)
 {
 	static int mystate;
-
 	if(roundstate == 1 && mystate == 0 )
 	{
 		mystate = 1;
@@ -488,7 +487,6 @@ public void F18_OnRoundState(int roundstate)
 public void F18_OnPluginState(int pluginstate)
 {
 	static int mystate;
-
 	if(pluginstate == 1 && mystate == 0)
 	{
 		mystate = 1;
@@ -811,11 +809,13 @@ public Action:TimerThink(Handle:hTimer, any:client)
 			if (buttons & IN_SPEED)
 			{
 				if (g_bAirstrike && g_bAirstrikeValid == false) {
+
+					ClientData[client].LastButtons = buttons;
 					return Plugin_Continue;
 				}	
-				char pendingMessage[128] = "Next possible strike available after %i seconds";
+				char pendingMessage[128] = "Next possible strike available after %d seconds";
 				
-				if (ClientData[client].LastButtons != buttons && canUseSpecialSkill(client, pendingMessage)) {
+				if (canUseSpecialSkill(client, pendingMessage)) {
 					ClientData[client].LastDropTime = GetGameTime();
 					g_bAirstrikeValid = false;
 					CreateAirStrike(client);
@@ -844,11 +844,11 @@ public bool canUseSpecialSkill(client, char[] pendingMessage)
 	else if (CanDrop == false)
 	{
 		Format(pendMsg, sizeof(pendMsg), pendingMessage, (ClientData[client].SpecialDropInterval-iDropTime));
-		PrintHintText(client, pendingMessage);
+		PrintHintText(client, pendMsg );
 		return false;
 	} else if (ClientData[client].SpecialsUsed >= ClientData[client].SpecialLimit) {
-		Format(outOfMsg, sizeof(outOfMsg), "You're out of supplies! (Max %i / round)", ClientData[client].SpecialLimit);
-		PrintHintText(client, pendingMessage);
+		Format(outOfMsg, sizeof(outOfMsg), "You're out of supplies! (Max %d / round)", ClientData[client].SpecialLimit);
+		PrintHintText(client, outOfMsg);
 		return false;
 	} 
 
@@ -1159,6 +1159,8 @@ public void SetupClasses(client, class)
 	
 	ClientData[client].ChosenClass = class;
 	ClientData[client].SpecialDropInterval = GetConVarInt(MINIMUM_DROP_INTERVAL);	
+	ClientData[client].SpecialLimit = 5;
+
 	new MaxPossibleHP = GetConVarInt(NONE_HEALTH);
 	
 
@@ -1447,8 +1449,8 @@ public void CalculateEngineerPlacePos(client, type)
 						if (GetConVarInt(ENGINEER_TURRET_EXTERNAL_PLUGIN) > 0) 
 						{
 							ClientCommand(client, Engineer_Turret_Spawn_Cmd);
+							ClientData[client].LastDropTime = GetGameTime();
 							ClientData[client].SpecialsUsed++;
-
 						}
 					}
 					case 3: {
@@ -1457,7 +1459,7 @@ public void CalculateEngineerPlacePos(client, type)
 						TeleportEntity(upgrade, endPos, NULL_VECTOR, NULL_VECTOR);
 						DispatchSpawn(upgrade);
 						PrintHintText(client ,"%N deployed explosive ammo", client);
-
+						ClientData[client].LastDropTime = GetGameTime();
 						ClientData[client].SpecialsUsed++;
 					}
 					case 2: {
@@ -1465,7 +1467,7 @@ public void CalculateEngineerPlacePos(client, type)
 						SetEntityModel(upgrade, MODEL_INCEN);
 						TeleportEntity(upgrade, endPos, NULL_VECTOR, NULL_VECTOR);
 						PrintHintText(client ,"%N deployed incendiary ammo", client);
-
+						ClientData[client].LastDropTime = GetGameTime();
 						ClientData[client].SpecialsUsed++;
 						DispatchSpawn(upgrade);
 
@@ -1476,7 +1478,6 @@ public void CalculateEngineerPlacePos(client, type)
 					}
 			}
 				
-			ClientData[client].LastDropTime = GetGameTime();
 		}
 		else
 		PrintToChat(client, "%sCould not place the item because you were looking too far away.", PRINT_PREFIX);
@@ -2204,7 +2205,7 @@ public Action:TimerAirstrike(Handle timer, Handle:hPack)
 		{
 			AcceptEntityInput(entity, "Kill");
 		}			
-
+		ClientData[client].SpecialsUsed++;
 		F18_ShowAirstrike(pos, GetRandomFloat(0.0, 180.0));
 		return Plugin_Stop;
 	}
