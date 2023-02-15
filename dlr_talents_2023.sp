@@ -1,5 +1,4 @@
 /**
-	x * vim: set ts=4 :
 * =============================================================================
 * Talents Plugin by DLR / Neil / Spirit / panxiaohai / Yani
 * Incorporates Survivor classes.
@@ -308,15 +307,8 @@ public Plugin:myinfo =
 //					L4D2 - Native
 // ====================================================================================================
 
-// Optional native from L4D2 Airstrike
 native void F18_ShowAirstrike(float origin[3], float direction);
-
-// Optional native from Multiturret
 native void DLR_Multiturret(int client, int type);
-
-// ====================================================================================================
-//					L4D2 - F-18 AIRSTRIKE
-// ====================================================================================================
 
 /**
 * PLUGIN LOGIC
@@ -474,6 +466,9 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	return APLRes_Success;
 }
 
+// ====================================================================================================
+//					L4D2 - F-18 AIRSTRIKE
+// ====================================================================================================
 
 public void F18_OnRoundState(int roundstate)
 {
@@ -548,6 +543,9 @@ public void OnLibraryRemoved(const char[] sName)
 	g_bAirstrike = false;
 }
 
+// ====================================================================================================
+//		Events & Timers
+// ====================================================================================================
 public OnMapStart()
 {
 	// Sounds
@@ -718,7 +716,6 @@ public Action:TimerThink(Handle:hTimer, any:client)
 						InvisibilityTimestamp = RoundToFloor(hidingTime);
 					}
 				}
-				
 			}
 			else
 			{
@@ -728,7 +725,6 @@ public Action:TimerThink(Handle:hTimer, any:client)
 					SetEntDataFloat(client, g_ioLMV, 1.0, true);
 				}
 				InvisibilityHint = false;
-
 			}
 			
 			if (buttons & IN_SPEED)
@@ -2486,30 +2482,29 @@ stock CreateExplosion(Float:expPos[3], attacker = 0, bool:panic = true)
 	decl String:class[32];
 	for (new i=MaxClients+1; i<=2048; i++)
 	{
-		if (IsValidEntity(i))
+		if (!IsValidEntity(i))  continue;
+
+		GetEdictClassname(i, class, sizeof(class));
+		if (StrEqual(class, "prop_physics") || StrEqual(class, "prop_physics_multiplayer"))
 		{
-			GetEdictClassname(i, class, sizeof(class));
-			if (StrEqual(class, "prop_physics") || StrEqual(class, "prop_physics_multiplayer"))
+			GetEntPropVector(i, Prop_Data, "m_vecOrigin", survivorPos);
+			
+			//Vector and radius distance calcs by AtomicStryker!
+			if (GetVectorDistance(expPos, survivorPos) <= flMxDistance)
 			{
-				GetEntPropVector(i, Prop_Data, "m_vecOrigin", survivorPos);
+				MakeVectorFromPoints(expPos, survivorPos, traceVec);
+				GetVectorAngles(traceVec, resultingFling);
 				
-				//Vector and radius distance calcs by AtomicStryker!
-				if (GetVectorDistance(expPos, survivorPos) <= flMxDistance)
-				{
-					MakeVectorFromPoints(expPos, survivorPos, traceVec);
-					GetVectorAngles(traceVec, resultingFling);
-					
-					resultingFling[0] = Cosine(DegToRad(resultingFling[1])) * power;
-					resultingFling[1] = Sine(DegToRad(resultingFling[1])) * power;
-					resultingFling[2] = power;
-					
-					GetEntPropVector(i, Prop_Data, "m_vecVelocity", currentVelVec);
-					resultingFling[0] += currentVelVec[0];
-					resultingFling[1] += currentVelVec[1];
-					resultingFling[2] += currentVelVec[2];
-					
-					TeleportEntity(i, NULL_VECTOR, NULL_VECTOR, resultingFling);
-				}
+				resultingFling[0] = Cosine(DegToRad(resultingFling[1])) * power;
+				resultingFling[1] = Sine(DegToRad(resultingFling[1])) * power;
+				resultingFling[2] = power;
+				
+				GetEntPropVector(i, Prop_Data, "m_vecVelocity", currentVelVec);
+				resultingFling[0] += currentVelVec[0];
+				resultingFling[1] += currentVelVec[1];
+				resultingFling[2] += currentVelVec[2];
+				
+				TeleportEntity(i, NULL_VECTOR, NULL_VECTOR, resultingFling);
 			}
 		}
 	}
