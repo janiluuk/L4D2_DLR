@@ -18,6 +18,7 @@ Changes:
 - Default health for players without class configurable. Menu does not spam you if you don't choose a class.
 - Engineer spawns ready-to-use upgrade packs instead of deployable boxes.
 - Engineer now spawns 2 different types of turrets. 8 different ammo types for various situations. (Requires plugin from https://github.com/janiluuk/L4D2_Machine)
+- Engineer can now barricade open doors & windows. Requires plugin version of (https://forums.alliedmods.net/showthread.php?p=2780813). Adding the plugin version as soon as have tested it properly
 - Engineer, medic and saboteur get countdown for next deployment when trying to deploy too early
 - Turrets don't block anymore, so you cannot abuse it by boxing in opponents.
 - Saboteur moves faster when crouched and shows visibility status.
