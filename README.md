@@ -45,6 +45,7 @@ Roadmap
 - Cleaner UI, menu option to turn hint texts off. Common HUD component which manages, prioritizes and combines the hint texts properly.
 - Integrate game instructor UI to be utilized for counters, and other live indicators. 
 - Engineer can build different types of defences
+- Saboteur can see infected outlines when in "predator mode". Instakill if manages to sneak up behind.
 - Smoker should have much more visible and thick cloud when gets killed.
 - Show specific glow on people being healed by medic, and notify them with progress bar.
 - Rewrite for missile plugin to fit better with this one
