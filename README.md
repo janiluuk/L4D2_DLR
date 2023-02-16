@@ -48,6 +48,7 @@ Roadmap
 - Incap players can fight with attacker with some keys, if indicator goes back to zero, player is freed.
 - When incapacitated without supplies and you have kit available, ask survivor if want to consume it.
 - Revamp infected skills to match the added ones for survivors;
+    - Infected can bite survivors, after defined about of time player turns into a witch for 30 seconds. If the witch gets killed, player gets killed, otherwise transform back to playable character.
     - Charger can drop survivor and continue running
     - Hunter can use boost for ultra long jumps
     - Smoker can shove opponent to any direction when pinned, e.g throw out of window.
