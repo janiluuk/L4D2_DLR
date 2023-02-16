@@ -5,7 +5,9 @@ This is anniversary update for the infamous DLR mode for Left 4 Dead 2. Original
 Changes:
 - Sourcemod 11 compatible
 - Rewrite for internal variable structure, variable naming and functionality.
-- Soldier has faster moving speed and takes less damage. configurable.
+- Plugin support, adding new features should be a matter of including the plugin and adding hook to it
+- Soldier has faster moving speed and takes less damage. configurable. 
+- Soldier can order airstrikes. (Requires F18_Airstrike plugin)
 - Athlete has faster moving speed and a parachute. configurable.
 - Commando reload rate actually works now
 - Commando damage modifiers are configurable per weapon, default one is used for rest
@@ -15,6 +17,7 @@ Changes:
 - Players get notified when theyre being healed.
 - Default health for players without class configurable. Menu does not spam you if you don't choose a class.
 - Engineer spawns ready-to-use upgrade packs instead of deployable boxes.
+- Engineer now spawns 2 different types of turrets. 8 different ammo types for various situations. (Requires plugin from https://github.com/janiluuk/L4D2_Machine)
 - Engineer, medic and saboteur get countdown for next deployment when trying to deploy too early
 - Turrets don't block anymore, so you cannot abuse it by boxing in opponents.
 - Saboteur moves faster when crouched and shows visibility status.
