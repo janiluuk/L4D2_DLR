@@ -56,7 +56,9 @@ Roadmap
     - Infected can bite survivors, after defined about of time player turns into a witch for 30 seconds. If the witch gets killed, player gets killed, otherwise transform back to playable character.
     - Charger can drop survivor and continue running
     - Hunter can use boost for ultra long jumps
+    - Jockey can make player shoot others with FF damage while riding
     - Smoker can shove opponent to any direction when pinned, e.g throw out of window.
+    - Hunter can masquerade as survivor for 30 second time (Using LMC)
     - More suggestions welcome!
 
 
