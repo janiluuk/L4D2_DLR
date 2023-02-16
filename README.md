@@ -47,9 +47,9 @@ Roadmap
 - Engineer can build different types of defences
 - Saboteur can see infected outlines when in "predator mode". Instakill if manages to sneak up behind.
 - Smoker should have much more visible and thick cloud when gets killed.
-- Show specific glow on people being healed by medic, and notify them with progress bar.
+- Show specific glow on people being healed by medic
 - Rewrite for missile plugin to fit better with this one
-- Support for external plugins as skills, integration through SDK to prevent misuse. For example airstrike, berzerk mode, jetpack, special grenades.
+- Add more plugins including berserk mode, jetpack, special grenades.
 - Incap players can fight with attacker with some keys, if indicator goes back to zero, player is freed.
 - When incapacitated without supplies and you have kit available, ask survivor if want to consume it.
 - Revamp infected skills to match the added ones for survivors;
