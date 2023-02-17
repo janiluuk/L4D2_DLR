@@ -22,10 +22,6 @@ native int GetCurrentClass(int player);
 #endif
 
 #define PLUGIN_VERSION "1.3"
-
-bool	g_bLeft4Dead2, g_bLateLoad;
-bool 	g_bAirstrike, g_bAirstrikeValid, g_bMultiturret, g_bMultiturretValid;
-
 #pragma semicolon 1
 #define DEBUG 1
 #include <sourcemod>
@@ -126,6 +122,11 @@ enum struct PlayerInfo
 
 PlayerInfo ClientData[MAXPLAYERS+1];
 
+
+// API
+bool g_bLeft4Dead2, g_bLateLoad;
+bool g_bAirstrike, g_bAirstrikeValid, g_bMultiturret, g_bMultiturretValid;
+
 // Rapid fire variables
 new g_iRI[MAXPLAYERS+1] = { -1 },
 g_iRC, g_iEi[MAXPLAYERS+1] = { -1 },
@@ -209,17 +210,17 @@ int g_iVelocity = -1, g_iParaEntRef[MAXPLAYERS+1] = {INVALID_ENT_REFERENCE, ...}
 
 static char g_sModels[2][] =
 {
-		"models/props_swamp/parachute01.mdl",
-		"models/props/de_inferno/ceiling_fan_blade.mdl"
+	"models/props_swamp/parachute01.mdl",
+	"models/props/de_inferno/ceiling_fan_blade.mdl"
 };
 
 // Enums (doc'd by SMLib)
 enum Water_Level
 {
-		WATER_LEVEL_NOT_IN_WATER = 0,
-		WATER_LEVEL_FEET_IN_WATER,
-		WATER_LEVEL_WAIST_IN_WATER,
-		WATER_LEVEL_HEAD_IN_WATER
+	WATER_LEVEL_NOT_IN_WATER = 0,
+	WATER_LEVEL_FEET_IN_WATER,
+	WATER_LEVEL_WAIST_IN_WATER,
+	WATER_LEVEL_HEAD_IN_WATER
 };
 
 // Bomb related stuff
@@ -1499,45 +1500,47 @@ public void CalculateEngineerPlacePos(client, type)
 			vAng[2] = 0.0;
 			
 			switch(type) {
-				case 0: {
+				case 0: 
+				{
 					new ammo = CreateEntityByName("weapon_ammo_spawn");
 					DispatchSpawn(ammo);
 					TeleportEntity(ammo, endPos, NULL_VECTOR, NULL_VECTOR);
 					ClientData[client].SpecialsUsed++;
+				}
+				case 1:
+				{
+					if (GetConVarInt(ENGINEER_TURRET_EXTERNAL_PLUGIN) > 0) 
+					{
+						ClientCommand(client, Engineer_Turret_Spawn_Cmd);
+						ClientData[client].LastDropTime = GetGameTime();
+						ClientData[client].SpecialsUsed++;
+					}
+				}
+				case 3: 
+				{
+					new upgrade = CreateEntityByName("upgrade_ammo_explosive");
+					SetEntityModel(upgrade, MODEL_EXPLO);
+					TeleportEntity(upgrade, endPos, NULL_VECTOR, NULL_VECTOR);
+					DispatchSpawn(upgrade);
+					PrintHintText(client ,"%N deployed explosive ammo", client);
+					ClientData[client].LastDropTime = GetGameTime();
+					ClientData[client].SpecialsUsed++;
+				}
+				case 2: 
+				{
+					new upgrade = CreateEntityByName("upgrade_ammo_incendiary");
+					SetEntityModel(upgrade, MODEL_INCEN);
+					TeleportEntity(upgrade, endPos, NULL_VECTOR, NULL_VECTOR);
+					PrintHintText(client ,"%N deployed incendiary ammo", client);
+					ClientData[client].LastDropTime = GetGameTime();
+					ClientData[client].SpecialsUsed++;
+					DispatchSpawn(upgrade);
 
 				}
-				case 1:{
-
-						if (GetConVarInt(ENGINEER_TURRET_EXTERNAL_PLUGIN) > 0) 
-						{
-							ClientCommand(client, Engineer_Turret_Spawn_Cmd);
-							ClientData[client].LastDropTime = GetGameTime();
-							ClientData[client].SpecialsUsed++;
-						}
-					}
-					case 3: {
-						new upgrade = CreateEntityByName("upgrade_ammo_explosive");
-						SetEntityModel(upgrade, MODEL_EXPLO);
-						TeleportEntity(upgrade, endPos, NULL_VECTOR, NULL_VECTOR);
-						DispatchSpawn(upgrade);
-						PrintHintText(client ,"%N deployed explosive ammo", client);
-						ClientData[client].LastDropTime = GetGameTime();
-						ClientData[client].SpecialsUsed++;
-					}
-					case 2: {
-						new upgrade = CreateEntityByName("upgrade_ammo_incendiary");
-						SetEntityModel(upgrade, MODEL_INCEN);
-						TeleportEntity(upgrade, endPos, NULL_VECTOR, NULL_VECTOR);
-						PrintHintText(client ,"%N deployed incendiary ammo", client);
-						ClientData[client].LastDropTime = GetGameTime();
-						ClientData[client].SpecialsUsed++;
-						DispatchSpawn(upgrade);
-
-					}
-					default: {
-						CloseHandle( trace );
-						return;
-					}
+				default: {
+					CloseHandle( trace );
+					return;
+				}
 			}
 				
 		}
@@ -3578,5 +3581,6 @@ public Action:HideCommand(client, args)
 		}			
 		HidePlayer(client);
 	}
+	
 	return Plugin_Handled;
 }
