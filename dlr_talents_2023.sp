@@ -1,2267 +1,2595 @@
-	/**
-	 * vim: set ts=4 :
-	 * =============================================================================
-	 * Talents Plugin by DLR / Neil / Spirit / panxiaohai / Yani
-	 * Incorporates Survivor classes.
-	 *
-	 * (C)2023 DeadLandRape / Neil / Yani.  All rights reserved.
-	 * =============================================================================
-	 *
-	 *	Developed for DeadLandRape Gaming. This plugin is DLR proprietary software.
-	 *	DLR claims complete rights to this plugin, including, but not limited to:
-	 *
-	 *		- The right to use this plugin in their servers
-	 *		- The right to modify this plugin
-	 *		- The right to claim ownership of this plugin
-	 *		- The right to re-distribute this plugin as they see fit
-	 */
-	 
-	 
-	#pragma semicolon 1
-	#define DEBUG 1
-	#include <sourcemod>
-	#include <sdktools>
-	#include <sdkhooks>
-
-	/**
-	 * CONFIGURABLE VARIABLES
-	 * Feel free to change the following code-related values.
-	 */
-
-	/// MENU AND UI RELATED STUFF
-
-	// This is what to display on the class selection menu.
-	static const String:MENU_OPTIONS[][] =
-	{
-		// What should be displayed if the player does not have a class?
-		"None",
-		
-		// You can change how the menus display here.
-		"Soldier",
-		"Athlete",
-		"Medic",
-		"Saboteur",
-		"Commando",
-		"Engineer",
-		"Brawler"
-	};
-
-	static const String:ClassTips[][] =
-	{
-		", Is a noob who didnt pick a class.",
-		", He can shoot fast, takes less damage and moves faster.",
-		", He can Jump high.",
-		", He can heal his team by crouching, heal and revive faster and drop supplies. ",
-		", He is invisible while hes crouched and drops mines",
-		", He does loads of damage and has fast reload.",
-		", He can drop auto turrets and ammo supplies.",
-		", He has lots of health."
-	};
-
-	// How long should the Class Select menu stay open?
-	static const MENU_OPEN_TIME = view_as<int>(9999);
-	static bool:DEBUG_MODE = false;
-
-	// What formatting string to use when printing to the chatbox
-	#define PRINT_PREFIX 	"\x05[DLR] \x01" 
-
-	/// SOUNDS AND OTHER
-	/// PRECACHE DATA
-
-	#define SOUND_CLASS_SELECTED "ui/pickup_misc42.wav" /**< What sound to play when a class is selected. Do not include "sounds/" prefix. */
-	#define SOUND_DROP_BOMB "ui/beep22.wav"
-	#define AMMO_PILE "models/props/terror/ammo_stack.mdl"
-	#define MODEL_INCEN	"models/props/terror/incendiary_ammo.mdl"
-	#define MODEL_EXPLO	"models/props/terror/exploding_ammo.mdl"
-	#define MODEL_SPRITE "models/sprites/glow01.spr"
-	#define PARTICLE_DEFIB "item_defibrillator_body"
-	#define PARTICLE_ELMOS "st_elmos_fire_cp0"
-
-	/**
-	 * OTHER GLOBAL VARIABLES
-	 * Do not change these unless you know what you are doing.
-	 */
-
-	const NONE = view_as<int>(0);
-	const SOLDIER = view_as<int>(1);
-	const ATHLETE= view_as<int>(2);
-	const MEDIC=view_as<int>(3);
-	const SABOTEUR=view_as<int>(4);
-	const COMMANDO=view_as<int>(5);
-	const ENGINEER=view_as<int>(6);
-	const BRAWLER=view_as<int>(7);
-	const MAXCLASSES=view_as<int>(8);
-
-	enum struct PlayerInfo 
-	{
-		int BombsUsed;
-		int ItemsBuilt;
-		float HideStartTime;
-		float HealStartTime;
-		int LastButtons;
-		int ChosenClass;
-		float LastDropTime;
-		char EquippedGun[64];
-
-	}
-
-	PlayerInfo ClientData[MAXPLAYERS+1];
-
-	// Stores client plugin data
-	//new ClientData[MAXPLAYERS+1][PLAYERDATA];
-
-	// Rapid fire variables
-	new g_iRI[MAXPLAYERS+1] = { -1 },
-		g_iRC, g_iEi[MAXPLAYERS+1] = { -1 },
-		Float:g_fNT[MAXPLAYERS+1] = { -1.0 },
-		g_iNPA = -1,
-		g_oAW = -1;
-
-	// Speed vars
-	new g_ioLMV;
-
-	// Commando vars
-	new g_ioPR = -1;
-	new g_iVMStartTimeO  = -1;
-	new g_iViewModelO = -1;
-	new g_ioNA = -1;
-	new g_ioTI = -1;
-	new g_iSSD = -1;
-	new g_iSID = -1;
-	new g_iSED = -1;
-	new g_iSRS = -1;
-
-	// Weapon rates
-
-	const Float:g_fl_SpasS = 0.5;
-	const Float:g_fl_SpasI = 0.375;
-	const Float:g_fl_SpasE = 0.699999;
-
-	bool g_bParachute[MAXPLAYERS+1], g_bLeft4Dead2;
-	int g_iVelocity = -1, g_iParaEntRef[MAXPLAYERS+1] = {INVALID_ENT_REFERENCE, ...};
-
-	static char g_sModels[2][] =
-	{
-		"models/props_swamp/parachute01.mdl",
-		"models/props/de_inferno/ceiling_fan_blade.mdl"
-	};
-
-	// Enums (doc'd by SMLib)
-	enum Water_Level
-	{
-		WATER_LEVEL_NOT_IN_WATER = 0,
-		WATER_LEVEL_FEET_IN_WATER,
-		WATER_LEVEL_WAIST_IN_WATER,
-		WATER_LEVEL_HEAD_IN_WATER
-	};
-
-	// Bomb related stuff
-	new g_BeamSprite = -1, g_HaloSprite = -1;
-	new redColor[4]		= {255, 75, 75, 255};
-	new greenColor[4]	= {75, 255, 75, 255};
-	new RndSession;
-
-	#define SOUND_HELICOPTER "vehicles/airboat/fan_blade_fullthrottle_loop1.wav"
-	#define PUNCH_SOUND "melee_tonfa_02.wav"
-	#define EXPLOSION_SOUND "weapons/hegrenade/explode5.wav"
-	#define EXPLOSION_SOUND2 "weapons/grenade_launcher/grenadefire/grenade_launcher_explode_1.wav"
-	#define EXPLOSION_SOUND3 "ambient/explosions/explode_3.wav"
-	#define EXPLOSION_PARTICLE "gas_explosion_main_fallback"
-	#define EXPLOSION_PARTICLE2 "weapon_grenade_explosion"
-	#define EXPLOSION_PARTICLE3 "explosion_huge_b"
-	#define EFIRE_PARTICLE "gas_explosion_ground_fire"
-	#define MEDIC_GLOW "fire_medium_01_glow"
-	#define BOMB_GLOW "fire_medium_01_glow"
-	#define ENGINEER_MACHINE_GUN "models/w_models/weapons/50cal.mdl"
-	#define SPRITE_GLOW "sprites/blueglow1.vmt"
-
-	// Convars (change these via the created cfg files)
-
-	// CLASS RELATED STUFF
-	new g_CollisionOffset;
-
-	// Max classes
-	new Handle:MAX_SOLDIER;
-	new Handle:MAX_ATHLETE;
-	new Handle:MAX_MEDIC;
-	new Handle:MAX_SABOTEUR;
-	new Handle:MAX_COMMANDO;
-	new Handle:MAX_ENGINEER;
-	new Handle:MAX_BRAWLER;
-
-	// Everyone
-	new Handle:NONE_HEALTH;
-	new Handle:SOLDIER_HEALTH;
-	new Handle:ATHLETE_HEALTH;
-	new Handle:MEDIC_HEALTH;
-	new Handle:SABOTEUR_HEALTH;
-	new Handle:COMMANDO_HEALTH;
-	new Handle:ENGINEER_HEALTH;
-	new Handle:BRAWLER_HEALTH;
-	// HEalth
-
-	new Handle:REVIVE_DURATION;
-	new Handle:HEAL_DURATION;
-	new Handle:REVIVE_HEALTH;
-	new Handle:PILLS_HEALTH_BUFFER;
-	new Handle:ADRENALINE_DURATION;
-	new Handle:ADRENALINE_HEALTH_BUFFER;
-
-
-	// Soldier
-	new Handle:SOLDIER_FIRE_RATE;
-	new Handle:SOLDIER_DAMAGE_REDUCE_RATIO;
-	new Handle:SOLDIER_SPEED;
-
-	// Athlete
-	new Handle:ATHLETE_SPEED;
-	new Handle:ATHLETE_JUMP_VEL;
-
-	// Medic
-	new Handle:MEDIC_HEAL_DIST;
-	new Handle:MEDIC_HEALTH_VALUE;
-	new Handle:MEDIC_MAX_ITEMS;
-	new Handle:MEDIC_HEALTH_INTERVAL;
-	new Handle:MEDIC_HEAL_RATIO;
-	new Handle:MEDIC_REVIVE_RATIO;
-
-	new Handle:MEDIC_MAX_BUILD_RANGE;
-
-	// Saboteur
-	new Handle:SABOTEUR_INVISIBLE_TIME;
-	new Handle:SABOTEUR_BOMB_ACTIVATE;
-	new Handle:SABOTEUR_BOMB_RADIUS;
-	new Handle:SABOTEUR_MAX_BOMBS;
-	new Handle:SABOTEUR_BOMB_DAMAGE_SURV;
-	new Handle:SABOTEUR_BOMB_DAMAGE_INF;
-	new Handle:SABOTEUR_BOMB_POWER;
-
-	// Commando
-	new Handle:COMMANDO_DAMAGE;
-	new Handle:COMMANDO_RELOAD_RATIO;
-	new Handle:COMMANDO_DAMAGE_RIFLE;
-	new Handle:COMMANDO_DAMAGE_GRENADE;
-	new Handle:COMMANDO_DAMAGE_SHOTGUN;
-	new Handle:COMMANDO_DAMAGE_SNIPER;
-	new Handle:COMMANDO_DAMAGE_HUNTING;
-	new Handle:COMMANDO_DAMAGE_PISTOL;
-	new Handle:COMMANDO_DAMAGE_SMG;
-
-	// Engineer
-	new Handle:ENGINEER_MAX_BUILDS;
-	new Handle:ENGINEER_MAX_BUILD_RANGE;
-
-	// Saboteur, Engineer, Medic
-	new Handle:MINIMUM_DROP_INTERVAL;
-	new Handle:ENGINEER_TURRET_EXTERNAL_PLUGIN;
-
-	// Saferoom checks for saboteur
-	new bool:g_bInSaferoom[MAXPLAYERS+1];
-	new Float:g_SpawnPos[MAXPLAYERS+1][3];
-	new Handle:g_VarFirstAidDuration = INVALID_HANDLE;
-	new Handle:g_VarReviveDuration = INVALID_HANDLE;
-
-	new Float:FirstAidDuration;
-	new Float:ReviveDuration;
-	new bool:BombActive = false;
-
-	new String:Engineer_Turret_Spawn_Cmd[16] = "sm_dlrpmkai"; // sm_dlrmachinemulti";
-	new String:Engineer_Turret_Remove_Cmd[16] = "sm_dlrpmkairm"; //sm_dlrmachinemultirm";
-	new Handle:SABOTEUR_ACTIVE_BOMB_COLOR;
-
-	// Last class taken
-	new LastClassConfirmed[MAXPLAYERS+1];
-
-	new bool:BombIndex[16];
-	new bool:RoundStarted =false;
-	new bool:ClassHint =false;
-	new bool:InvisibilityHint = false;
-	new bool:MedicHint = false;
-	new BombHintTimestamp = 0;
-	new InvisibilityTimestamp = 0;
-	new bool:isAdminUser = false;
-	new bool:disableInfected = false;
-	new bool:g_bHide[MAXPLAYERS+1];
-	new g_iWeaponOwner[2048];
-
-	ConVar healthModEnabled;
-	ConVar parachuteEnabled;
-
-	public Plugin:myinfo =
-	{
-		name = "Talents Plugin 2023 anniversary edition",
-		author = "DLR / Ken / Neil / Spirit / panxiaohai / Yani",
-		description = "Incorporates Survivor Classes",
-		version = "v1.3",
-		url = "https://forums.alliedmods.net/showthread.php?t=273312"
-	};
-
-	/**
-	 * PLUGIN LOGIC
-	 */
-
-	public OnPluginStart( )
-	{
-		// Offsets
-		g_iNPA = FindSendPropInfo("CBaseCombatWeapon", "m_flNextPrimaryAttack");
-		g_oAW = FindSendPropInfo("CTerrorPlayer", "m_hActiveWeapon");
-		g_ioLMV = FindSendPropInfo("CTerrorPlayer", "m_flLaggedMovementValue");
-		g_ioPR = FindSendPropInfo("CBaseCombatWeapon", "m_flPlaybackRate");
-		g_ioNA = FindSendPropInfo("CTerrorPlayer", "m_flNextAttack");
-		g_ioTI = FindSendPropInfo("CTerrorGun", "m_flTimeWeaponIdle");
-		g_iSSD = FindSendPropInfo("CBaseShotgun", "m_reloadStartDuration");
-		g_iSID = FindSendPropInfo("CBaseShotgun", "m_reloadInsertDuration");
-		g_iSED = FindSendPropInfo("CBaseShotgun", "m_reloadEndDuration");
-		g_iSRS = FindSendPropInfo("CBaseShotgun", "m_reloadState");
-		g_iVMStartTimeO = FindSendPropInfo("CTerrorViewModel","m_flLayerStartTime");
-		g_iViewModelO = FindSendPropInfo("CTerrorPlayer","m_hViewModel");
-		g_iVelocity = FindSendPropInfo("CBasePlayer", "m_vecVelocity[0]");
-		g_CollisionOffset = FindSendPropInfo( "CBaseEntity", "m_CollisionGroup" );
-		// Hooks
-		HookEvent("player_spawn", Event_PlayerSpawn);
-		HookEvent("player_hurt", Event_PlayerHurt);
-		HookEvent("player_death", Event_PlayerDeath);
-		HookEvent("round_end", Event_RoundChange);
-		HookEvent("round_start_post_nav", Event_RoundChange);
-		HookEvent("mission_lost", Event_RoundChange);
-		HookEvent("weapon_reload", Event_RelCommandoClass);
-		HookEvent("player_entered_checkpoint", Event_EnterSaferoom);
-		HookEvent("player_left_checkpoint", Event_LeftSaferoom);
-		HookEvent("player_team", Event_PlayerTeam);
-		HookEvent("player_left_start_area",Event_LeftStartArea);
-		HookEvent("heal_begin", event_HealBegin, EventHookMode_Pre);
-		HookEvent("revive_begin", event_ReviveBegin, EventHookMode_Pre);
-		HookEvent("weapon_fire", Event_WeaponFire);
-		HookEvent("server_cvar", Event_ServerCvar, EventHookMode_Pre);
-
-		// Concommands
-		RegConsoleCmd("sm_class", CmdClassMenu, "Shows the class selection menu");
-		RegConsoleCmd("sm_classinfo", CmdClassInfo, "Shows class descriptions");
-		RegConsoleCmd("sm_classes", CmdClasses, "Shows class descriptions");
-		RegConsoleCmd("sm_dlrdebug", CmdDlrMenu, "Debug & Manage");
-		RegConsoleCmd("sm_hide", HideCommand, "Hide player");
-		
-		// Convars
-		MAX_SOLDIER = CreateConVar("talents_soldier_max", "1", "Max number of soldiers");
-		MAX_ATHLETE = CreateConVar("talents_athelete_max", "1", "Max number of athletes");
-		MAX_MEDIC = CreateConVar("talents_medic_max", "1", "Max number of medics");
-		MAX_SABOTEUR = CreateConVar("talents_saboteur_max", "1", "Max number of saboteurs");
-		MAX_COMMANDO = CreateConVar("talents_commando_max", "1", "Max number of commandos");
-		MAX_ENGINEER = CreateConVar("talents_engineer_max", "1", "Max number of engineers");
-		MAX_BRAWLER = CreateConVar("talents_brawler_max", "1", "Max number of brawlers");
-		
-		NONE_HEALTH = CreateConVar("talents_none_health", "150", "How much health a default player should have");
-		SOLDIER_HEALTH = CreateConVar("talents_soldier_health", "300", "How much health a soldier should have");
-		ATHLETE_HEALTH = CreateConVar("talents_athelete_health", "150", "How much health an athlete should have");
-		MEDIC_HEALTH = CreateConVar("talents_medic_health_start", "150", "How much health a medic should have");
-		SABOTEUR_HEALTH = CreateConVar("talents_saboteur_health", "150", "How much health a saboteur should have");
-		COMMANDO_HEALTH = CreateConVar("talents_commando_health", "300", "How much health a commando should have");
-		ENGINEER_HEALTH = CreateConVar("talents_engineer_health", "150", "How much health a engineer should have");
-		BRAWLER_HEALTH = CreateConVar("talents_brawler_health", "600", "How much health a brawler should have");
-		
-		SOLDIER_FIRE_RATE = CreateConVar("talents_soldier_fire_rate", "0.6666", "How fast the soldier should fire. Lower values = faster");
-		SOLDIER_SPEED = CreateConVar("talents_soldier_speed", "1.15", "How fast soldier should run. A value of 1.0 = normal speed");
-		SOLDIER_DAMAGE_REDUCE_RATIO = CreateConVar("talents_soldier_damage_reduce_ratio", "0.5", "Ratio for how much to reduce damage for soldier");
-
-		ATHLETE_JUMP_VEL = CreateConVar("talents_athlete_jump", "450.0", "How high a soldier should be able to jump. Make this higher to make them jump higher, or 0.0 for normal height");
-		ATHLETE_SPEED = CreateConVar("talents_athlete_speed", "1.20", "How fast athlete should run. A value of 1.0 = normal speed");
-		parachuteEnabled = CreateConVar("talents_athlete_enable_parachute","0.0","Enable parachute for athlete. Hold E in air to use it. 0 = OFF, 1 = ON.", FCVAR_NOTIFY, true, 0.0, true, 1.0);		
-		
-		MEDIC_HEAL_DIST = CreateConVar("talents_medic_heal_dist", "256.0", "How close other survivors have to be to heal. Larger values = larger radius");
-		MEDIC_HEALTH_VALUE = CreateConVar("talents_medic_health", "10", "How much health to restore");
-		MEDIC_MAX_ITEMS = CreateConVar("talents_medic_max_items", "3", "How many items the medic can drop");
-		MEDIC_HEALTH_INTERVAL = CreateConVar("talents_medic_health_interval", "2.0", "How often to heal players within range");
-		MEDIC_REVIVE_RATIO = CreateConVar("talents_medic_revive_ratio", "0.5", "How much faster medic revives. lower is faster");
-		MEDIC_HEAL_RATIO = CreateConVar("talents_medic_heal_ratio", "0.5", "How much faster medic heals, lower is faster");
-		MEDIC_MAX_BUILD_RANGE = CreateConVar("talents_medic_build_range", "120.0", "Maximum distance away an object can be dropped by medic");
-
-		SABOTEUR_INVISIBLE_TIME = CreateConVar("talents_saboteur_invis_time", "5.0", "How long it takes for the saboteur to become invisible");
-		SABOTEUR_BOMB_ACTIVATE = CreateConVar("talents_saboteur_bomb_activate", "5.0", "How long before the dropped bomb becomes sensitive to motion");
-		SABOTEUR_BOMB_RADIUS = CreateConVar("talents_saboteur_bomb_radius", "128.0", "Radius of bomb motion detection");
-		SABOTEUR_MAX_BOMBS = CreateConVar("talents_saboteur_max_bombs", "5", "How many bombs a saboteur can drop per round");
-		SABOTEUR_BOMB_DAMAGE_SURV = CreateConVar("talents_saboteur_bomb_dmg_surv", "0", "How much damage a bomb does to survivors");
-		SABOTEUR_BOMB_DAMAGE_INF = CreateConVar("talents_saboteur_bomb_dmg_inf", "1000", "How much damage a bomb does to infected");
-		SABOTEUR_BOMB_POWER = CreateConVar("talents_saboteur_bomb_power", "2.0", "How much blast power a bomb has. Higher values will throw survivors farther away");
-		SABOTEUR_ACTIVE_BOMB_COLOR = CreateConVar("talents_bomb_active_glow_color","255 0 0", "Glow color for active bombs (Default Red)");
-
-		COMMANDO_DAMAGE = CreateConVar("talents_commando_dmg", "5.0", "How much bonus damage a Commando does by default");
-		COMMANDO_DAMAGE_RIFLE = CreateConVar("talents_commando_dmg_rifle", "10.0", "How much bonus damage a Commando does with rifle");
-		COMMANDO_DAMAGE_GRENADE = CreateConVar("talents_commando_dmg_grenade", "20.0", "How much bonus damage a Commando does with grenade");
-		COMMANDO_DAMAGE_SHOTGUN = CreateConVar("talents_commando_dmg_shotfun", "5.0", "How much bonus damage a Commando does with shotgun");
-		COMMANDO_DAMAGE_SNIPER = CreateConVar("talents_commando_dmg_sniper", "15.0", "How much bonus damage a Commando does with sniper");
-		COMMANDO_DAMAGE_HUNTING = CreateConVar("talents_commando_dmg_hunting", "15.0", "How much bonus damage a Commando does with hunting rifle");
-		COMMANDO_DAMAGE_PISTOL = CreateConVar("talents_commando_dmg_pistol", "25.0", "How much bonus damage a Commando does with pistol");
-		COMMANDO_DAMAGE_SMG = CreateConVar("talents_commando_dmg_smg", "7.0", "How much bonus damage a Commando does with smg");
-		COMMANDO_RELOAD_RATIO = CreateConVar("talents_commando_reload_ratio", "0.44", "Ratio for how fast a Commando should be able to reload");
-		
-		ENGINEER_MAX_BUILDS = CreateConVar("talents_engineer_max_builds", "5", "How many times an engineer can build per round");
-		ENGINEER_MAX_BUILD_RANGE = CreateConVar("talents_engineer_build_range", "120.0", "Maximum distance away an object can be built by the engineer");
-		ENGINEER_TURRET_EXTERNAL_PLUGIN = CreateConVar("talents_engineer_machinegun_plugin", "1", "Whether to use external plugin for turrets.");
-		
-		MINIMUM_DROP_INTERVAL = CreateConVar("talents_drop_interval", "30.0", "Time before an engineer, medic, or saboteur can drop another item");
-
-		// Revive & health modifiers
-		healthModEnabled = CreateConVar("talents_health_modifiers_enabled","0.0","Enables/Disables health modifiers. 0 = OFF, 1 = ON.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
-		REVIVE_DURATION = CreateConVar("talents_revive_duration", "4.0", "Default reviving duration in seconds");
-		HEAL_DURATION = CreateConVar("talents_heal_duration", "4.0", "Default healing duration in seconds");
-		REVIVE_HEALTH =  CreateConVar("talents_revive_health", "100.0", "Default health given 0n revive");
-		PILLS_HEALTH_BUFFER =  CreateConVar("talents_pills_health_buffer", "75.0", "Default health given on pills");	
-		ADRENALINE_DURATION =  CreateConVar("talents_adrenaline_duration", "30.0", "Default adrenaline duration");
-		ADRENALINE_HEALTH_BUFFER =  CreateConVar("talents_adrenaline_health_buffer", "75.0", "Default health given on adrenaline");
-
-		ResetAllState();//turrets stuff	
-		AutoExecConfig(true, "talents");
-		ApplyHealthModifiers();	
-	}
-
-	public ResetClientVariables(client)
-	{
-		ClientData[client].BombsUsed = 0;
-		ClientData[client].ItemsBuilt = 0;
-		ClientData[client].HideStartTime= GetGameTime();
-		ClientData[client].HealStartTime= GetGameTime();
-		ClientData[client].LastButtons = 0;
-		ClientData[client].ChosenClass = NONE;
-		ClientData[client].LastDropTime = 0.0;
-		g_bInSaferoom[client] = false;
-	}
-
-	public OnMapStart()
-	{
-		// Sounds
-		PrecacheSound(SOUND_CLASS_SELECTED);
-		PrecacheSound(SOUND_DROP_BOMB);
-		PrecacheModel(MODEL_INCEN, true);
-		PrecacheModel(MODEL_EXPLO, true);
-		PrecacheModel(MODEL_SPRITE, true);
-		PrecacheModel(SPRITE_GLOW, true);
-
-		// Sprites
-		g_BeamSprite = PrecacheModel("materials/sprites/laserbeam.vmt");
-		g_HaloSprite = PrecacheModel("materials/sprites/glow01.vmt");
-		PrecacheModel(ENGINEER_MACHINE_GUN);
-		PrecacheModel(AMMO_PILE);
-		// Particles
-		PrecacheParticle(EXPLOSION_PARTICLE);
-		PrecacheParticle(EXPLOSION_PARTICLE2);
-		PrecacheParticle(EXPLOSION_PARTICLE3);
-		PrecacheParticle(EFIRE_PARTICLE);
-		PrecacheParticle(MEDIC_GLOW);
-		PrecacheParticle(BOMB_GLOW);
-
-		// Cache
-		ClearCache();
-		RoundStarted = false;
-		ClassHint = false;
-		PrecacheTurret();//turretstuff
-
-		for (int i = 0; i < 2; i++)
-			PrecacheModel(g_sModels[i]);
-
-		for (int i = 0; i < MAXPLAYERS +1; i++)
-			g_bHide[i] = false;
-
-	}
-
-	public OnMapEnd()
-	{
-		// Cache
-		ClearCache();
-		
-		RndSession = 0;
-	}
-
-	public OnClientPutInServer(client)
-	{
-		if (!client || !IsValidEntity(client) || !IsClientInGame(client))
-			return;
-		
-		g_bHide[client] = false; 
-
-		ResetClientVariables(client);
-		RebuildCache();
-	}
-
-	public Action:TimerLoadGlobal(Handle:hTimer, any:client)
-	{
-		if (!client || !IsValidEntity(client) || !IsClientInGame(client))
-			return;
-		
-		SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamagePre);
-	}
-
-	public Action:TimerLoadClient(Handle:hTimer, any:client)
-	{
-		if (!client ||  !IsValidEntity(client) || !IsClientInGame(client))
-		return;
-		
-		if (RoundStarted == false && !IsPlayerInSaferoom(client) && !IsInEndingSaferoom(client)) {
-			RoundStarted = true;
-		}
-
-		SDKHook(client, SDKHook_WeaponSwitch, OnWeaponSwitch);
-		SDKHook(client, SDKHook_WeaponEquip, OnWeaponEquip);
-		SDKHook(client, SDKHook_SetTransmit, Hook_SetTransmit);
-		SDKHook(client, SDKHook_WeaponDrop, OnWeaponDrop);
-
-		ResetClientVariables(client);
-		RebuildCache();		
-	}
-
-	public Action:OnWeaponDrop(client, weapon)
-	{
-		RebuildCache();
-	}
-
-	public Action:OnWeaponSwitch(client, weapon)
-	{
-		RebuildCache();
-	}
-
-	public Action:OnWeaponEquip(client, weapon)
-	{
-		RebuildCache();
-	}
-
-	public OnClientDisconnect(client)
-	{
-		RebuildCache();
-		ResetClientVariables(client);
-	}
-
-	public Action:TimerThink(Handle:hTimer, any:client)
-	{
-		if (!IsValidEntity(client) || !IsClientInGame(client) || IsFakeClient(client) || !IsPlayerAlive(client) || GetClientTeam(client) != 2)
-			return Plugin_Stop;
-		
-		new flags = GetEntityFlags(client);
+/**
+* =============================================================================
+* Talents Plugin by DLR / Neil / Spirit / panxiaohai / Yani
+* Incorporates Survivor classes.
+*
+* (C)2023 DeadLandRape / Neil / Yani.  All rights reserved.
+* =============================================================================
+*
+*	Developed for DeadLandRape Gaming. This plugin is DLR proprietary software.
+*	DLR claims complete rights to this plugin, including, but not limited to:
+*
+*		- The right to use this plugin in their servers
+*		- The right to modify this plugin
+*		- The right to claim ownership of this plugin
+*		- The right to re-distribute this plugin as they see fit
+*/	
+#undef REQUIRE_PLUGIN
+#tryinclude <MultiTurrets>
+#define REQUIRE_PLUGIN
+#if !defined _DLRCore_included
+native int GetCurrentClass(int player);
+#endif
+
+#define PLUGIN_VERSION "1.3"
+#pragma semicolon 1
+#define DEBUG 1
+#include <sourcemod>
+#include <sdktools>
+#include <sdkhooks>
+
+/**
+* CONFIGURABLE VARIABLES
+* Feel free to change the following code-related values.
+*/
+
+/// MENU AND UI RELATED STUFF
+
+static const String:MENU_OPTIONS[][] =
+{
+	"None",
+	"Soldier",
+	"Athlete",
+	"Medic",
+	"Saboteur",
+	"Commando",
+	"Engineer",
+	"Brawler"
+};
+
+static const String:ClassTips[][] =
+{
+	", Is a noob who didnt pick a class.",
+	", He can shoot fast, takes less damage and moves faster.",
+	", He can Jump high.",
+	", He can heal his team by crouching, heal and revive faster and drop supplies. ",
+	", He is invisible while hes crouched and drops mines",
+	", He does loads of damage and has fast reload.",
+	", He can drop auto turrets and ammo supplies.",
+	", He has lots of health."
+};
+
+// How long should the Class Select menu stay open?
+static const MENU_OPEN_TIME = view_as<int>(9999);
+static bool:DEBUG_MODE = false;
+
+// API
+new Handle:g_hfwdOnPlayerUsedSpecialSkill;
+new Handle:g_hfwdOnPlayerClassChange;
+
+// What formatting string to use when printing to the chatbox
+#define PRINT_PREFIX 	"\x05[DLR] \x01" 
+
+/// SOUNDS AND OTHER
+/// PRECACHE DATA
+
+#define SOUND_CLASS_SELECTED "ui/pickup_misc42.wav" /**< What sound to play when a class is selected. Do not include "sounds/" prefix. */
+#define SOUND_DROP_BOMB "ui/beep22.wav"
+#define AMMO_PILE "models/props/terror/ammo_stack.mdl"
+#define MODEL_INCEN	"models/props/terror/incendiary_ammo.mdl"
+#define MODEL_EXPLO	"models/props/terror/exploding_ammo.mdl"
+#define MODEL_SPRITE "models/sprites/glow01.spr"
+#define PARTICLE_DEFIB "item_defibrillator_body"
+#define PARTICLE_ELMOS "st_elmos_fire_cp0"
+#define MODEL_MINE "models/props_buildables/mine_02.mdl"
+
+/**
+* OTHER GLOBAL VARIABLES
+* Do not change these unless you know what you are doing.
+*/
+
+const NONE = view_as<int>(0);
+const SOLDIER = view_as<int>(1);
+const ATHLETE= view_as<int>(2);
+const MEDIC=view_as<int>(3);
+const SABOTEUR=view_as<int>(4);
+const COMMANDO=view_as<int>(5);
+const ENGINEER=view_as<int>(6);
+const BRAWLER=view_as<int>(7);
+const MAXCLASSES=view_as<int>(8);
+
+enum SpecialSkill {
+	No_Skill = 0,
+	F18_airstrike,
+	Berzerk,
+	Grenade,
+	Multiturret
+}
+
+enum struct PlayerInfo 
+{
+	int SpecialsUsed;
+	float HideStartTime;
+	float HealStartTime;
+	int LastButtons;
+	int ChosenClass;
+	float LastDropTime;
+	int SpecialDropInterval;
+	int SpecialLimit;
+	SpecialSkill SpecialSkill;			
+	char EquippedGun[64];
+}
+
+PlayerInfo ClientData[MAXPLAYERS+1];
+
+
+// API
+bool g_bLeft4Dead2, g_bLateLoad;
+bool g_bAirstrike, g_bAirstrikeValid, g_bMultiturret, g_bMultiturretValid;
+
+// Rapid fire variables
+new g_iRI[MAXPLAYERS+1] = { -1 },
+g_iRC, g_iEi[MAXPLAYERS+1] = { -1 },
+Float:g_fNT[MAXPLAYERS+1] = { -1.0 },
+g_iNPA = -1,
+g_oAW = -1;
+
+// Speed vars
+new g_ioLMV;
+
+// Commando vars
+new g_ioPR = -1;
+new g_iVMStartTimeO  = -1;
+new g_iViewModelO = -1;
+new g_ioNA = -1;
+new g_ioTI = -1;
+new g_iSSD = -1;
+new g_iSID = -1;
+new g_iSED = -1;
+new g_iSRS = -1;
+new g_iShovePenalty = 0;
+
+// Effects
+new String:g_ColorNames[12][32] = {"Red", "Green", "Blue", "Yellow", "Purple", "Cyan", "Orange", "Pink", "Olive", "Lime", "Violet", "Lightblue"};
+new g_Colors[12][3] = {{255,0,0},{0,255,0},{0,0,255},{255,255,0},{255,0,255},{0,255,255},{255,128,0},{255,0,128},{128,255,0},{0,255,128},{128,0,255},{0,128,255}};
+
+enum FX
+{
+	FxNone = 0,
+	FxPulseFast,
+	FxPulseSlowWide,
+	FxPulseFastWide,
+	FxFadeSlow,
+	FxFadeFast,
+	FxSolidSlow,
+	FxSolidFast,
+	FxStrobeSlow,
+	FxStrobeFast,
+	FxStrobeFaster,
+	FxFlickerSlow,
+	FxFlickerFast,
+	FxNoDissipation,
+	FxDistort,               // Distort/scale/translate flicker
+	FxHologram,              // kRenderFxDistort + distance fade
+	FxExplode,               // Scale up really big!
+	FxGlowShell,             // Glowing Shell
+	FxClampMinScale,         // Keep this sprite from getting very small (SPRITES only!)
+	FxEnvRain,               // for environmental rendermode, make rain
+	FxEnvSnow,               //  "        "            "    , make snow
+	FxSpotlight,     
+	FxRagdoll,
+	FxPulseFastWider,
+};
+
+enum Render
+{
+	Normal = 0, 		// src
+	TransColor, 		// c*a+dest*(1-a)
+	TransTexture,		// src*a+dest*(1-a)
+	Glow,				// src*a+dest -- No Z buffer checks -- Fixed size in screen space
+	TransAlpha,			// src*srca+dest*(1-srca)
+	TransAdd,			// src*a+dest
+	Environmental,		// not drawn, used for environmental effects
+	TransAddFrameBlend,	// use a fractional frame value to blend between animation frames
+	TransAlphaAdd,		// src + dest*(1-a)
+	WorldGlow,			// Same as kRenderGlow but not fixed size in screen space
+	None,				// Don't render.
+};
+
+new FX:g_Effect = FX:FxGlowShell;
+new Render:g_Render = Render:Glow;
+
+// Weapon rates
+
+const Float:g_fl_SpasS = 0.5;
+const Float:g_fl_SpasI = 0.375;
+const Float:g_fl_SpasE = 0.699999;
+
+bool g_bParachute[MAXPLAYERS+1];
+int g_iVelocity = -1, g_iParaEntRef[MAXPLAYERS+1] = {INVALID_ENT_REFERENCE, ...};
+
+static char g_sModels[2][] =
+{
+	"models/props_swamp/parachute01.mdl",
+	"models/props/de_inferno/ceiling_fan_blade.mdl"
+};
+
+// Enums (doc'd by SMLib)
+enum Water_Level
+{
+	WATER_LEVEL_NOT_IN_WATER = 0,
+	WATER_LEVEL_FEET_IN_WATER,
+	WATER_LEVEL_WAIST_IN_WATER,
+	WATER_LEVEL_HEAD_IN_WATER
+};
+
+// Bomb related stuff
+new g_BeamSprite = -1, g_HaloSprite = -1;
+new redColor[4]		= {255, 75, 75, 255};
+new greenColor[4]	= {75, 255, 75, 255};
+new RndSession;
+
+#define SOUND_HELICOPTER "vehicles/airboat/fan_blade_fullthrottle_loop1.wav"
+#define PUNCH_SOUND "melee_tonfa_02.wav"
+#define EXPLOSION_SOUND "weapons/hegrenade/explode5.wav"
+#define EXPLOSION_SOUND2 "weapons/grenade_launcher/grenadefire/grenade_launcher_explode_1.wav"
+#define EXPLOSION_SOUND3 "ambient/explosions/explode_3.wav"
+#define EXPLOSION_PARTICLE "gas_explosion_main_fallback"
+#define EXPLOSION_PARTICLE2 "weapon_grenade_explosion"
+#define EXPLOSION_PARTICLE3 "explosion_huge_b"
+#define EFIRE_PARTICLE "gas_explosion_ground_fire"
+#define MEDIC_GLOW "fire_medium_01_glow"
+#define BOMB_GLOW "fire_medium_01_glow"
+#define ENGINEER_MACHINE_GUN "models/w_models/weapons/50cal.mdl"
+#define SPRITE_GLOW "sprites/blueglow1.vmt"
+
+// Convars (change these via the created cfg files)
+
+// CLASS RELATED STUFF
+
+// Max classes
+new Handle:MAX_SOLDIER;
+new Handle:MAX_ATHLETE;
+new Handle:MAX_MEDIC;
+new Handle:MAX_SABOTEUR;
+new Handle:MAX_COMMANDO;
+new Handle:MAX_ENGINEER;
+new Handle:MAX_BRAWLER;
+
+// Everyone
+new Handle:NONE_HEALTH;
+new Handle:SOLDIER_HEALTH;
+new Handle:ATHLETE_HEALTH;
+new Handle:MEDIC_HEALTH;
+new Handle:SABOTEUR_HEALTH;
+new Handle:COMMANDO_HEALTH;
+new Handle:ENGINEER_HEALTH;
+new Handle:BRAWLER_HEALTH;
+// HEalth
+
+new Handle:REVIVE_DURATION;
+new Handle:HEAL_DURATION;
+new Handle:REVIVE_HEALTH;
+new Handle:PILLS_HEALTH_BUFFER;
+new Handle:ADRENALINE_DURATION;
+new Handle:ADRENALINE_HEALTH_BUFFER;
+
+// Soldier
+new Handle:SOLDIER_FIRE_RATE;
+new Handle:SOLDIER_DAMAGE_REDUCE_RATIO;
+new Handle:SOLDIER_SPEED;
+new Handle:SOLDIER_SHOVE_PENALTY;
+new Handle:SOLDIER_MAX_AIRSTRIKES;
+
+// Athlete
+new Handle:ATHLETE_SPEED;
+new Handle:ATHLETE_JUMP_VEL;
+
+// Medic
+new Handle:MEDIC_HEAL_DIST;
+new Handle:MEDIC_HEALTH_VALUE;
+new Handle:MEDIC_MAX_ITEMS;
+new Handle:MEDIC_HEALTH_INTERVAL;
+new Handle:MEDIC_HEAL_RATIO;
+new Handle:MEDIC_REVIVE_RATIO;
+new Handle:MEDIC_MAX_BUILD_RANGE;
+
+// Saboteur
+new Handle:SABOTEUR_INVISIBLE_TIME;
+new Handle:SABOTEUR_BOMB_ACTIVATE;
+new Handle:SABOTEUR_BOMB_RADIUS;
+new Handle:SABOTEUR_MAX_BOMBS;
+new Handle:SABOTEUR_BOMB_DAMAGE_SURV;
+new Handle:SABOTEUR_BOMB_DAMAGE_INF;
+new Handle:SABOTEUR_BOMB_POWER;
+
+// Commando
+new Handle:COMMANDO_DAMAGE;
+new Handle:COMMANDO_RELOAD_RATIO;
+new Handle:COMMANDO_DAMAGE_RIFLE;
+new Handle:COMMANDO_DAMAGE_GRENADE;
+new Handle:COMMANDO_DAMAGE_SHOTGUN;
+new Handle:COMMANDO_DAMAGE_SNIPER;
+new Handle:COMMANDO_DAMAGE_HUNTING;
+new Handle:COMMANDO_DAMAGE_PISTOL;
+new Handle:COMMANDO_DAMAGE_SMG;
+
+// Engineer
+new Handle:ENGINEER_MAX_BUILDS;
+new Handle:ENGINEER_MAX_BUILD_RANGE;
+
+// Saboteur, Engineer, Medic
+new Handle:MINIMUM_DROP_INTERVAL;
+new Handle:MINIMUM_AIRSTRIKE_INTERVAL;
+new Handle:ENGINEER_TURRET_EXTERNAL_PLUGIN;
+
+// Saferoom checks for saboteur
+new bool:g_bInSaferoom[MAXPLAYERS+1];
+new Float:g_SpawnPos[MAXPLAYERS+1][3];
+new Handle:g_VarFirstAidDuration = INVALID_HANDLE;
+new Handle:g_VarReviveDuration = INVALID_HANDLE;
+
+new Float:FirstAidDuration;
+new Float:ReviveDuration;
+new bool:BombActive = false;
+
+new String:Engineer_Turret_Spawn_Cmd[16] = "sm_machinemenu"; 
+new Handle:SABOTEUR_ACTIVE_BOMB_COLOR;
+
+// Last class taken
+new LastClassConfirmed[MAXPLAYERS+1];
+
+new bool:BombIndex[16];
+new bool:RoundStarted =false;
+new bool:ClassHint =false;
+new bool:InvisibilityHint = false;
+new bool:MedicHint = false;
+new Float:mineWarning[16];
+
+new BombHintTimestamp = 0;
+new InvisibilityTimestamp = 0;
+new bool:isAdminUser = false;
+new bool:disableInfected = false;
+new bool:g_bHide[MAXPLAYERS+1];
+
+ConVar healthModEnabled;
+ConVar parachuteEnabled;
+
+public Plugin:myinfo =
+{
+	name = "Talents Plugin 2023 anniversary edition",
+	author = "DLR / Ken / Neil / Spirit / panxiaohai / Yani",
+	description = "Incorporates Survivor Classes",
+	version = PLUGIN_VERSION,
+	url = "https://forums.alliedmods.net/showthread.php?t=273312"
+};
+
+// ====================================================================================================
+//					L4D2 - Native
+// ====================================================================================================
+
+native void F18_ShowAirstrike(float origin[3], float direction);
+native void DLR_Multiturret(int client, int type);
+
+/**
+* PLUGIN LOGIC
+*/
+
+public OnPluginStart( )
+{
+	// Api
+	g_hfwdOnPlayerClassChange = CreateGlobalForward("OnPlayerClassChange", ET_Ignore, Param_Cell, Param_Cell, Param_Cell);
+	g_hfwdOnPlayerUsedSpecialSkill = CreateGlobalForward("OnPlayerUsedSpecialSkill", ET_Ignore, Param_Cell, Param_Cell, Param_Cell);
+
+	// Offsets
+	g_iNPA = FindSendPropInfo("CBaseCombatWeapon", "m_flNextPrimaryAttack");
+	g_oAW = FindSendPropInfo("CTerrorPlayer", "m_hActiveWeapon");
+	g_ioLMV = FindSendPropInfo("CTerrorPlayer", "m_flLaggedMovementValue");
+	g_ioPR = FindSendPropInfo("CBaseCombatWeapon", "m_flPlaybackRate");
+	g_ioNA = FindSendPropInfo("CTerrorPlayer", "m_flNextAttack");
+	g_ioTI = FindSendPropInfo("CTerrorGun", "m_flTimeWeaponIdle");
+	g_iSSD = FindSendPropInfo("CBaseShotgun", "m_reloadStartDuration");
+	g_iSID = FindSendPropInfo("CBaseShotgun", "m_reloadInsertDuration");
+	g_iSED = FindSendPropInfo("CBaseShotgun", "m_reloadEndDuration");
+	g_iSRS = FindSendPropInfo("CBaseShotgun", "m_reloadState");
+	g_iVMStartTimeO = FindSendPropInfo("CTerrorViewModel","m_flLayerStartTime");
+	g_iViewModelO = FindSendPropInfo("CTerrorPlayer","m_hViewModel");
+	g_iVelocity = FindSendPropInfo("CBasePlayer", "m_vecVelocity[0]");
+
+	// Hooks
+	HookEvent("player_spawn", Event_PlayerSpawn);
+	HookEvent("player_hurt", Event_PlayerHurt);
+	HookEvent("player_death", Event_PlayerDeath);
+	HookEvent("round_end", Event_RoundChange);
+	HookEvent("round_start_post_nav", Event_RoundChange);
+	HookEvent("mission_lost", Event_RoundChange);
+	HookEvent("weapon_reload", Event_RelCommandoClass);
+	HookEvent("player_entered_checkpoint", Event_EnterSaferoom);
+	HookEvent("player_left_checkpoint", Event_LeftSaferoom);
+	HookEvent("player_team", Event_PlayerTeam);
+	HookEvent("player_left_start_area",Event_LeftStartArea);
+	HookEvent("heal_begin", event_HealBegin, EventHookMode_Pre);
+	HookEvent("revive_begin", event_ReviveBegin, EventHookMode_Pre);
+	HookEvent("weapon_fire", Event_WeaponFire);
+	HookEvent("server_cvar", Event_ServerCvar, EventHookMode_Pre);
+
+	// Concommands
+	RegConsoleCmd("sm_class", CmdClassMenu, "Shows the class selection menu");
+	RegConsoleCmd("sm_classinfo", CmdClassInfo, "Shows class descriptions");
+	RegConsoleCmd("sm_classes", CmdClasses, "Shows class descriptions");
+	RegConsoleCmd("sm_dlrdebug", CmdDlrMenu, "Debug & Manage");
+	RegConsoleCmd("sm_hide", HideCommand, "Hide player");
 	
-		new buttons = GetClientButtons(client);
-		new Float:fCanDropTime = (GetGameTime() - ClientData[client].LastDropTime);
-		new bool:CanDrop = (fCanDropTime >= GetConVarFloat(MINIMUM_DROP_INTERVAL));
-		decl Float:pos[3];
-		GetClientAbsOrigin(client, pos);
-		int iDropTime = RoundToFloor(fCanDropTime);
+	// Convars
+	new Handle:hVersion = CreateConVar("talents_version", PLUGIN_VERSION, "Version of this release", FCVAR_NOTIFY|FCVAR_REPLICATED|FCVAR_DONTRECORD);
+	if(hVersion != INVALID_HANDLE)
+		SetConVarString(hVersion, PLUGIN_VERSION);
 
-		switch (ClientData[client].ChosenClass)
-		{
-			case ATHLETE:
-			{
-				SetEntDataFloat(client, g_ioLMV, GetConVarFloat(ATHLETE_SPEED), true);
-			}
-			
-			case SABOTEUR:
-			{
-				if (BombActive == true) {
-
-					if (iDropTime < GetConVarInt(SABOTEUR_BOMB_ACTIVATE)) {
-
-						if (BombHintTimestamp != iDropTime) {
-							PrintHintText(client, "Mine is arming in %i seconds", client, GetConVarInt(SABOTEUR_BOMB_ACTIVATE) - iDropTime);
-							BombHintTimestamp = iDropTime;
-						}
-					}
-					else if (iDropTime == GetConVarInt(SABOTEUR_BOMB_ACTIVATE)) {
-						
-						BombHintTimestamp = iDropTime-1;
-						
-						if (BombHintTimestamp != iDropTime) {
-							PrintHintTextToAll("%N's mine is now armed!", client);
-							BombHintTimestamp = iDropTime;
-						}
-					}
-				}
-
-				if (buttons & IN_DUCK)
-				{
-
-					float hidingTime = GetGameTime() - ClientData[client].HideStartTime;
-					if (hidingTime >= GetConVarFloat(SABOTEUR_INVISIBLE_TIME)) {
-						if (InvisibilityTimestamp != RoundToFloor(hidingTime) && InvisibilityHint == false) 
-						{
-							HidePlayer(client);
-							//SetEntityRenderFx(client, RENDERFX_PULSE_SLOW);
-							InvisibilityTimestamp = RoundToFloor(hidingTime);
-							InvisibilityHint = true;
-							SetEntDataFloat(client, g_ioLMV, 1.8, true);
-
-						}
-					}
-					if (hidingTime < GetConVarFloat(SABOTEUR_INVISIBLE_TIME) && (RoundToFloor(hidingTime) > 2)){
-
-						if (InvisibilityTimestamp != RoundToFloor(hidingTime)) {
-							PrintHintText(client,"Becoming invisible in %i seconds", RoundToFloor(GetConVarFloat(SABOTEUR_INVISIBLE_TIME) - hidingTime));
-							InvisibilityTimestamp = RoundToFloor(hidingTime);
-						}
-					}
+	MAX_SOLDIER = CreateConVar("talents_soldier_max", "1", "Max number of soldiers");
+	MAX_ATHLETE = CreateConVar("talents_athelete_max", "1", "Max number of athletes");
+	MAX_MEDIC = CreateConVar("talents_medic_max", "1", "Max number of medics");
+	MAX_SABOTEUR = CreateConVar("talents_saboteur_max", "1", "Max number of saboteurs");
+	MAX_COMMANDO = CreateConVar("talents_commando_max", "1", "Max number of commandos");
+	MAX_ENGINEER = CreateConVar("talents_engineer_max", "1", "Max number of engineers");
+	MAX_BRAWLER = CreateConVar("talents_brawler_max", "1", "Max number of brawlers");
 	
-				}
-				else
-				{
-					if (IsPlayerVisible(client) == false)  
-					{
-						UnhidePlayer(client);
-						SetEntDataFloat(client, g_ioLMV, 1.0, true);
-					}
-					InvisibilityHint = false;
-
-				}
-				
-				if (buttons & IN_SPEED)
-				{
-					if (CanDrop == false && (iDropTime < GetConVarInt(MINIMUM_DROP_INTERVAL))) {
-						PrintHintText(client ,"Wait %i seconds to deploy", (GetConVarInt(MINIMUM_DROP_INTERVAL) - iDropTime));
-					} else {
-
-						if (CanDrop == true) && !IsPlayerInSaferoom(client) && !IsInEndingSaferoom(client))
-						{
-							if (ClientData[client].BombsUsed >= GetConVarInt(SABOTEUR_MAX_BOMBS)) {
-								PrintHintText(client ,"You're out of mines");
-							} else {
-								ClientData[client].LastDropTime = GetGameTime();								
-								DropBomb(client);				
-							}
-						}
-					}
-				}
-			}
-			
-			case MEDIC:
-			{
-				if (buttons & IN_SPEED)
-				{
-					if (CanDrop) 
-					{	
-
-						if (ClientData[client].ItemsBuilt > GetConVarInt(MEDIC_MAX_ITEMS)) {
-						PrintHintText(client ,"You're out of items (Max %i)", GetConVarInt(MEDIC_MAX_ITEMS));
-						}
-						if (ClientData[client].ItemsBuilt < GetConVarInt(MEDIC_MAX_ITEMS))
-						{	
-							CreatePlayerMedicMenu(client);	
-						}
-					}
-					else if (CanDrop == false && (iDropTime < GetConVarInt(MINIMUM_DROP_INTERVAL))) {
-						PrintHintText(client ,"Wait %i seconds to deploy", (GetConVarInt(MINIMUM_DROP_INTERVAL) - iDropTime));
-					} 		
-				}
-
-				if (buttons & IN_DUCK) {
-					if ((GetGameTime() - ClientData[client].HealStartTime) >= 2.5) {
-						SetEntDataFloat(client, g_ioLMV, 1.7, true);
-						if (MedicHint == false) {
-				 			PrintHintTextToAll("%N is healing everyone around him!", client);
-							MedicHint = true;
-						}
-					}
-				} else {
-					SetEntDataFloat(client, g_ioLMV, 1.0, true);					
-					MedicHint = false;
-				}
-			}
-			
-			case ENGINEER:
-			{
-
-				if (buttons & IN_SPEED && RoundStarted == true)// && ClientData[client].ItemsBuilt < GetConVarInt(ENGINEER_MAX_BUILDS)) 
-				{	
-					if (CanDrop == false && (iDropTime < GetConVarInt(MINIMUM_DROP_INTERVAL))) {
-						PrintHintText(client ,"Wait %i seconds to deploy", (GetConVarInt(MINIMUM_DROP_INTERVAL) - iDropTime));
-					}
-
-					if (CanDrop == true) {
-						if(ClientData[client].ItemsBuilt < GetConVarInt(ENGINEER_MAX_BUILDS))
-						{
-							CreatePlayerEngineerMenu(client);	
-							ClientData[client].LastDropTime = GetGameTime();
-						}
-						else
-						{
-							PrintHintText(client ,"You're out of items (Max %i)", GetConVarInt(ENGINEER_MAX_BUILDS));
-							CreateRemoveTurretMenu(client);
-						}
-					}					
-				}
-			}
-			case SOLDIER:
-			{
-				SetEntDataFloat(client, g_ioLMV, GetConVarFloat(SOLDIER_SPEED), true);
-			}
-		}
-
-		ClientData[client].LastButtons = buttons;
-
-		return Plugin_Continue;
-	}
+	NONE_HEALTH = CreateConVar("talents_none_health", "150", "How much health a default player should have");
+	SOLDIER_HEALTH = CreateConVar("talents_soldier_health", "300", "How much health a soldier should have");
+	ATHLETE_HEALTH = CreateConVar("talents_athelete_health", "150", "How much health an athlete should have");
+	MEDIC_HEALTH = CreateConVar("talents_medic_health_start", "150", "How much health a medic should have");
+	SABOTEUR_HEALTH = CreateConVar("talents_saboteur_health", "150", "How much health a saboteur should have");
+	COMMANDO_HEALTH = CreateConVar("talents_commando_health", "300", "How much health a commando should have");
+	ENGINEER_HEALTH = CreateConVar("talents_engineer_health", "150", "How much health a engineer should have");
+	BRAWLER_HEALTH = CreateConVar("talents_brawler_health", "600", "How much health a brawler should have");
 	
-	stock SetupProgressBar(client, Float:time)
-	{
-		SetEntPropFloat(client, Prop_Send, "m_flProgressBarStartTime", GetGameTime());
-		SetEntPropFloat(client, Prop_Send, "m_flProgressBarDuration", time);
-	}
+	SOLDIER_FIRE_RATE = CreateConVar("talents_soldier_fire_rate", "0.6666", "How fast the soldier should fire. Lower values = faster");
+	SOLDIER_SPEED = CreateConVar("talents_soldier_speed", "1.15", "How fast soldier should run. A value of 1.0 = normal speed");
+	SOLDIER_DAMAGE_REDUCE_RATIO = CreateConVar("talents_soldier_damage_reduce_ratio", "0.7", "Ratio for how much armor reduces damage for soldier");
+	SOLDIER_SHOVE_PENALTY = CreateConVar("talents_soldier_shove_penalty_enabled","0.0","Enables/Disables shove penalty for soldier. 0 = OFF, 1 = ON.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+	SOLDIER_MAX_AIRSTRIKES = CreateConVar("talents_soldier_max_airstrikes","3.0","Number of tactical airstrikes per round. 0 = OFF", FCVAR_NOTIFY, true, 0.0, true, 16.0);
 
-	stock KillProgressBar(client)
-	{
-		SetEntPropFloat(client, Prop_Send, "m_flProgressBarStartTime", GetGameTime());
-		SetEntPropFloat(client, Prop_Send, "m_flProgressBarDuration", 0.0);
-	}
-
-	/*
-	DrawConfirmPanel(client, chosenClass)
-	{
-		if (!client || chosenClass >= MAXCLASSES)
-			return false;
-		
-		LastChosenClass[client] = chosenClass;
-		
-		new Handle:hPanel;
-		decl String:buffer[256];
-		
-		if((hPanel = CreatePanel()) == INVALID_HANDLE)
-		{
-			LogError("Cannot create hPanel on CreatePlayerClassMenu");
-			return false;
-		}
-		
-		Format(buffer, sizeof(buffer), "Select the %s talent?", MENU_OPTIONS[chosenClass]);
-		SetPanelTitle(hPanel, buffer);
-		
-		
-		DrawPanelItem(hPanel, "Yes");
-		DrawPanelItem(hPanel, "No");
-		
-		SendPanelToClient(hPanel, client, PanelHandler_ConfirmClass, MENU_OPEN_TIME);
-		CloseHandle(hPanel);
-		
-		return true;
-	}
-
-	public PanelHandler_ConfirmClass(Handle:menu, MenuAction:action, client, param)
-	{
-		switch (action)
-		{
-			case MenuAction_Select:
-			{
-				new class = LastChosenClass[client];
-				
-				if( param == 1 && class < MAXCLASSES && ( CountPlayersWithClass( class ) < GetMaxWithClass( class ) || ClientData[client].ChosenClass != class || GetMaxWithClass( class ) < 0 ) )
-				{
-					LastClassConfirmed[client] = class;
-					
-					PrintToConsole(client, "Class is setting up");
-					
-					SetupClasses(client, class);
-					EmitSoundToClient(client, SOUND_CLASS_SELECTED);
-					PrintToChat(client, "%sYou are now a \x04%s", PRINT_PREFIX, MENU_OPTIONS[class]);
-				}
-				else
-					CreatePlayerClassMenu(client);
-			}
-		}
-	}
-	*/
-
-	public ClearCache()
-	{
-		g_iRC = 0;
-		for (new i = 1; i <= MaxClients; i++)
-		{
-			g_iRI[i]= -1;
-			g_iEi[i] = -1;
-			g_fNT[i]= -1.0;
-		}
-	}
-
-	public RebuildCache()
-	{
-		ClearCache();
-
-		if (!IsServerProcessing())
-			return;
-		
-		for (new i = 1; i <= MaxClients; i++)
-		{
-			if (IsValidEntity(i) && IsClientInGame(i) && IsPlayerAlive(i) && GetClientTeam(i) == 2 && ClientData[i].ChosenClass == SOLDIER)
-			{
-				g_iRC++;
-				g_iRI[g_iRC] = i;
-			}
-		}
-	}
+	ATHLETE_JUMP_VEL = CreateConVar("talents_athlete_jump", "450.0", "How high a soldier should be able to jump. Make this higher to make them jump higher, or 0.0 for normal height");
+	ATHLETE_SPEED = CreateConVar("talents_athlete_speed", "1.20", "How fast athlete should run. A value of 1.0 = normal speed");
+	parachuteEnabled = CreateConVar("talents_athlete_enable_parachute","0.0","Enable parachute for athlete. Hold E in air to use it. 0 = OFF, 1 = ON.", FCVAR_NOTIFY, true, 0.0, true, 1.0);		
 	
-	public Event_RoundChange(Handle:event, String:name[], bool:dontBroadcast)
+	MEDIC_HEAL_DIST = CreateConVar("talents_medic_heal_dist", "256.0", "How close other survivors have to be to heal. Larger values = larger radius");
+	MEDIC_HEALTH_VALUE = CreateConVar("talents_medic_health", "10", "How much health to restore");
+	MEDIC_MAX_ITEMS = CreateConVar("talents_medic_max_items", "3", "How many items the medic can drop");
+	MEDIC_HEALTH_INTERVAL = CreateConVar("talents_medic_health_interval", "2.0", "How often to heal players within range");
+	MEDIC_REVIVE_RATIO = CreateConVar("talents_medic_revive_ratio", "0.5", "How much faster medic revives. lower is faster");
+	MEDIC_HEAL_RATIO = CreateConVar("talents_medic_heal_ratio", "0.5", "How much faster medic heals, lower is faster");
+	MEDIC_MAX_BUILD_RANGE = CreateConVar("talents_medic_build_range", "120.0", "Maximum distance away an object can be dropped by medic");
+
+	SABOTEUR_INVISIBLE_TIME = CreateConVar("talents_saboteur_invis_time", "5.0", "How long it takes for the saboteur to become invisible");
+	SABOTEUR_BOMB_ACTIVATE = CreateConVar("talents_saboteur_bomb_activate", "5.0", "How long before the dropped bomb becomes sensitive to motion");
+	SABOTEUR_BOMB_RADIUS = CreateConVar("talents_saboteur_bomb_radius", "128.0", "Radius of bomb motion detection");
+	SABOTEUR_MAX_BOMBS = CreateConVar("talents_saboteur_max_bombs", "5", "How many bombs a saboteur can drop per round");
+	SABOTEUR_BOMB_DAMAGE_SURV = CreateConVar("talents_saboteur_bomb_dmg_surv", "0", "How much damage a bomb does to survivors");
+	SABOTEUR_BOMB_DAMAGE_INF = CreateConVar("talents_saboteur_bomb_dmg_inf", "1500", "How much damage a bomb does to infected");
+	SABOTEUR_BOMB_POWER = CreateConVar("talents_saboteur_bomb_power", "2.0", "How much blast power a bomb has. Higher values will throw survivors farther away");
+	SABOTEUR_ACTIVE_BOMB_COLOR = CreateConVar("talents_bomb_active_glow_color","255 0 0", "Glow color for active bombs (Default Red)");
+
+	COMMANDO_DAMAGE = CreateConVar("talents_commando_dmg", "5.0", "How much bonus damage a Commando does by default");
+	COMMANDO_DAMAGE_RIFLE = CreateConVar("talents_commando_dmg_rifle", "10.0", "How much bonus damage a Commando does with rifle");
+	COMMANDO_DAMAGE_GRENADE = CreateConVar("talents_commando_dmg_grenade", "20.0", "How much bonus damage a Commando does with grenade");
+	COMMANDO_DAMAGE_SHOTGUN = CreateConVar("talents_commando_dmg_shotfun", "5.0", "How much bonus damage a Commando does with shotgun");
+	COMMANDO_DAMAGE_SNIPER = CreateConVar("talents_commando_dmg_sniper", "15.0", "How much bonus damage a Commando does with sniper");
+	COMMANDO_DAMAGE_HUNTING = CreateConVar("talents_commando_dmg_hunting", "15.0", "How much bonus damage a Commando does with hunting rifle");
+	COMMANDO_DAMAGE_PISTOL = CreateConVar("talents_commando_dmg_pistol", "25.0", "How much bonus damage a Commando does with pistol");
+	COMMANDO_DAMAGE_SMG = CreateConVar("talents_commando_dmg_smg", "7.0", "How much bonus damage a Commando does with smg");
+	COMMANDO_RELOAD_RATIO = CreateConVar("talents_commando_reload_ratio", "0.44", "Ratio for how fast a Commando should be able to reload");
+	
+	ENGINEER_MAX_BUILDS = CreateConVar("talents_engineer_max_builds", "5", "How many times an engineer can build per round");
+	ENGINEER_MAX_BUILD_RANGE = CreateConVar("talents_engineer_build_range", "120.0", "Maximum distance away an object can be built by the engineer");
+	ENGINEER_TURRET_EXTERNAL_PLUGIN = CreateConVar("talents_engineer_machinegun_plugin", "1", "Whether to use external plugin for turrets.");
+	
+	MINIMUM_DROP_INTERVAL = CreateConVar("talents_drop_interval", "30.0", "Time before an engineer, medic, or saboteur can drop another item");
+	MINIMUM_AIRSTRIKE_INTERVAL = CreateConVar("talents_airstrike_interval", "180.0", "Time before soldier can order airstrikes again.");
+
+	// Revive & health modifiers
+	healthModEnabled = CreateConVar("talents_health_modifiers_enabled","0.0","Enables/Disables health modifiers. 0 = OFF, 1 = ON.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+	REVIVE_DURATION = CreateConVar("talents_revive_duration", "4.0", "Default reviving duration in seconds");
+	HEAL_DURATION = CreateConVar("talents_heal_duration", "4.0", "Default healing duration in seconds");
+	REVIVE_HEALTH =  CreateConVar("talents_revive_health", "100.0", "Default health given 0n revive");
+	PILLS_HEALTH_BUFFER =  CreateConVar("talents_pills_health_buffer", "75.0", "Default health given on pills");	
+	ADRENALINE_DURATION =  CreateConVar("talents_adrenaline_duration", "30.0", "Default adrenaline duration");
+	ADRENALINE_HEALTH_BUFFER =  CreateConVar("talents_adrenaline_health_buffer", "75.0", "Default health given on adrenaline");
+
+	AutoExecConfig(true, "talents");
+	ApplyHealthModifiers();	
+}
+
+public ResetClientVariables(client)
+{
+	ClientData[client].SpecialsUsed = 0;	
+	ClientData[client].HideStartTime= GetGameTime();
+	ClientData[client].HealStartTime= GetGameTime();
+	ClientData[client].LastButtons = 0;
+	ClientData[client].SpecialDropInterval = 0;
+	ClientData[client].ChosenClass = NONE;
+	ClientData[client].SpecialSkill = SpecialSkill:No_Skill;
+	ClientData[client].LastDropTime = 0.0;
+	g_bInSaferoom[client] = false;
+}
+
+// ====================================================================================================
+//					Register plugins
+// ====================================================================================================
+
+public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
+{
+	EngineVersion test = GetEngineVersion();
+	if( test == Engine_Left4Dead ) g_bLeft4Dead2 = false;
+	else if( test == Engine_Left4Dead2 ) g_bLeft4Dead2 = true;
+	else
 	{
-		for (new i = 1; i < MAXPLAYERS; i++)
-		{
-			ResetClientVariables(i);
-			LastClassConfirmed[i] = 0;
-		}
+		strcopy(error, err_max, "Plugin only supports Left 4 Dead 1 & 2.");
+		return APLRes_SilentFailure;
+	}
+	RegPluginLibrary("dlr_talents_2023");
+	CreateNative("GetPlayerClassName", Native_GetPlayerClassName);
+
+	MarkNativeAsOptional("DLR_Airstrike");
+	MarkNativeAsOptional("DLR_Multiturret");
+	//MarkNativeAsOptional("DLR_Berzerk");
+	//MarkNativeAsOptional("DLR_Infected2023");
+
+	g_bLateLoad = late;
+	return APLRes_Success;
+}
+
+// ====================================================================================================
+//					L4D2 - F-18 AIRSTRIKE
+// ====================================================================================================
+
+public void F18_OnRoundState(int roundstate)
+{
+	static int mystate;
+	if(roundstate == 1 && mystate == 0 )
+	{
+		mystate = 1;
+		g_bAirstrikeValid = true;
+	}
+	else if(roundstate == 0 && mystate == 1)
+	{
+		mystate = 0;
+		g_bAirstrikeValid = false;
+	}
+}
+
+public void F18_OnPluginState(int pluginstate)
+{
+	static int mystate;
+	if(pluginstate == 1 && mystate == 0)
+	{
+		mystate = 1;
+		g_bAirstrikeValid = true;
+	}
+	else if(pluginstate == 0 && mystate == 1)
+	{
+		mystate = 0;
+		g_bAirstrikeValid = false;
+	}
+}
+// ====================================================================================================
+//					DLR - Multiturret
+// ====================================================================================================
+
+public void Multiturret_OnPluginState(int pluginstate)
+{
+	static int mystate;
+	if( pluginstate == 1 && mystate == 0 )
+	{
+		mystate = 1;
+		g_bMultiturretValid = true;
+	}
+	else if( pluginstate == 0 && mystate == 1 )
+	{
+		mystate = 0;
+		g_bMultiturretValid = false;
+	}
+}
+
+public void OnLibraryAdded(const char[] sName)
+{
+	if( strcmp(sName, "Multiturret") == 0 ) {
+		g_bMultiturret = true;
+		if( g_bLateLoad )
+		g_bMultiturretValid = true;
+	}
+	else if( g_bLeft4Dead2 && strcmp(sName, "l4d2_airstrike") == 0 )
+	{
+		g_bAirstrike = true;
+		// Assuming valid for late load
+		if( g_bLateLoad )
+		g_bAirstrikeValid = true;
+	}
+}
+
+public void OnLibraryRemoved(const char[] sName)
+{
+	if( strcmp(sName, "Multiturret") == 0 )
+	g_bMultiturret = false;
+	else if( g_bLeft4Dead2 && strcmp(sName, "l4d2_airstrike") == 0 )
+	g_bAirstrike = false;
+}
+
+// ====================================================================================================
+//		Events & Timers
+// ====================================================================================================
+
+public OnMapStart()
+{
+	// Sounds
+	PrecacheSound(SOUND_CLASS_SELECTED);
+	PrecacheSound(SOUND_DROP_BOMB);
+	PrecacheModel(MODEL_INCEN, true);
+	PrecacheModel(MODEL_EXPLO, true);
+	PrecacheModel(MODEL_SPRITE, true);
+	PrecacheModel(SPRITE_GLOW, true);
+	PrecacheModel(MODEL_MINE, true);
+
+	// Sprites
+	g_BeamSprite = PrecacheModel("materials/sprites/laserbeam.vmt");
+	g_HaloSprite = PrecacheModel("materials/sprites/glow01.vmt");
+	PrecacheModel(ENGINEER_MACHINE_GUN);
+	PrecacheModel(AMMO_PILE);
+
+	// Particles
+	PrecacheParticle(EXPLOSION_PARTICLE);
+	PrecacheParticle(EXPLOSION_PARTICLE2);
+	PrecacheParticle(EXPLOSION_PARTICLE3);
+	PrecacheParticle(EFIRE_PARTICLE);
+	PrecacheParticle(MEDIC_GLOW);
+	PrecacheParticle(BOMB_GLOW);
+
+	// Cache
+	ClearCache();
+	RoundStarted = false;
+	ClassHint = false;
+
+	for (int i = 0; i < 2; i++)
+		PrecacheModel(g_sModels[i]);
+
+	for (int i = 0; i < MAXPLAYERS +1; i++)
+		g_bHide[i] = false;
 		
-		RndSession++;
-		RoundStarted = false;
+	g_iShovePenalty = FindSendPropInfo("CTerrorPlayer", "m_iShovePenalty");
+}
 
-		ResetAllState();//turrets stuff
-	}
+public void OnMapEnd()
+{
+	// Cache
+	ClearCache();
+	RoundStarted=false;
+	RndSession = 0;
+}
 
-	public Event_PlayerSpawn(Handle:hEvent, String:sName[], bool:bDontBroadcast)
-	{
-		new client = GetClientOfUserId(GetEventInt(hEvent, "userid"));
-		
-		if(client > 0 && IsValidEntity(client) && IsClientInGame(client))
-		{
-			GetClientAbsOrigin(client, g_SpawnPos[client]);
-			
-			if (GetClientTeam(client) == 2)
-			{
-				CreateTimer(0.3, TimerLoadClient, client, TIMER_FLAG_NO_MAPCHANGE);
-				CreateTimer(0.1, TimerThink, client, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
-				
-				if (LastClassConfirmed[client] != 0)
-					ClientData[client].ChosenClass = LastClassConfirmed[client];
-				else
-					CreateTimer(1.0, CreatePlayerClassMenuDelay, client, TIMER_FLAG_NO_MAPCHANGE);
-			}
-			
-			CreateTimer(0.3, TimerLoadGlobal, client, TIMER_FLAG_NO_MAPCHANGE);
-		}
-		
-		RebuildCache();
-	}
+public OnClientPutInServer(client)
+{
+	if (!client || !IsValidEntity(client) || !IsClientInGame(client))
+	return;
+	
+	g_bHide[client] = false; 
 
-	public Event_PlayerHurt(Handle:hEvent, String:sName[], bool:bDontBroadcast)
-	{
-		RebuildCache();
-	}
+	ResetClientVariables(client);
+	RebuildCache();
+}
 
-	public Event_PlayerDeath(Handle:hEvent, String:sName[], bool:bDontBroadcast)
-	{
-		RebuildCache();
-		
-		new client = GetClientOfUserId(GetEventInt(hEvent, "userid"));
-		ResetClientVariables(client);
-	}
+public Action:TimerLoadGlobal(Handle:hTimer, any:client)
+{
+	if (!client || !IsValidEntity(client) || !IsClientInGame(client))
+	return;
+	
+	SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamagePre);
+}
 
-	public Event_EnterSaferoom(Handle:event, String:event_name[], bool:dontBroadcast)
-	{
-		new client = GetClientOfUserId(GetEventInt(event, "userid"));
-		g_bInSaferoom[client] = true;
-	}
-
-	public Event_LeftSaferoom(Handle:event, String:event_name[], bool:dontBroadcast)
-	{
-		new client = GetClientOfUserId(GetEventInt(event, "userid"));
-		g_bInSaferoom[client] = false;
-	}
-
-	public Action:Event_LeftStartArea(Handle:event, const String:name[], bool:dontBroadcast)
-	{
+public Action:TimerLoadClient(Handle:hTimer, any:client)
+{
+	if (!client ||  !IsValidEntity(client) || !IsClientInGame(client))
+	return;
+	
+	if (RoundStarted == false && !IsPlayerInSaferoom(client) && !IsInEndingSaferoom(client)) {
 		RoundStarted = true;
-		PrintToChatAll("%sPlayers left safe area, classes now locked!",PRINT_PREFIX);	
 	}
 
-	///////////////////////////////////////////////////////////////////////////////////
-	// Class selections
-	///////////////////////////////////////////////////////////////////////////////////
+	SDKHook(client, SDKHook_WeaponSwitch, OnWeaponSwitch);
+	SDKHook(client, SDKHook_WeaponEquip, OnWeaponEquip);
+	SDKHook(client, SDKHook_SetTransmit, Hook_SetTransmit);
+	SDKHook(client, SDKHook_WeaponDrop, OnWeaponDrop);
 
-	public Action:CmdClassInfo(client, args)
-	{
-		PrintToChat(client,"\x05Soldier\x01 = Has faster attack rate, runs faster and takes less damage");
-		PrintToChat(client,"\x05Athlete\x01 = Jumps higher, has parachute.");
-		PrintToChat(client,"\x05Medic\x01 = Heals others, plants medical supplies. Faster revive & heal speed");
-		PrintToChat(client,"\x05Saboteur\x01 = Can go invisible, plants powerful mines and throws special grenades");
-		PrintToChat(client,"\x05Commando\x01 = Has fast reload, deals extra damage");
-		PrintToChat(client,"\x05Engineer\x01 = Drops auto turrets and ammo");
-		PrintToChat(client,"\x05Brawler\x01 = Has Lots of health");	
-	}
+	ResetClientVariables(client);
+	RebuildCache();		
+}
 
-	public Event_PlayerTeam(Handle:hEvent, String:sName[], bool:bDontBroadcast)
-	{
-		new client = GetClientOfUserId(GetEventInt(hEvent, "userid"));
-		new team = GetEventInt(hEvent, "team");
-		
-		if (team == 2 && LastClassConfirmed[client] != 0)
-		{
-			ClientData[client].ChosenClass = LastClassConfirmed[client];
-			PrintToChat(client, "You are currently a \x04%s", MENU_OPTIONS[LastClassConfirmed[client]]);
-		}
-	}
+public Action:OnWeaponDrop(client, weapon)
+{
+	RebuildCache();
+}
 
-	public Action:CreatePlayerClassMenuDelay(Handle:hTimer, any:client)
+public Action:OnWeaponSwitch(client, weapon)
+{
+	RebuildCache();
+}
+
+public Action:OnWeaponEquip(client, weapon)
+{
+	RebuildCache();
+}
+
+public OnClientDisconnect(client)
+{
+	RebuildCache();
+	ResetClientVariables(client);
+}
+
+public Action:TimerThink(Handle:hTimer, any:client)
+{
+	if (!IsValidEntity(client) || !IsClientInGame(client) || IsFakeClient(client) || !IsPlayerAlive(client) || GetClientTeam(client) != 2)
 	{
-		CreatePlayerClassMenu(client);
+		return Plugin_Stop;
 	}
 	
-	public Action:CmdClasses(client, args)
+	new buttons = GetClientButtons(client);
+	new Float:fCanDropTime = (GetGameTime() - ClientData[client].LastDropTime);
+	new bool:CanDrop = (fCanDropTime >= ClientData[client].SpecialDropInterval);
+	decl Float:pos[3];
+	GetClientAbsOrigin(client, pos);
+	int iDropTime = RoundToFloor(fCanDropTime);
+
+	switch (ClientData[client].ChosenClass)
 	{
-		for (new i = 1; i <= MaxClients; i++)
+		case ATHLETE:
+		{	
+			new flags = GetEntityFlags(client);
+			SetEntDataFloat(client, g_ioLMV, GetConVarFloat(ATHLETE_SPEED), true);
+		}
+		
+		case SABOTEUR:
 		{
-			if(ClientData[i].ChosenClass != NONE)
+			if (BombActive == true) {
+
+				if (iDropTime < GetConVarInt(SABOTEUR_BOMB_ACTIVATE)) {
+
+						PrintHintText(client, "Mine is arming in %i seconds", client, GetConVarInt(SABOTEUR_BOMB_ACTIVATE) - iDropTime);
+					
+				}
+				else if (iDropTime == GetConVarInt(SABOTEUR_BOMB_ACTIVATE)) {
+										
+					if (BombHintTimestamp != iDropTime) {
+						PrintHintTextToAll("%N's mine is now armed!", client);
+						BombHintTimestamp = iDropTime;
+					}
+				}
+			}
+
+			if (buttons & IN_DUCK)
 			{
-				PrintToChatAll("\x04%N\x01 : is a %s",i,MENU_OPTIONS[ClientData[i].ChosenClass]);
+
+				float hidingTime = GetGameTime() - ClientData[client].HideStartTime;
+
+				if (hidingTime >= GetConVarFloat(SABOTEUR_INVISIBLE_TIME)) {
+					if (InvisibilityTimestamp != RoundToFloor(hidingTime) && InvisibilityHint == false) 
+					{
+						SetEntDataFloat(client, g_ioLMV, 1.8, true);
+
+						HidePlayer(client);
+
+						//SetEntityRenderFx(client, RENDERFX_PULSE_SLOW);
+						InvisibilityTimestamp = RoundToFloor(hidingTime);
+						InvisibilityHint = true;
+
+					}
+				}
+				if (hidingTime < GetConVarFloat(SABOTEUR_INVISIBLE_TIME) && (RoundToFloor(hidingTime) > 2)){
+					GlowPlayer(client, "Blue", FX:FxHologram);
+
+					if (InvisibilityTimestamp != RoundToFloor(hidingTime)) {
+						PrintHintText(client,"Becoming invisible in %i seconds", RoundToFloor(GetConVarFloat(SABOTEUR_INVISIBLE_TIME) - hidingTime));
+						InvisibilityTimestamp = RoundToFloor(hidingTime);
+					}
+				}
+			}
+			else
+			{
+				if (IsPlayerVisible(client) == false)  
+				{
+					UnhidePlayer(client);
+					set_rendering(client);
+				}
+				SetEntDataFloat(client, g_ioLMV, 1.0, true);
+
+				InvisibilityHint = false;
+			}
+			
+			if (buttons & IN_SPEED)
+			{
+				if (CanDrop == false && (iDropTime > 0 && iDropTime < GetConVarInt(MINIMUM_DROP_INTERVAL))) 
+				{
+					if (!(ClientData[client].LastButtons & IN_SPEED))
+						PrintHintText(client ,"Wait %i seconds to deploy", (GetConVarInt(MINIMUM_DROP_INTERVAL) - iDropTime));
+				} else {
+
+					if (CanDrop == true && !IsPlayerInSaferoom(client) && !IsInEndingSaferoom(client))
+					{
+						if (ClientData[client].SpecialsUsed >= GetConVarInt(SABOTEUR_MAX_BOMBS)) {
+							PrintHintText(client ,"You're out of mines");
+						} else {
+							ClientData[client].LastDropTime = GetGameTime();								
+							DropBomb(client);				
+						}
+					}
+				}
 			}
 		}
-	}
+			
+		case MEDIC:
+		{
+			if (buttons & IN_SPEED)
+			{
+				if (CanDrop) 
+				{	
 
-	public bool:CreatePlayerClassMenu(client)
-	{
-		new Handle:hPanel;
-		decl String:buffer[256];
-		
-		if((hPanel = CreatePanel()) == INVALID_HANDLE)
-		{
-			LogError("Cannot create hPanel on CreatePlayerClassMenu");
-			return false;
-		}
-		
-		if (!client ||  !IsClientInGame(client) || GetClientTeam(client) != 2) {
-			return false;
-		}
-		
-		// if client has a class already and round has started, dont give them the menu
-		if (ClientData[client].ChosenClass != NONE && RoundStarted == true)
-		{
-			PrintToChat(client,"Round has started, your class is locked, You are a %s",MENU_OPTIONS[ClientData[client].ChosenClass]);
-			return false;
+					if (ClientData[client].SpecialsUsed > GetConVarInt(MEDIC_MAX_ITEMS)) {
+						PrintHintText(client ,"You're out of items (Max %i)", GetConVarInt(MEDIC_MAX_ITEMS));
+					}
+					if (ClientData[client].SpecialsUsed < GetConVarInt(MEDIC_MAX_ITEMS))
+					{	
+						CreatePlayerMedicMenu(client);	
+					}
+				}
+				else if (CanDrop == false && (iDropTime < GetConVarInt(MINIMUM_DROP_INTERVAL))) {
+					PrintHintText(client ,"Wait %i seconds to deploy", (GetConVarInt(MINIMUM_DROP_INTERVAL) - iDropTime));
+				} 		
+			}
+
+			if (buttons & IN_DUCK) 
+			{
+				SetEntDataFloat(client, g_ioLMV, 1.7, true);
+
+				if ((GetGameTime() - ClientData[client].HealStartTime) >= 2.5) {
+					if (MedicHint == false) {
+						PrintHintTextToAll("%N is healing everyone around him!", client);
+						MedicHint = true;
+					}
+				}
+			} else {
+				SetEntDataFloat(client, g_ioLMV, 1.0, true);					
+				MedicHint = false;
+			}
 		}
 			
-		if(IsClientInGame(client) && ClientData[client].ChosenClass == NONE && RoundStarted == false)
+		case ENGINEER:
 		{
-			setPlayerDefaultHealth(client);
 
-		}
-		
-		SetPanelTitle(hPanel, "Select Your Class");
-		
-		for (new i = 1; i < MAXCLASSES; i++)
-		{
-			if( GetMaxWithClass(i) >= 0 )
-				Format(buffer, sizeof(buffer), "%i/%i %s", CountPlayersWithClass(i), GetMaxWithClass(i),  MENU_OPTIONS[i]);
-			else
-				Format(buffer, sizeof(buffer), "%s", MENU_OPTIONS[i]);
-			DrawPanelItem(hPanel, buffer);
-		}
-		
-		DrawPanelText(hPanel, " ");
-		DrawPanelItem(hPanel, "Exit");
-		
-		SendPanelToClient(hPanel, client, PanelHandler_SelectClass, MENU_OPEN_TIME);
-		CloseHandle(hPanel);
-		
-		return true;
-	}
-
-	public PanelHandler_SelectClass(Handle:menu, MenuAction:action, client, param)
-	{
-		new OldClass;
-		OldClass = ClientData[client].ChosenClass;
-		
-		switch (action)
-		{
-			case MenuAction_Select:
-			{
-				if (!client || param >= MAXCLASSES || GetClientTeam(client)!=2 )
-				{
-					return;
+			if (buttons & IN_SPEED && RoundStarted == true)// && ClientData[client].SpecialsUsed < GetConVarInt(ENGINEER_MAX_BUILDS)) 
+			{	
+				if (CanDrop == false && (iDropTime < GetConVarInt(MINIMUM_DROP_INTERVAL))) {
+					PrintHintText(client ,"Wait %i seconds to deploy", (GetConVarInt(MINIMUM_DROP_INTERVAL) - iDropTime));
 				}
-				
-				if( GetMaxWithClass( param ) >= 0 && CountPlayersWithClass( param ) >= GetMaxWithClass( param ) && ClientData[client].ChosenClass != param ) 
-				{
-					PrintToChat( client, "%sThe \x04%s\x01 class is full, please choose another.", PRINT_PREFIX, MENU_OPTIONS[ param ] );
-					CreatePlayerClassMenu( client );
-				} 
-				else
-				{
-					//DrawConfirmPanel(client, param);
-					
-					LastClassConfirmed[client] = param;
-					ClientData[client].ChosenClass = param;	
-
-					PrintToConsole(client, "Class is setting up");
-					
-					SetupClasses(client, param);
-					EmitSoundToClient(client, SOUND_CLASS_SELECTED);
-					
-					if(OldClass == 0)
+				if (CanDrop == true) {
+					if(ClientData[client].SpecialsUsed < GetConVarInt(ENGINEER_MAX_BUILDS))
 					{
-						PrintToChatAll("\x04%N\x01 is a \x05%s\x01%s",client,MENU_OPTIONS[param],ClassTips[param]);
-					}	
+						CreatePlayerEngineerMenu(client);	
+						ClientData[client].LastDropTime = GetGameTime();
+					}
 					else
 					{
-						PrintToChatAll("\x04%N\x01 : class changed from \x05%s\x01 to \x05%s\x01",client,MENU_OPTIONS[OldClass],MENU_OPTIONS[param]);
+						PrintHintText(client ,"You're out of items (Max %i)", GetConVarInt(ENGINEER_MAX_BUILDS));
 					}
+				}					
+			}
+		}
+		case SOLDIER:
+		{
+			SetEntDataFloat(client, g_ioLMV, GetConVarFloat(SOLDIER_SPEED), true);
+
+			if (buttons & IN_SPEED)
+			{
+				if (g_bAirstrike && g_bAirstrikeValid == false) {
+
+					ClientData[client].LastButtons = buttons;
+					return Plugin_Continue;
+				}	
+				char pendingMessage[128] = "Next possible strike available after %d seconds";
+				
+				if (canUseSpecialSkill(client, pendingMessage)) {
+					g_bAirstrikeValid = false;
+					CreateAirStrike(client);
+					useSpecialSkill(client, SpecialSkill:F18_airstrike);
+					ClientData[client].LastDropTime = GetGameTime();
 				}
-			}	
-		}	
+			}
+		}
 	}
 
-	public void SetupClasses(client, class)
+	ClientData[client].LastButtons = buttons;
+	return Plugin_Continue;
+}
+
+// Inform other plugins.
+public void useSpecialSkill(client,SpecialSkill:skillName)
+{
+	Call_StartForward(g_hfwdOnPlayerUsedSpecialSkill);
+	Call_PushCell(client);
+	Call_PushCell(skillName);
+	Call_PushCell(ClientData[client].ChosenClass);
+	Call_Finish();
+}
+
+public bool canUseSpecialSkill(client, char[] pendingMessage)
+{	
+	new Float:fCanDropTime = (GetGameTime() - ClientData[client].LastDropTime);
+	new bool:CanDrop = (fCanDropTime >= ClientData[client].SpecialDropInterval);
+	char pendMsg[128];
+	char outOfMsg[128];
+
+	int iDropTime = RoundToFloor(fCanDropTime);
+
+	if (IsPlayerInSaferoom(client) || IsInEndingSaferoom(client)) {
+			PrintHintText(client, "Cannot deploy inside safe areas");
+			return false;
+	}
+	else if (CanDrop == false)
 	{
-		if (!client
-			|| !IsValidEntity(client)
-			|| !IsClientInGame(client)
-			|| !IsPlayerAlive(client)
-			|| GetClientTeam(client) != 2)
+		Format(pendMsg, sizeof(pendMsg), pendingMessage, (ClientData[client].SpecialDropInterval-iDropTime));
+		PrintHintText(client, pendMsg );
+		return false;
+	} else if (ClientData[client].SpecialsUsed >= ClientData[client].SpecialLimit) {
+		Format(outOfMsg, sizeof(outOfMsg), "You're out of supplies! (Max %d / round)", ClientData[client].SpecialLimit);
+		PrintHintText(client, outOfMsg);
+		return false;
+	} 
+
+	return true;
+}
+
+stock SetupProgressBar(client, Float:time)
+{
+	SetEntPropFloat(client, Prop_Send, "m_flProgressBarStartTime", GetGameTime());
+	SetEntPropFloat(client, Prop_Send, "m_flProgressBarDuration", time);
+}
+
+stock KillProgressBar(client)
+{
+	SetEntPropFloat(client, Prop_Send, "m_flProgressBarStartTime", GetGameTime());
+	SetEntPropFloat(client, Prop_Send, "m_flProgressBarDuration", 0.0);
+}
+
+new String:Gauge1[2] = "-";
+new String:Gauge3[2] = "#";
+
+public ShowBar(client, String:msg[], Float:pos, Float:max)
+{
+	new i;
+	new String:ChargeBar[100];
+	Format(ChargeBar, sizeof(ChargeBar), "");
+	
+	new Float:GaugeNum = pos/max*100;
+	if(GaugeNum > 100.0)
+	GaugeNum = 100.0;
+	if(GaugeNum<0.0)
+	GaugeNum = 0.0;
+	for(i=0; i<100; i++)
+	ChargeBar[i] = Gauge1[0];
+	new p=RoundFloat( GaugeNum);
+	
+	if(p>=0 && p<100)ChargeBar[p] = Gauge3[0]; 
+	/* Display gauge */
+	PrintHintText(client, "%s  %3.0f %\n<< %s >>", msg, GaugeNum, ChargeBar);
+}
+
+public ClearCache()
+{
+	g_iRC = 0;
+	for (new i = 1; i <= MaxClients; i++)
+	{
+		g_iRI[i]= -1;
+		g_iEi[i] = -1;
+		g_fNT[i]= -1.0;
+	}
+}
+
+public RebuildCache()
+{
+	ClearCache();
+
+	if (!IsServerProcessing())
+	return;
+	
+	for (new i = 1; i <= MaxClients; i++)
+	{
+		if (IsValidEntity(i) && IsClientInGame(i) && IsPlayerAlive(i) && GetClientTeam(i) == 2 && ClientData[i].ChosenClass == SOLDIER)
+		{
+			g_iRC++;
+			g_iRI[g_iRC] = i;
+		}
+	}
+}
+
+public Event_RoundChange(Handle:event, String:name[], bool:dontBroadcast)
+{
+	for (new i = 1; i < MAXPLAYERS; i++)
+	{
+		ResetClientVariables(i);
+		LastClassConfirmed[i] = 0;
+	}
+	
+	RndSession++;
+	RoundStarted = false;
+}
+
+public Event_PlayerSpawn(Handle:hEvent, String:sName[], bool:bDontBroadcast)
+{
+	new client = GetClientOfUserId(GetEventInt(hEvent, "userid"));
+	
+	if(client > 0 && IsValidEntity(client) && IsClientInGame(client))
+	{
+		GetClientAbsOrigin(client, g_SpawnPos[client]);
+		
+		if (GetClientTeam(client) == 2)
+		{
+			CreateTimer(0.3, TimerLoadClient, client, TIMER_FLAG_NO_MAPCHANGE);
+			CreateTimer(0.1, TimerThink, client, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+			
+			if (LastClassConfirmed[client] != 0)
+			ClientData[client].ChosenClass = LastClassConfirmed[client];
+			else
+			CreateTimer(1.0, CreatePlayerClassMenuDelay, client, TIMER_FLAG_NO_MAPCHANGE);
+		}
+		
+		CreateTimer(0.3, TimerLoadGlobal, client, TIMER_FLAG_NO_MAPCHANGE);
+	}
+	
+	RebuildCache();
+}
+
+public Event_PlayerHurt(Handle:hEvent, String:sName[], bool:bDontBroadcast)
+{
+	RebuildCache();
+}
+
+public Event_PlayerDeath(Handle:hEvent, String:sName[], bool:bDontBroadcast)
+{
+	RebuildCache();
+	
+	new client = GetClientOfUserId(GetEventInt(hEvent, "userid"));
+	ResetClientVariables(client);
+}
+
+public Event_EnterSaferoom(Handle:event, String:event_name[], bool:dontBroadcast)
+{
+	new client = GetClientOfUserId(GetEventInt(event, "userid"));
+	g_bInSaferoom[client] = true;
+}
+
+public Event_LeftSaferoom(Handle:event, String:event_name[], bool:dontBroadcast)
+{
+	new client = GetClientOfUserId(GetEventInt(event, "userid"));
+	g_bInSaferoom[client] = false;
+}
+
+public Action:Event_LeftStartArea(Handle:event, const String:name[], bool:dontBroadcast)
+{
+	RoundStarted = true;
+	PrintToChatAll("%sPlayers left safe area, classes now locked!",PRINT_PREFIX);	
+}
+
+public Event_PlayerTeam(Handle:hEvent, String:sName[], bool:bDontBroadcast)
+{
+	new client = GetClientOfUserId(GetEventInt(hEvent, "userid"));
+	new team = GetEventInt(hEvent, "team");
+	
+	if (team == 2 && LastClassConfirmed[client] != 0)
+	{
+		ClientData[client].ChosenClass = LastClassConfirmed[client];
+		PrintToChat(client, "You are currently a \x04%s", MENU_OPTIONS[LastClassConfirmed[client]]);
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+// Class selections
+///////////////////////////////////////////////////////////////////////////////////
+
+public Action:CmdClassInfo(client, args)
+{
+	PrintToChat(client,"\x05Soldier\x01 = Has faster attack rate, runs faster and takes less damage");
+	PrintToChat(client,"\x05Athlete\x01 = Jumps higher, has parachute.");
+	PrintToChat(client,"\x05Medic\x01 = Heals others, plants medical supplies. Faster revive & heal speed");
+	PrintToChat(client,"\x05Saboteur\x01 = Can go invisible, plants powerful mines and throws special grenades");
+	PrintToChat(client,"\x05Commando\x01 = Has fast reload, deals extra damage");
+	PrintToChat(client,"\x05Engineer\x01 = Drops auto turrets and ammo");
+	PrintToChat(client,"\x05Brawler\x01 = Has Lots of health");	
+}
+
+public Action:CreatePlayerClassMenuDelay(Handle:hTimer, any:client)
+{
+	CreatePlayerClassMenu(client);
+}
+
+public Action:CmdClasses(client, args)
+{
+	for (new i = 1; i <= MaxClients; i++)
+	{
+		if(ClientData[i].ChosenClass != NONE)
+		{
+			PrintToChatAll("\x04%N\x01 : is a %s",i,MENU_OPTIONS[ClientData[i].ChosenClass]);
+		}
+	}
+}
+
+public bool:CreatePlayerClassMenu(client)
+{
+	new Handle:hPanel;
+	decl String:buffer[256];
+	
+	if((hPanel = CreatePanel()) == INVALID_HANDLE)
+	{
+		LogError("Cannot create hPanel on CreatePlayerClassMenu");
+		return false;
+	}
+	
+	if (!client ||  !IsClientInGame(client) || GetClientTeam(client) != 2) {
+		return false;
+	}
+	
+	// if client has a class already and round has started, dont give them the menu
+	if (ClientData[client].ChosenClass != NONE && RoundStarted == true)
+	{
+		PrintToChat(client,"Round has started, your class is locked, You are a %s",MENU_OPTIONS[ClientData[client].ChosenClass]);
+		return false;
+	}
+	
+	if(IsClientInGame(client) && ClientData[client].ChosenClass == NONE && RoundStarted == false)
+	{
+		setPlayerDefaultHealth(client);
+
+	}
+	
+	SetPanelTitle(hPanel, "Select Your Class");
+	
+	for (new i = 1; i < MAXCLASSES; i++)
+	{
+		if( GetMaxWithClass(i) >= 0 )
+		Format(buffer, sizeof(buffer), "%i/%i %s", CountPlayersWithClass(i), GetMaxWithClass(i),  MENU_OPTIONS[i]);
+		else
+		Format(buffer, sizeof(buffer), "%s", MENU_OPTIONS[i]);
+		DrawPanelItem(hPanel, buffer);
+	}
+	
+	DrawPanelText(hPanel, " ");
+	DrawPanelItem(hPanel, "Exit");
+	
+	SendPanelToClient(hPanel, client, PanelHandler_SelectClass, MENU_OPEN_TIME);
+	CloseHandle(hPanel);
+	
+	return true;
+}
+
+public PanelHandler_SelectClass(Handle:menu, MenuAction:action, client, param)
+{
+	new OldClass;
+	OldClass = ClientData[client].ChosenClass;
+	
+	switch (action)
+	{
+		case MenuAction_Select:
+		{
+			if (!client || param >= MAXCLASSES || GetClientTeam(client)!=2 )
+			{
 				return;
-		
-		ClientData[client].ChosenClass = class;
-		new MaxPossibleHP = GetConVarInt(NONE_HEALTH);
-		
-		switch (class)
-		{
-			case SOLDIER:	
-			{
-				PrintHintText(client,"You have armor, increased attack rate and move faster!");
-				MaxPossibleHP = GetConVarInt(SOLDIER_HEALTH);
 			}
 			
-			case MEDIC:
+			if( GetMaxWithClass( param ) >= 0 && CountPlayersWithClass( param ) >= GetMaxWithClass( param ) && ClientData[client].ChosenClass != param ) 
 			{
-				PrintHintText(client,"Hold CROUCH to heal others, Press SHIFT to drop medkits and more!!");
-				CreateTimer(GetConVarFloat(MEDIC_HEALTH_INTERVAL), TimerDetectHealthChanges, client, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
-				MaxPossibleHP = GetConVarInt(MEDIC_HEALTH);
-			}
-			
-			case ATHLETE:
+				PrintToChat( client, "%sThe \x04%s\x01 class is full, please choose another.", PRINT_PREFIX, MENU_OPTIONS[ param ] );
+				CreatePlayerClassMenu( client );
+			} 
+			else
 			{
-				decl String:text[64];
-				text = "";
-				if (parachuteEnabled.BoolValue) {
-					text = "While in air, press E to use parachute!";
+				//DrawConfirmPanel(client, param);
+				
+				LastClassConfirmed[client] = param;
+				ClientData[client].ChosenClass = param;	
+
+				// Inform other plugins.
+				Call_StartForward(g_hfwdOnPlayerClassChange);
+				Call_PushCell(client);
+				Call_PushCell(ClientData[client].ChosenClass);
+				Call_PushCell(LastClassConfirmed[client]);
+				Call_Finish();				
+
+				PrintToConsole(client, "Class is setting up");
+				
+				SetupClasses(client, param);
+				EmitSoundToClient(client, SOUND_CLASS_SELECTED);
+				
+				if(OldClass == 0)
+				{
+					PrintToChatAll("\x04%N\x01 is a \x05%s\x01%s",client,MENU_OPTIONS[param],ClassTips[param]);
+				}	
+				else
+				{
+					PrintToChatAll("\x04%N\x01 : class changed from \x05%s\x01 to \x05%s\x01",client,MENU_OPTIONS[OldClass],MENU_OPTIONS[param]);
 				}
-				PrintHintText(client,"You move faster, Hold JUMP to bunny hop! %s", text);
-				MaxPossibleHP = GetConVarInt(ATHLETE_HEALTH);
 			}
-			
-			case COMMANDO:
-			{
-				PrintHintText(client,"You have faster reload and cause more damage!");
-				MaxPossibleHP = GetConVarInt(COMMANDO_HEALTH);
-			}
-			
-			case ENGINEER:
-			{
-				PrintHintText(client,"Press SHIFT to drop ammo or movable auto-turret!");
-				MaxPossibleHP = GetConVarInt(ENGINEER_HEALTH);
-			}
-			
-			case SABOTEUR:
-			{
-				PrintHintText(client,"Press SHIFT to drop mines! Hold CROUCH over 5 sec to go invisible (For humans)");
-				MaxPossibleHP = GetConVarInt(SABOTEUR_HEALTH);
-			}
-			
-			case BRAWLER:
-			{
-				PrintHintText(client,"You've got lots of health!");
-				MaxPossibleHP = GetConVarInt(BRAWLER_HEALTH);
-			}
-		}
-		
-		setPlayerHealth(client, MaxPossibleHP);
-	}
+		}	
+	}	
+}
 
-	public Action:CmdClassMenu(client, args)
+public void SetupClasses(client, class)
+{
+	if (!client
+		|| !IsValidEntity(client)
+		|| !IsClientInGame(client)
+		|| !IsPlayerAlive(client)
+		|| GetClientTeam(client) != 2)
+	return;
+	
+	ClientData[client].ChosenClass = class;
+	ClientData[client].SpecialDropInterval = GetConVarInt(MINIMUM_DROP_INTERVAL);	
+	ClientData[client].SpecialLimit = 5;
+
+	new MaxPossibleHP = GetConVarInt(NONE_HEALTH);
+
+	switch (class)
 	{
-		if (GetClientTeam(client) != 2)
+		case SOLDIER:	
 		{
-			PrintToChat(client, "%sOnly Survivors can choose a class.", PRINT_PREFIX);
-			return;
+			char text[64];
+			if (g_bAirstrike == true) {
+				text = "Press SHIFT for Airstrike!";
+			}
+
+			PrintHintText(client,"You have armor, fast attack rate and movement %s", text );
+			ClientData[client].SpecialDropInterval = GetConVarInt(MINIMUM_AIRSTRIKE_INTERVAL);
+			ClientData[client].SpecialLimit = GetConVarInt(SOLDIER_MAX_AIRSTRIKES);
+			MaxPossibleHP = GetConVarInt(SOLDIER_HEALTH);
 		}
 		
-		//if (ClientData[client].ChosenClass != NONE)
-		//{
-		//	PrintToChat(client, "%sYou have already chosen a class this round.", PRINT_PREFIX);
-		//	return;
-		//}
-		
-		CreatePlayerClassMenu(client);
-	}
-
-	public int CountPlayersWithClass( class ) {
-		new count = 0;
-
-		for (new i = 1; i <= MaxClients; i++)
+		case MEDIC:
 		{
-			if (!IsClientInGame(i) || !IsPlayerAlive(i))
-				continue;
-
-			if(ClientData[i].ChosenClass == class)
-				count++;
+			PrintHintText(client,"Hold CROUCH to heal others, Press SHIFT to drop medkits & supplies");
+			CreateTimer(GetConVarFloat(MEDIC_HEALTH_INTERVAL), TimerDetectHealthChanges, client, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+			ClientData[client].SpecialLimit = GetConVarInt(MEDIC_MAX_ITEMS);
+			MaxPossibleHP = GetConVarInt(MEDIC_HEALTH);
 		}
-
-		return count;
+		
+		case ATHLETE:
+		{
+			decl String:text[64];
+			text = "";
+			if (parachuteEnabled.BoolValue) {
+				text = "While in air, hold E to use parachute!";
+			}
+			PrintHintText(client,"You move faster, Hold JUMP to bunny hop! %s", text);
+			MaxPossibleHP = GetConVarInt(ATHLETE_HEALTH);
+		}
+		
+		case COMMANDO:
+		{
+			PrintHintText(client,"You have faster reload and cause more damage!");
+			MaxPossibleHP = GetConVarInt(COMMANDO_HEALTH);
+		}
+		
+		case ENGINEER:
+		{
+			PrintHintText(client,"Press SHIFT to drop ammo supplies and auto turrets!");
+			MaxPossibleHP = GetConVarInt(ENGINEER_HEALTH);
+			ClientData[client].SpecialLimit = GetConVarInt(ENGINEER_MAX_BUILDS);
+		}
+		
+		case SABOTEUR:
+		{
+			PrintHintText(client,"Press SHIFT to drop mines! Hold CROUCH over 5 sec to go invisible");
+			MaxPossibleHP = GetConVarInt(SABOTEUR_HEALTH);
+			ClientData[client].SpecialLimit = GetConVarInt(SABOTEUR_MAX_BOMBS);			
+		}
+		
+		case BRAWLER:
+		{
+			PrintHintText(client,"You've got lots of health!");
+			MaxPossibleHP = GetConVarInt(BRAWLER_HEALTH);
+		}
 	}
+	
+	setPlayerHealth(client, MaxPossibleHP);
+}
 
-	public int GetMaxWithClass( class ) {
-		switch(class) {
-			case SOLDIER:
-				return GetConVarInt( MAX_SOLDIER );
-			case ATHLETE:
-				return GetConVarInt( MAX_ATHLETE );
-			case MEDIC:
-				return GetConVarInt( MAX_MEDIC );
-			case SABOTEUR:
-				return GetConVarInt( MAX_SABOTEUR );
-			case COMMANDO:
-				return GetConVarInt( MAX_COMMANDO );
-			case ENGINEER:
-				return GetConVarInt( MAX_ENGINEER );
-			case BRAWLER:
-				return GetConVarInt( MAX_BRAWLER );
-			default:
-				return -1;
-		}
+public Action:CmdClassMenu(client, args)
+{
+	if (GetClientTeam(client) != 2)
+	{
+		PrintToChat(client, "%sOnly Survivors can choose a class.", PRINT_PREFIX);
+		return;
+	}
+	CreatePlayerClassMenu(client);
+}
 
+public int GetMaxWithClass( class ) {
+	switch(class) {
+		case SOLDIER:
+		return GetConVarInt( MAX_SOLDIER );
+		case ATHLETE:
+		return GetConVarInt( MAX_ATHLETE );
+		case MEDIC:
+		return GetConVarInt( MAX_MEDIC );
+		case SABOTEUR:
+		return GetConVarInt( MAX_SABOTEUR );
+		case COMMANDO:
+		return GetConVarInt( MAX_COMMANDO );
+		case ENGINEER:
+		return GetConVarInt( MAX_ENGINEER );
+		case BRAWLER:
+		return GetConVarInt( MAX_BRAWLER );
+		default:
 		return -1;
 	}
+}
 
-	///////////////////////////////////////////////////////////////////////////////////
-	// DLR menu
-	///////////////////////////////////////////////////////////////////////////////////
+public Native_GetPlayerClassName(Handle:plugin, numParams)
+{
+	new client = GetNativeCell(1);
 
-	stock void PrintDebug(int client, const char[] dbgMessage, any ...)
+	if (client < 1 || client > MaxClients)
 	{
-		char message[128];
-		Format(message, sizeof(message), dbgMessage);
-		if (DEBUG_MODE == true && isAdminUser == true)
-		PrintToChat(client, message);
+		return ThrowNativeError(SP_ERROR_NATIVE, "Invalid client index (%d)", client);
 	}
+	return ClientData[client].ChosenClass;
+}
 
-	stock void PrintDebugAll(const char[] dbgMessage, any ...)
+///////////////////////////////////////////////////////////////////////////////////
+// DLR menu
+///////////////////////////////////////////////////////////////////////////////////
+
+stock void PrintDebug(int client, const char[] dbgMessage, any ...)
+{
+	char message[128];
+	Format(message, sizeof(message), dbgMessage);
+	if (DEBUG_MODE == true && isAdminUser == true)
+	PrintToChat(client, message);
+}
+
+stock void PrintDebugAll(const char[] dbgMessage, any ...)
+{
+	char message[128];
+	Format(message, sizeof(message), dbgMessage);
+	if (DEBUG_MODE == true && isAdminUser == true)
+	PrintToChatAll("%s", message);
+}
+
+public bool:isAdmin(client)
+{
+	if (client == 0 && GetUserAdmin(client) == INVALID_ADMIN_ID) { return false; }
+	else { return true; }
+}
+
+public Action:CmdDlrMenu(client, args)
+{
+	if (isAdmin(client)) isAdminUser = true;
+
+	CreateDlrMenu(client);
+}
+
+public CreateDlrMenu(client) {
+
+	if (!client)
+	return false;
+	
+	new Handle:hPanel;
+	
+	if((hPanel = CreatePanel()) == INVALID_HANDLE)
 	{
-		char message[128];
-		Format(message, sizeof(message), dbgMessage);
-		if (DEBUG_MODE == true && isAdminUser == true)
-		PrintToChatAll("%s", message);
-	}
-
-	public bool:isAdmin(client)
-	{
-        if (client == 0 && GetUserAdmin(client) == INVALID_ADMIN_ID) { return false; }
-        else { return true; }
-	}
-
-	public Action:CmdDlrMenu(client, args)
-	{
-		if (isAdmin(client)) isAdminUser = true;
-
-		CreateDlrMenu(client);
-	}
-
-	public CreateDlrMenu(client) {
-
-		if (!client)
-			return false;
-		
-		new Handle:hPanel;
-		
-		if((hPanel = CreatePanel()) == INVALID_HANDLE)
-		{
-			LogError("Cannot create hPanel on DlrMenu");
-			return false;
-		}
-		
-		SetPanelTitle(hPanel, "Functions:");
-		DrawPanelItem(hPanel, "Toggle Debug Messages");
-		DrawPanelItem(hPanel, "Toggle infected");
-		DrawPanelText(hPanel, " ");
-		DrawPanelItem(hPanel, "Exit");
-		
-		SendPanelToClient(hPanel, client, PanelHandler_DlrMenu, MENU_OPEN_TIME);
-		CloseHandle(hPanel);
-		
-		return true;
-	}
-
-	public PanelHandler_DlrMenu(Handle:menu, MenuAction:action, client, param)
-	{
-		switch (action)
-		{
-			case MenuAction_Select:
-			{
-				if( param == 1)
-				{
-					DEBUG_MODE = (DEBUG_MODE == true) ? false : true;
-					PrintHintText(client,"Debug mode is %s", DEBUG_MODE ? "ON" : "OFF");
-				}
-				if (param == 2) 
-				{
-					disableInfected = (disableInfected == true) ? false : true;
-
-					if (disableInfected == true) {
-						SetConVarInt(FindConVar("director_no_bosses"), 1);
-						SetConVarInt(FindConVar("director_no_mobs"), 1);
-						SetConVarInt(FindConVar("z_common_limit"), 0);
-						SetConVarInt(FindConVar("z_boomer_limit"), 0);
-						SetConVarInt(FindConVar("z_charger_limit"), 0);
-						SetConVarInt(FindConVar("z_hunter_limit"), 0);
-						SetConVarInt(FindConVar("z_jockey_limit"), 0);
-						SetConVarInt(FindConVar("z_smoker_limit"), 0);
-						SetConVarInt(FindConVar("z_spitter_limit"), 0);
-					} else {
-						ResetConVar(FindConVar("director_no_bosses"));
-						ResetConVar(FindConVar("director_no_mobs"));
-						ResetConVar(FindConVar("z_common_limit"));
-						ResetConVar(FindConVar("z_boomer_limit"));
-						ResetConVar(FindConVar("z_charger_limit"));
-						ResetConVar(FindConVar("z_hunter_limit"));
-						ResetConVar(FindConVar("z_jockey_limit"));
-						ResetConVar(FindConVar("z_smoker_limit"));
-						ResetConVar(FindConVar("z_spitter_limit"));  
-					}
-					PrintHintText(client,"Infected are now %s", disableInfected ? "DISABLED" : "ENABLED");
-				}
-			}
-		}
-	}
-
-	///////////////////////////////////////////////////////////////////////////////////
-	// Engineer 
-	///////////////////////////////////////////////////////////////////////////////////
-
-	public bool:CreateRemoveTurretMenu(client)
-	{
-		if (!client)
-			return false;
-		
-		new Handle:hPanel;
-		
-		if((hPanel = CreatePanel()) == INVALID_HANDLE)
-		{
-			LogError("Cannot create hPanel on CreateRemoveTurretMenu");
-			return false;
-		}
-		
-		SetPanelTitle(hPanel, "Turret:");
-		DrawPanelItem(hPanel, "Remove ");
-		DrawPanelText(hPanel, " ");
-		DrawPanelItem(hPanel, "Exit");
-		
-		SendPanelToClient(hPanel, client, PanelHandler_RemoveTurretMenu, MENU_OPEN_TIME);
-		CloseHandle(hPanel);
-		
-		return true;
-	}
-
-	public PanelHandler_RemoveTurretMenu(Handle:menu, MenuAction:action, client, param)
-	{
-		switch (action)
-		{
-			case MenuAction_Select:
-			{
-				if( param == 1 && removemachine(client))//was 5
-				{
-					ClientData[client].ItemsBuilt--;
-				}	
-			}
-		}
-	}
-
-	public CreatePlayerEngineerMenu(client)
-	{
-		if (!client)
-			return false;
-		
-		new Handle:hPanel;
-		
-		if((hPanel = CreatePanel()) == INVALID_HANDLE)
-		{
-			LogError("Cannot create hPanel on CreatePlayerEngineerMenu");
-			return false;
-		}
-		
-		SetPanelTitle(hPanel, "Engineer:");
-		DrawPanelItem(hPanel, "Ammo Pile");
-		DrawPanelItem(hPanel, "Turret");
-		DrawPanelItem(hPanel, "Incendiary Rounds");
-		DrawPanelItem(hPanel, "Frag Rounds");
-		DrawPanelItem(hPanel, "Remove Turret");/// what ive added for remove tureet
-		DrawPanelText(hPanel, " ");
-		DrawPanelItem(hPanel, "Exit");
-		
-		SendPanelToClient(hPanel, client, PanelHandler_SelectEngineerItem, MENU_OPEN_TIME);
-		CloseHandle(hPanel);
-		
-		return true;
-	}
-
-	public PanelHandler_SelectEngineerItem(Handle:menu, MenuAction:action, client, param)
-	{
-		switch (action)
-		{
-			case MenuAction_Select:
-			{
-				if( param >= 1 && param <= 5 )//was 5
-					CalculateEngineerPlacePos(client, param - 1);
-			}
-		}
-	}
-
-	public void CalculateEngineerPlacePos(client, type)
-	{
-		decl Float:vAng[3], Float:vPos[3], Float:endPos[3];
-		
-		GetClientEyeAngles(client, vAng);
-		GetClientEyePosition(client, vPos);
-
-		new Handle:trace = TR_TraceRayFilterEx(vPos, vAng, MASK_SHOT, RayType_Infinite, TraceFilter, client);
-
-		if (TR_DidHit(trace))
-		{
-			TR_GetEndPosition(endPos, trace);
-			CloseHandle(trace);
-			
-			if (GetVectorDistance(endPos, vPos) <= GetConVarFloat(ENGINEER_MAX_BUILD_RANGE))
-			{
-				vAng[0] = 0.0;
-				vAng[2] = 0.0;
-				
-				switch(type) {
-					case 0: {
-						new ammo = CreateEntityByName("weapon_ammo_spawn");
-						DispatchSpawn(ammo);
-						TeleportEntity(ammo, endPos, NULL_VECTOR, NULL_VECTOR);
-						ClientData[client].ItemsBuilt++;
-
-					}
-					case 1:{
-
-						if (GetConVarInt(ENGINEER_TURRET_EXTERNAL_PLUGIN) > 0) 
-						{
-							ClientCommand(client, Engineer_Turret_Spawn_Cmd);
-						} else {
-
-							if(CreateMachine(client))
-							{
-								ClientData[client].ItemsBuilt++;
-							}
-						}
-					}
-					case 3: {
-						new upgrade = CreateEntityByName("upgrade_ammo_explosive");
-						SetEntityModel(upgrade, MODEL_EXPLO);
-						TeleportEntity(upgrade, endPos, NULL_VECTOR, NULL_VECTOR);
-						DispatchSpawn(upgrade);
-						PrintHintText(client ,"%N deployed explosive ammo", client);
-
-						ClientData[client].ItemsBuilt++;
-
-					}
-					case 2: {
-						new upgrade = CreateEntityByName("upgrade_ammo_incendiary");
-						SetEntityModel(upgrade, MODEL_INCEN);
-						TeleportEntity(upgrade, endPos, NULL_VECTOR, NULL_VECTOR);
-						PrintHintText(client ,"%N deployed incendiary ammo", client);
-
-						ClientData[client].ItemsBuilt++;
-						DispatchSpawn(upgrade);
-
-					}
-					
-					case 4: {
-						if (GetConVarInt(ENGINEER_TURRET_EXTERNAL_PLUGIN) > 0) 
-						{
-							ClientCommand(client, Engineer_Turret_Remove_Cmd);
-						} else {
-
-							if (removemachine(client))
-							{
-								ClientData[client].ItemsBuilt--;	
-							}
-						}
-					}
-					default: {
-						CloseHandle( trace );
-						return;
-					}
-				}
-				
-				ClientData[client].LastDropTime = GetGameTime();
-			}
-			else
-				PrintToChat(client, "%sCould not place the item because you were looking too far away.", PRINT_PREFIX);
-		}
-		else
-			CloseHandle(trace);
-	}
-
-	///////////////////////////////////////////////////////////////////////////////////
-	// Health modifiers & medic
-	///////////////////////////////////////////////////////////////////////////////////
-
-	public bool:CreatePlayerMedicMenu(client)
-	{
-		if (!client)
-			return false;
-		
-		new Handle:hPanel;
-		
-		if((hPanel = CreatePanel()) == INVALID_HANDLE)
-		{
-			LogError("Cannot create hPanel on CreatePlayerMedicMenu");
-			return false;
-		}
-		
-		SetPanelTitle(hPanel, "Medic:");
-		DrawPanelItem(hPanel, "Defibrillator");
-		DrawPanelItem(hPanel, "Medkit");
-		DrawPanelItem(hPanel, "Adrenaline");
-		DrawPanelItem(hPanel, "Pills");
-		DrawPanelItem(hPanel, "Exit");
-		
-		SendPanelToClient(hPanel, client, PanelHandler_SelectMedicItem, MENU_OPEN_TIME);
-		CloseHandle(hPanel);
-		
-		return true;
-	}
-
-	public PanelHandler_SelectMedicItem(Handle:menu, MenuAction:action, client, param)
-	{
-		switch (action)
-		{
-			case MenuAction_Select:
-			{
-				if( param >= 1 && param <= 4 )
-				CalculateMedicPlacePos(client, param - 1);
-				ClientData[client].LastDropTime = GetGameTime();
-			}
-		}
+		LogError("Cannot create hPanel on DlrMenu");
+		return false;
 	}
 	
-	public void CalculateMedicPlacePos(client, type)
+	SetPanelTitle(hPanel, "Functions:");
+	DrawPanelItem(hPanel, "Toggle Debug Messages");
+	DrawPanelItem(hPanel, "Toggle infected");
+	DrawPanelText(hPanel, " ");
+	DrawPanelItem(hPanel, "Exit");
+	SendPanelToClient(hPanel, client, PanelHandler_DlrMenu, MENU_OPEN_TIME);
+	CloseHandle(hPanel);
+	
+	return true;
+}
+
+public PanelHandler_DlrMenu(Handle:menu, MenuAction:action, client, param)
+{
+	switch (action)
 	{
-		decl Float:vAng[3], Float:vPos[3], Float:endPos[3];
-		
-		GetClientEyeAngles(client, vAng);
-		GetClientEyePosition(client, vPos);
-
-		new Handle:trace = TR_TraceRayFilterEx(vPos, vAng, MASK_SHOT, RayType_Infinite, TraceFilter, client);
-
-		if (TR_DidHit(trace))
+		case MenuAction_Select:
 		{
-			TR_GetEndPosition(endPos, trace);
-			CloseHandle(trace);
-			
-			if (GetVectorDistance(endPos, vPos) <= GetConVarFloat(MEDIC_MAX_BUILD_RANGE))
+			if( param == 1)
 			{
-				vAng[0] = 0.0;
-				vAng[2] = 0.0;
-				
-				switch(type) {
-					case 0: {
-						new entity = CreateEntityByName("weapon_defibrillator");
-						DispatchKeyValue(entity, "solid", "0");
-						DispatchKeyValue(entity, "disableshadows", "1");
-						DispatchSpawn(entity);
-						TeleportEntity(entity, endPos, NULL_VECTOR, NULL_VECTOR);
-						PrintHintText(client ,"%N deployed a defibrillator", client);
-
-						ClientData[client].ItemsBuilt++;
-					}
-					case 1:{
-						new entity = CreateEntityByName("weapon_first_aid_kit");
-						DispatchKeyValue(entity, "solid", "0");
-						DispatchSpawn(entity);
-						TeleportEntity(entity, endPos, NULL_VECTOR, NULL_VECTOR);
-						PrintHintText(client ,"%N deployed a medkit", client);
-
-						ClientData[client].ItemsBuilt++;
-					}
-					case 2: {
-						new entity = CreateEntityByName("weapon_adrenaline_spawn");
-						DispatchKeyValue(entity, "solid", "0");
-						DispatchKeyValue(entity, "disableshadows", "1");
-						TeleportEntity(entity, endPos, NULL_VECTOR, NULL_VECTOR);
-						DispatchSpawn(entity);
-						ClientData[client].ItemsBuilt++;
-
-					}
-					case 3: {
-						new pills = CreateEntityByName("weapon_pain_pills_spawn", -1);
-						DispatchKeyValue(pills, "solid", "6");
-						DispatchKeyValue(pills, "disableshadows", "1");
-						TeleportEntity(pills, endPos, NULL_VECTOR, NULL_VECTOR);
-						DispatchSpawn(pills);
-						ClientData[client].ItemsBuilt++;
-
-					}				
-					default: {
-						CloseHandle( trace );
-						return;
-					}
-				}
-				
+				DEBUG_MODE = (DEBUG_MODE == true) ? false : true;
+				PrintHintText(client,"Debug mode is %s", DEBUG_MODE ? "ON" : "OFF");
 			}
-			else
-				PrintToChat(client, "%sCould not place the item because you were looking too far away.", PRINT_PREFIX);
-		}
-		else
-			CloseHandle(trace);
-	}
-
-	public UpgradeQuickHeal(client)
-	{
-		if(ClientData[client].ChosenClass == MEDIC)
-			SetConVarFloat(g_VarFirstAidDuration, FirstAidDuration * GetConVarFloat(MEDIC_HEAL_RATIO), false, false);
-		else
-			SetConVarFloat(g_VarFirstAidDuration, FirstAidDuration * 1.0, false, false);
-	}
-
-	public UpgradeQuickRevive(client)
-	{
-		if(ClientData[client].ChosenClass == MEDIC)
-			SetConVarFloat(g_VarReviveDuration, ReviveDuration * GetConVarFloat(MEDIC_REVIVE_RATIO), false, false);
-		else
-			SetConVarFloat(g_VarReviveDuration, ReviveDuration * 1.0, false, false);
-	}
-
-	public setPlayerHealth(client, MaxPossibleHP)
-	{
-		if (!client) return;
-		// HEALTH
-		new OldMaxHealth = GetEntProp(client, Prop_Send, "m_iMaxHealth");
-		new OldHealth = GetClientHealth(client);
-		new OldTempHealth = GetClientTempHealth(client);
-		if (MaxPossibleHP == OldMaxHealth) return;
-
-		SetEntProp(client, Prop_Send, "m_iMaxHealth", MaxPossibleHP);
-		SetEntityHealth(client, MaxPossibleHP - (OldMaxHealth - OldHealth));
-		SetClientTempHealth(client, OldTempHealth);
-		
-		if ((GetClientHealth(client) + GetClientTempHealth(client)) > MaxPossibleHP)
-		{
-			SetEntityHealth(client, MaxPossibleHP);
-			SetClientTempHealth(client, 0);
-		}
-	}
-
-	public setPlayerDefaultHealth(client)
-	{
-			if (!client
-			|| !IsValidEntity(client)
-			|| !IsClientInGame(client)
-			|| !IsPlayerAlive(client)
-			|| GetClientTeam(client) != 2)
-				return;
-		
-			new MaxPossibleHP = GetConVarInt(NONE_HEALTH);
-			setPlayerHealth(client, MaxPossibleHP);
-	}
-
-	public void Event_ServerCvar( Event hEvent, const char[] sName, bool bDontBroadcast ) 
-	{
-		if ( !healthModEnabled.BoolValue ) return;
-		
-		LoadSettings();
-	}
-
-	public event_HealBegin(Handle:event, const String:name[], bool:Broadcast)
-	{
-		new client = GetClientOfUserId(GetEventInt(event, "userid"));
-		UpgradeQuickHeal(client);
-	}
-
-	public event_ReviveBegin(Handle:event, const String:name[], bool:Broadcast)
-	{
-		new client = GetClientOfUserId(GetEventInt(event, "userid"));
-		UpgradeQuickRevive(client);
-	}
-
-	public Action:TimerDetectHealthChanges(Handle:hTimer, any:client)
-	{
-		if (!client
-			|| !IsValidEntity(client)
-			|| !IsClientInGame(client)
-			|| ClientData[client].ChosenClass != MEDIC)
-				return Plugin_Stop;
-				
-		if(!IsPlayerAlive(client) || GetClientTeam(client) != 2)
-		{	return Plugin_Continue; }
-		
-		new btns = GetClientButtons(client);
-
-		if (btns & IN_DUCK)
-		{
-			CreateParticle(client, MEDIC_GLOW, true, 1.0);
-
-			decl Float:pos[3];
-			GetClientAbsOrigin(client, pos);
-			
-			for (new i = 1; i <= MaxClients; i++)
+			if (param == 2) 
 			{
-				if (IsValidEntity(i) && IsClientInGame(i) && IsPlayerAlive(i) && GetClientTeam(i) == 2 && i != client)
+				disableInfected = (disableInfected == true) ? false : true;
+
+				if (disableInfected == true) {
+					SetConVarInt(FindConVar("director_no_bosses"), 1);
+					SetConVarInt(FindConVar("director_no_mobs"), 1);
+					SetConVarInt(FindConVar("z_common_limit"), 0);
+					SetConVarInt(FindConVar("z_boomer_limit"), 0);
+					SetConVarInt(FindConVar("z_charger_limit"), 0);
+					SetConVarInt(FindConVar("z_hunter_limit"), 0);
+					SetConVarInt(FindConVar("z_jockey_limit"), 0);
+					SetConVarInt(FindConVar("z_smoker_limit"), 0);
+					SetConVarInt(FindConVar("z_spitter_limit"), 0);
+				} else {
+					ResetConVar(FindConVar("director_no_bosses"));
+					ResetConVar(FindConVar("director_no_mobs"));
+					ResetConVar(FindConVar("z_common_limit"));
+					ResetConVar(FindConVar("z_boomer_limit"));
+					ResetConVar(FindConVar("z_charger_limit"));
+					ResetConVar(FindConVar("z_hunter_limit"));
+					ResetConVar(FindConVar("z_jockey_limit"));
+					ResetConVar(FindConVar("z_smoker_limit"));
+					ResetConVar(FindConVar("z_spitter_limit"));  
+				}
+				PrintHintText(client,"Infected are now %s", disableInfected ? "DISABLED" : "ENABLED");
+			}
+		}
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+// Engineer 
+///////////////////////////////////////////////////////////////////////////////////
+
+public CreatePlayerEngineerMenu(client)
+{
+	if (!client)
+	return false;
+	
+	new Handle:hPanel;
+	
+	if((hPanel = CreatePanel()) == INVALID_HANDLE)
+	{
+		LogError("Cannot create hPanel on CreatePlayerEngineerMenu");
+		return false;
+	}
+	
+	SetPanelTitle(hPanel, "Engineer:");
+	DrawPanelItem(hPanel, "Ammo Pile");
+	DrawPanelItem(hPanel, "Deploy Turret");
+	DrawPanelItem(hPanel, "Incendiary Rounds");
+	DrawPanelItem(hPanel, "Frag Rounds");
+	DrawPanelText(hPanel, " ");
+	DrawPanelItem(hPanel, "Exit");
+	
+	SendPanelToClient(hPanel, client, PanelHandler_SelectEngineerItem, MENU_OPEN_TIME);
+	CloseHandle(hPanel);
+	
+	return true;
+}
+
+public PanelHandler_SelectEngineerItem(Handle:menu, MenuAction:action, client, param)
+{
+	switch (action)
+	{
+		case MenuAction_Select:
+		{
+			if( param >= 1 && param <= 4 )//was 5
+			CalculateEngineerPlacePos(client, param - 1);
+		}
+	}
+}
+
+public void CalculateEngineerPlacePos(client, type)
+{
+	decl Float:vAng[3], Float:vPos[3], Float:endPos[3];
+	
+	GetClientEyeAngles(client, vAng);
+	GetClientEyePosition(client, vPos);
+
+	new Handle:trace = TR_TraceRayFilterEx(vPos, vAng, MASK_SHOT, RayType_Infinite, TraceFilter, client);
+
+	if (TR_DidHit(trace))
+	{
+		TR_GetEndPosition(endPos, trace);
+		CloseHandle(trace);
+		
+		if (GetVectorDistance(endPos, vPos) <= GetConVarFloat(ENGINEER_MAX_BUILD_RANGE))
+		{
+			vAng[0] = 0.0;
+			vAng[2] = 0.0;
+			
+			switch(type) {
+				case 0: 
 				{
-					decl Float:tpos[3];
-					GetClientAbsOrigin(i, tpos);
-					
-					if (GetVectorDistance(pos, tpos) <= GetConVarFloat(MEDIC_HEAL_DIST))
+					new ammo = CreateEntityByName("weapon_ammo_spawn");
+					DispatchSpawn(ammo);
+					TeleportEntity(ammo, endPos, NULL_VECTOR, NULL_VECTOR);
+					ClientData[client].SpecialsUsed++;
+				}
+				case 1:
+				{
+					if (GetConVarInt(ENGINEER_TURRET_EXTERNAL_PLUGIN) > 0) 
 					{
-						// pre-heal set values
-						new MaxHealth = GetEntProp(i, Prop_Send, "m_iMaxHealth");
-						new TempHealth = GetClientTempHealth(i);
-						PrintHintText(i, "%N is healing you! (%i / %i)", client, GetClientHealth(i), MaxHealth);
+						ClientCommand(client, Engineer_Turret_Spawn_Cmd);
+						ClientData[client].LastDropTime = GetGameTime();
+						ClientData[client].SpecialsUsed++;
+					}
+				}
+				case 3: 
+				{
+					new upgrade = CreateEntityByName("upgrade_ammo_explosive");
+					SetEntityModel(upgrade, MODEL_EXPLO);
+					TeleportEntity(upgrade, endPos, NULL_VECTOR, NULL_VECTOR);
+					DispatchSpawn(upgrade);
+					PrintHintText(client ,"%N deployed explosive ammo", client);
+					ClientData[client].LastDropTime = GetGameTime();
+					ClientData[client].SpecialsUsed++;
+				}
+				case 2: 
+				{
+					new upgrade = CreateEntityByName("upgrade_ammo_incendiary");
+					SetEntityModel(upgrade, MODEL_INCEN);
+					TeleportEntity(upgrade, endPos, NULL_VECTOR, NULL_VECTOR);
+					PrintHintText(client ,"%N deployed incendiary ammo", client);
+					ClientData[client].LastDropTime = GetGameTime();
+					ClientData[client].SpecialsUsed++;
+					DispatchSpawn(upgrade);
 
-						SetEntityHealth(i, GetClientHealth(i) + GetConVarInt(MEDIC_HEALTH_VALUE));
-						SetClientTempHealth(i, TempHealth);
+				}
+				default: {
+					CloseHandle( trace );
+					return;
+				}
+			}
+				
+		}
+		else
+		PrintToChat(client, "%sCould not place the item because you were looking too far away.", PRINT_PREFIX);
+	}
+	else
+	CloseHandle(trace);
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+// Health modifiers & medic
+///////////////////////////////////////////////////////////////////////////////////
+
+public bool:CreatePlayerMedicMenu(client)
+{
+	if (!client)
+	return false;
+	
+	new Handle:hPanel;
+	
+	if((hPanel = CreatePanel()) == INVALID_HANDLE)
+	{
+		LogError("Cannot create hPanel on CreatePlayerMedicMenu");
+		return false;
+	}
+	
+	SetPanelTitle(hPanel, "Medic:");
+	DrawPanelItem(hPanel, "Defibrillator");
+	DrawPanelItem(hPanel, "Medkit");
+	DrawPanelItem(hPanel, "Adrenaline");
+	DrawPanelItem(hPanel, "Pills");
+	DrawPanelItem(hPanel, "Exit");
+	SendPanelToClient(hPanel, client, PanelHandler_SelectMedicItem, MENU_OPEN_TIME);
+	CloseHandle(hPanel);
+	
+	return true;
+}
+
+public PanelHandler_SelectMedicItem(Handle:menu, MenuAction:action, client, param)
+{
+	switch (action)
+	{
+		case MenuAction_Select:
+		{
+			if( param >= 1 && param <= 4 )
+			CalculateMedicPlacePos(client, param - 1);
+			ClientData[client].LastDropTime = GetGameTime();
+		}
+	}
+}
+
+public void CalculateMedicPlacePos(client, type)
+{
+	decl Float:vAng[3], Float:vPos[3], Float:endPos[3];
+	
+	GetClientEyeAngles(client, vAng);
+	GetClientEyePosition(client, vPos);
+
+	new Handle:trace = TR_TraceRayFilterEx(vPos, vAng, MASK_SHOT, RayType_Infinite, TraceFilter, client);
+
+	if (TR_DidHit(trace))
+	{
+		TR_GetEndPosition(endPos, trace);
+		CloseHandle(trace);
+		
+		if (GetVectorDistance(endPos, vPos) <= GetConVarFloat(MEDIC_MAX_BUILD_RANGE))
+		{
+			vAng[0] = 0.0;
+			vAng[2] = 0.0;
+			
+			switch(type) {
+				case 0: {
+					new entity = CreateEntityByName("weapon_defibrillator");
+					DispatchKeyValue(entity, "solid", "0");
+					DispatchKeyValue(entity, "disableshadows", "1");
+					DispatchSpawn(entity);
+					TeleportEntity(entity, endPos, NULL_VECTOR, NULL_VECTOR);
+					PrintHintText(client ,"%N deployed a defibrillator", client);
+
+					ClientData[client].SpecialsUsed++;
+				}
+				case 1:{
+					new entity = CreateEntityByName("weapon_first_aid_kit");
+					DispatchKeyValue(entity, "solid", "0");
+					DispatchSpawn(entity);
+					TeleportEntity(entity, endPos, NULL_VECTOR, NULL_VECTOR);
+					PrintHintText(client ,"%N deployed a medkit", client);
+
+					ClientData[client].SpecialsUsed++;
+				}
+				case 2: {
+					new entity = CreateEntityByName("weapon_adrenaline_spawn");
+					DispatchKeyValue(entity, "solid", "0");
+					DispatchKeyValue(entity, "disableshadows", "1");
+					TeleportEntity(entity, endPos, NULL_VECTOR, NULL_VECTOR);
+					DispatchSpawn(entity);
+					ClientData[client].SpecialsUsed++;
+
+				}
+				case 3: {
+					new pills = CreateEntityByName("weapon_pain_pills_spawn", -1);
+					DispatchKeyValue(pills, "solid", "6");
+					DispatchKeyValue(pills, "disableshadows", "1");
+					TeleportEntity(pills, endPos, NULL_VECTOR, NULL_VECTOR);
+					DispatchSpawn(pills);
+					ClientData[client].SpecialsUsed++;
+
+				}				
+				default: {
+					CloseHandle( trace );
+					return;
+				}
+			}
+		}
+		else
+		PrintToChat(client, "%sCould not place the item because you were looking too far away.", PRINT_PREFIX);
+	}
+	else
+	CloseHandle(trace);
+}
+
+public UpgradeQuickHeal(client)
+{
+	if(ClientData[client].ChosenClass == MEDIC)
+	SetConVarFloat(g_VarFirstAidDuration, FirstAidDuration * GetConVarFloat(MEDIC_HEAL_RATIO), false, false);
+	else
+	SetConVarFloat(g_VarFirstAidDuration, FirstAidDuration * 1.0, false, false);
+}
+
+public UpgradeQuickRevive(client)
+{
+	if(ClientData[client].ChosenClass == MEDIC)
+	SetConVarFloat(g_VarReviveDuration, ReviveDuration * GetConVarFloat(MEDIC_REVIVE_RATIO), false, false);
+	else
+	SetConVarFloat(g_VarReviveDuration, ReviveDuration * 1.0, false, false);
+}
+
+public setPlayerHealth(client, MaxPossibleHP)
+{
+	if (!client) return;
+	new OldMaxHealth = GetEntProp(client, Prop_Send, "m_iMaxHealth");
+	new OldHealth = GetClientHealth(client);
+	new OldTempHealth = GetClientTempHealth(client);
+	if (MaxPossibleHP == OldMaxHealth) return;
+
+	SetEntProp(client, Prop_Send, "m_iMaxHealth", MaxPossibleHP);
+	SetEntityHealth(client, MaxPossibleHP - (OldMaxHealth - OldHealth));
+	SetClientTempHealth(client, OldTempHealth);
+	
+	if ((GetClientHealth(client) + GetClientTempHealth(client)) > MaxPossibleHP)
+	{
+		SetEntityHealth(client, MaxPossibleHP);
+		SetClientTempHealth(client, 0);
+	}
+}
+
+public setPlayerDefaultHealth(client)
+{
+	if (!client
+		|| !IsValidEntity(client)
+		|| !IsClientInGame(client)
+		|| !IsPlayerAlive(client)
+		|| GetClientTeam(client) != 2)
+	return;
+	
+	new MaxPossibleHP = GetConVarInt(NONE_HEALTH);
+	setPlayerHealth(client, MaxPossibleHP);
+}
+
+public void Event_ServerCvar( Event hEvent, const char[] sName, bool bDontBroadcast ) 
+{
+	if ( !healthModEnabled.BoolValue ) return;
+	
+	InitHealthModifiers();
+}
+
+public event_HealBegin(Handle:event, const String:name[], bool:Broadcast)
+{
+	new client = GetClientOfUserId(GetEventInt(event, "userid"));
+	UpgradeQuickHeal(client);
+}
+
+public event_ReviveBegin(Handle:event, const String:name[], bool:Broadcast)
+{
+	new client = GetClientOfUserId(GetEventInt(event, "userid"));
+	UpgradeQuickRevive(client);
+}
+
+public Action:TimerDetectHealthChanges(Handle:hTimer, any:client)
+{
+	if (!client
+		|| !IsValidEntity(client)
+		|| !IsClientInGame(client)
+		|| ClientData[client].ChosenClass != MEDIC)
+	return Plugin_Stop;
+	
+	if(!IsPlayerAlive(client) || GetClientTeam(client) != 2)
+	{	return Plugin_Continue; }
+	
+	new btns = GetClientButtons(client);
+
+	if (btns & IN_DUCK)
+	{
+		CreateParticle(client, MEDIC_GLOW, true, 1.0);
+
+		decl Float:pos[3];
+		decl String:sMessage[256];	
+		GetClientAbsOrigin(client, pos);
+		
+		for (new i = 1; i <= MaxClients; i++)
+		{
+			if (IsValidEntity(i) && IsClientInGame(i) && IsPlayerAlive(i) && GetClientTeam(i) == 2 && i != client)
+			{
+				decl Float:tpos[3];
+				GetClientAbsOrigin(i, tpos);
+				
+				if (GetVectorDistance(pos, tpos) <= GetConVarFloat(MEDIC_HEAL_DIST))
+				{
+					// pre-heal set values
+					new MaxHealth = GetEntProp(i, Prop_Send, "m_iMaxHealth");
+					new TempHealth = GetClientTempHealth(i);
+
+					Format(sMessage, sizeof(sMessage), "%N is healing you!", client);
+
+					ShowBar(i, sMessage, float(GetClientHealth(i)), float(MaxHealth));
+					SetEntityHealth(i, GetClientHealth(i) + GetConVarInt(MEDIC_HEALTH_VALUE));
+					SetClientTempHealth(i, TempHealth);
+					
+					// post-heal set values
+					new newHp = GetClientHealth(i);
+					new totalHp = newHp + TempHealth;
+					GlowPlayer(i, "Orange", FX:FxGlowShell);
+					new Handle:hPack = CreateDataPack();
+					WritePackCell(hPack, i);
+					WritePackCell(hPack, totalHp);
+
+					CreateTimer(1.0, GlowTimer, hPack, TIMER_FLAG_NO_MAPCHANGE ); 	
+					
+					if (totalHp > MaxHealth)
+					{
+						new diff = totalHp - MaxHealth;
 						
-						// post-heal set values
-						new newHp = GetClientHealth(i);
-						new totalHp = newHp + TempHealth;
-						
-						if (totalHp > MaxHealth)
+						if (TempHealth >= diff)
 						{
-							new diff = totalHp - MaxHealth;
-							
-							if (TempHealth >= diff)
-							{
-								SetClientTempHealth(i, TempHealth - diff);
-								continue;
-							}
-							
-							SetClientTempHealth(i, 0);
-							SetEntityHealth(i, MaxHealth);
+							SetClientTempHealth(i, TempHealth - diff);
+							continue;
 						}
+						
+						SetClientTempHealth(i, 0);
+						SetEntityHealth(i, MaxHealth);
 					}
 				}
 			}
-		} else {
-			MedicHint = false;
 		}
-		
-		return Plugin_Continue;
+	} else {
+
+		MedicHint = false;
 	}
-
-	public ApplyHealthModifiers()
-	{
-		FirstAidDuration = GetConVarFloat(FindConVar("first_aid_kit_use_duration"));
-		ReviveDuration = GetConVarFloat(FindConVar("survivor_revive_duration"));
-		g_VarFirstAidDuration = FindConVar("first_aid_kit_use_duration");
-		g_VarReviveDuration = FindConVar("survivor_revive_duration");
-	}
-
-	public LoadSettings()
-	{
-		FindConVar("first_aid_heal_percent").FloatValue = 1.0; 	
-		FindConVar("first_aid_kit_use_duration").IntValue = GetConVarInt(HEAL_DURATION); 
-		FindConVar("survivor_revive_duration").IntValue = GetConVarInt(REVIVE_DURATION);
-		FindConVar("survivor_revive_health").IntValue = GetConVarInt(REVIVE_HEALTH);
-		FindConVar("pain_pills_health_value").IntValue = GetConVarInt(PILLS_HEALTH_BUFFER);
-		FindConVar("adrenaline_duration").IntValue = GetConVarInt(ADRENALINE_DURATION); 
-		FindConVar("adrenaline_health_buffer").IntValue = GetConVarInt(ADRENALINE_HEALTH_BUFFER);
-		SetConVarFloat(FindConVar("first_aid_kit_use_duration"), GetConVarFloat(HEAL_DURATION), false, false);
-		SetConVarFloat(FindConVar("survivor_revive_duration"), GetConVarFloat(REVIVE_DURATION), false, false);	
-		ApplyHealthModifiers();	
-	}
-
-	///////////////////////////////////////////////////////////////////////////////////
-	// Commando
-	///////////////////////////////////////////////////////////////////////////////////
-
-	public Event_RelCommandoClass(Handle:event, String:name[], bool:dontBroadcast)
-	{
-		new client = GetClientOfUserId(GetEventInt(event,"userid"));
-		
-		if (ClientData[client].ChosenClass != COMMANDO)
-			return;
-		
-		new weapon = GetEntDataEnt2(client, g_oAW);
-
-		if (!IsValidEntity(weapon))
-			return;
-		
-		new Float:flGT = GetGameTime();
-		decl String:bNetCl[64];
-		decl String:stClass[32];
-
-		GetEntityNetClass(weapon, bNetCl, sizeof(bNetCl));
-		GetEntityNetClass(weapon,stClass,32);
-
-		if (DEBUG_MODE)
-		PrintToChatAll("\x03-class of gun: \x01%s",stClass );
-
-		if (StrContains(bNetCl, "shotgun", false) == -1)
-		{
-			new Handle:hPack = CreateDataPack();
-			WritePackCell(hPack, weapon);
-
-			new Float:fRLRat = GetConVarFloat(COMMANDO_RELOAD_RATIO);
-			new Float:fNTC = (GetEntDataFloat(weapon, g_iNPA) - flGT) * fRLRat;
-			new Float:NA = fNTC + flGT;
-			new Float:flNextTime_ret = GetEntDataFloat(weapon, g_iNPA);
-			new Float:flStartTime_calc = flGT - ( flNextTime_ret - flGT ) * ( 1 - fRLRat ) ;
-			WritePackFloat(hPack, flStartTime_calc);
-			
-			if ( (fNTC - 0.4) > 0 )
-				CreateTimer( fNTC - 0.4, CommandoRelFireEnd2, hPack);
-			
-			SetEntDataFloat(weapon, g_ioPR, 1.0 / fRLRat, true);
-			SetEntDataFloat(weapon, g_ioTI, NA, true);
-			SetEntDataFloat(weapon, g_iNPA, NA, true);
-			SetEntDataFloat(client, g_ioNA, NA, true);
-			CreateTimer(fNTC, CommandoRelFireEnd, weapon);
-		}
-		else
-		{
-			new Handle:hPack = CreateDataPack();
-			WritePackCell(hPack, weapon);
-			if (DEBUG_MODE) 
-				PrintToChatAll("Class: %s", stClass);
-
-			if (StrContains(bNetCl, "shotgun_spas", false) != -1)
-			{
-				if (DEBUG_MODE) {
-					PrintToChatAll("\x03-spas ratio \x01%f\x03, startO \x01%f\x03, insertO \x01%f\x03, endO \x01%f", GetConVarFloat(COMMANDO_RELOAD_RATIO), g_fl_SpasS, g_fl_SpasI, 0.675000);
-				}
-				WritePackFloat(hPack, 0.293939);
-				WritePackFloat(hPack, 0.272999);
-				WritePackFloat(hPack, 0.675000);
-
-				CreateTimer(0.1, CommandoPumpShotReload, hPack);
-			}
-			else if (StrContains(bNetCl, "pumpshotgun", false) != -1)
-			{
-
-				WritePackFloat(hPack, 0.393939);
-				WritePackFloat(hPack, 0.472999);
-				WritePackFloat(hPack, 0.875000);
-
-				CreateTimer(0.1, CommandoPumpShotReload, hPack);
-			}
-			else if (StrContains(bNetCl, "autoshotgun", false) != -1)
-			{
-				WritePackFloat(hPack, 0.416666);
-				WritePackFloat(hPack, 0.395999);
-				WritePackFloat(hPack, 1.000000);
-
-				CreateTimer(0.1, CommandoPumpShotReload, hPack);
-			}
-			else
-				CloseHandle(hPack);
-		}
-	}
-
-
-	public Action:CommandoRelFireEnd(Handle:timer, any:weapon)
-	{
-		if (weapon <= 0 || !IsValidEntity(weapon))
-			return Plugin_Stop;
-		
-		SetEntDataFloat(weapon, g_ioPR, 1.0, true);
-		KillTimer(timer);
-
-		return Plugin_Stop;
-	}
-
-	public Action:CommandoRelFireEnd2(Handle:timer, Handle:hPack)
-	{
-		KillTimer(timer);
-		if (IsServerProcessing()==false)
-		{
-			CloseHandle(hPack);
-			return Plugin_Stop;
-		}
-		ResetPack(hPack);
-
-		new weapon = ReadPackCell(hPack);
-		new iCid = GetEntPropEnt(weapon, Prop_Data, "m_hOwner");
-		if (iCid <= 0 || IsValidEntity(iCid)==false || IsClientInGame(iCid)==false)
-			return Plugin_Stop;
-
-		new Float:flStartTime_calc = ReadPackFloat(hPack);
-		CloseHandle(hPack);
-		new iVMid = GetEntDataEnt2(iCid,g_iViewModelO);
-		SetEntDataFloat(iVMid, g_iVMStartTimeO, flStartTime_calc, true);
-		return Plugin_Stop;
-	}
-
-	public Action:CommandoPumpShotReload(Handle:timer, Handle:hOldPack)
-	{
-		ResetPack(hOldPack);
-		new weapon = ReadPackCell(hOldPack);
-		new Float:fRLRat = GetConVarFloat(COMMANDO_RELOAD_RATIO);
-		new Float:start = ReadPackFloat(hOldPack);
-		new Float:insert = ReadPackFloat(hOldPack);
-		new Float:end = ReadPackFloat(hOldPack);
-
-		SetEntDataFloat(weapon,	g_iSSD,	start * fRLRat,	true);
-		SetEntDataFloat(weapon,	g_iSID,	insert * fRLRat,	true);
-		SetEntDataFloat(weapon,	g_iSED, end * fRLRat,	true);
-		SetEntDataFloat(weapon, g_ioPR, 1.0 / fRLRat, true);
-		
-		CloseHandle(hOldPack);
-		if (DEBUG_MODE == true) {
-			PrintToChatAll("\x03-spas shotgun detected, ratio \x01%i\x03, startO \x01%i\x03, insertO \x01%i\x03, endO \x01%i", fRLRat, g_iSSD, g_iSID, g_iSED);
-			PrintToChatAll("\x03- pre mod, start \x01%f\x03, insert \x01%f\x03, end \x01%f",g_fl_SpasS, g_fl_SpasI, g_fl_SpasE);
-		}
 	
+	return Plugin_Continue;
+}
+
+public ApplyHealthModifiers()
+{
+	FirstAidDuration = GetConVarFloat(FindConVar("first_aid_kit_use_duration"));
+	ReviveDuration = GetConVarFloat(FindConVar("survivor_revive_duration"));
+	g_VarFirstAidDuration = FindConVar("first_aid_kit_use_duration");
+	g_VarReviveDuration = FindConVar("survivor_revive_duration");
+}
+
+public InitHealthModifiers()
+{
+	FindConVar("first_aid_heal_percent").FloatValue = 1.0; 	
+	FindConVar("first_aid_kit_use_duration").IntValue = GetConVarInt(HEAL_DURATION); 
+	FindConVar("survivor_revive_duration").IntValue = GetConVarInt(REVIVE_DURATION);
+	FindConVar("survivor_revive_health").IntValue = GetConVarInt(REVIVE_HEALTH);
+	FindConVar("pain_pills_health_value").IntValue = GetConVarInt(PILLS_HEALTH_BUFFER);
+	FindConVar("adrenaline_duration").IntValue = GetConVarInt(ADRENALINE_DURATION); 
+	FindConVar("adrenaline_health_buffer").IntValue = GetConVarInt(ADRENALINE_HEALTH_BUFFER);
+	SetConVarFloat(FindConVar("first_aid_kit_use_duration"), GetConVarFloat(HEAL_DURATION), false, false);
+	SetConVarFloat(FindConVar("survivor_revive_duration"), GetConVarFloat(REVIVE_DURATION), false, false);	
+	ApplyHealthModifiers();	
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+// Commando
+///////////////////////////////////////////////////////////////////////////////////
+
+public Event_RelCommandoClass(Handle:event, String:name[], bool:dontBroadcast)
+{
+	new client = GetClientOfUserId(GetEventInt(event,"userid"));
+	
+	if (ClientData[client].ChosenClass != COMMANDO)
+	return;
+	
+	new weapon = GetEntDataEnt2(client, g_oAW);
+
+	if (!IsValidEntity(weapon))
+	return;
+	
+	new Float:flGT = GetGameTime();
+	decl String:bNetCl[64];
+	decl String:stClass[32];
+
+	GetEntityNetClass(weapon, bNetCl, sizeof(bNetCl));
+	GetEntityNetClass(weapon,stClass,32);
+
+	if (DEBUG_MODE)
+	PrintToChatAll("\x03-class of gun: \x01%s",stClass );
+
+	if (StrContains(bNetCl, "shotgun", false) == -1)
+	{
 		new Handle:hPack = CreateDataPack();
 		WritePackCell(hPack, weapon);
+
+		new Float:fRLRat = GetConVarFloat(COMMANDO_RELOAD_RATIO);
+		new Float:fNTC = (GetEntDataFloat(weapon, g_iNPA) - flGT) * fRLRat;
+		new Float:NA = fNTC + flGT;
+		new Float:flNextTime_ret = GetEntDataFloat(weapon, g_iNPA);
+		new Float:flStartTime_calc = flGT - ( flNextTime_ret - flGT ) * ( 1 - fRLRat ) ;
+		WritePackFloat(hPack, flStartTime_calc);
 		
-		if (GetEntData(weapon, g_iSRS) != 2)
+		if ( (fNTC - 0.4) > 0 )
+		CreateTimer( fNTC - 0.4, CommandoRelFireEnd2, hPack);
+		
+		SetEntDataFloat(weapon, g_ioPR, 1.0 / fRLRat, true);
+		SetEntDataFloat(weapon, g_ioTI, NA, true);
+		SetEntDataFloat(weapon, g_iNPA, NA, true);
+		SetEntDataFloat(client, g_ioNA, NA, true);
+		CreateTimer(fNTC, CommandoRelFireEnd, weapon);
+	}
+	else
+	{
+		new Handle:hPack = CreateDataPack();
+		WritePackCell(hPack, weapon);
+		if (DEBUG_MODE) 
+		PrintToChatAll("Class: %s", stClass);
+
+		if (StrContains(bNetCl, "shotgun_spas", false) != -1)
 		{
-			WritePackFloat(hPack, 0.2);
-			CreateTimer(0.3, CommandoShotCalculate, hPack, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+			if (DEBUG_MODE) {
+				PrintToChatAll("\x03-spas ratio \x01%f\x03, startO \x01%f\x03, insertO \x01%f\x03, endO \x01%f", GetConVarFloat(COMMANDO_RELOAD_RATIO), g_fl_SpasS, g_fl_SpasI, 0.675000);
+			}
+			WritePackFloat(hPack, 0.293939);
+			WritePackFloat(hPack, 0.272999);
+			WritePackFloat(hPack, 0.675000);
+
+			CreateTimer(0.1, CommandoPumpShotReload, hPack);
+		}
+		else if (StrContains(bNetCl, "pumpshotgun", false) != -1)
+		{
+
+			WritePackFloat(hPack, 0.393939);
+			WritePackFloat(hPack, 0.472999);
+			WritePackFloat(hPack, 0.875000);
+
+			CreateTimer(0.1, CommandoPumpShotReload, hPack);
+		}
+		else if (StrContains(bNetCl, "autoshotgun", false) != -1)
+		{
+			WritePackFloat(hPack, 0.416666);
+			WritePackFloat(hPack, 0.395999);
+			WritePackFloat(hPack, 1.000000);
+
+			CreateTimer(0.1, CommandoPumpShotReload, hPack);
 		}
 		else
-		{
-			WritePackFloat(hPack, 1.0);
-			CreateTimer(0.3, CommandoShotCalculate, hPack, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
-		}
-		
+		CloseHandle(hPack);
+	}
+}
+
+public Action:CommandoRelFireEnd(Handle:timer, any:weapon)
+{
+	if (weapon <= 0 || !IsValidEntity(weapon))
+	return Plugin_Stop;
+	
+	SetEntDataFloat(weapon, g_ioPR, 1.0, true);
+	KillTimer(timer);
+
+	return Plugin_Stop;
+}
+
+public Action:CommandoRelFireEnd2(Handle:timer, Handle:hPack)
+{
+	KillTimer(timer);
+	if (IsServerProcessing()==false)
+	{
+		CloseHandle(hPack);
 		return Plugin_Stop;
 	}
+	ResetPack(hPack);
 
-	public Action:CommandoShotCalculate(Handle:timer, Handle:hPack)
-	{
-		ResetPack(hPack);
-		new weapon = ReadPackCell(hPack);
-		new Float:addMod = ReadPackFloat(hPack);
-		
-		if (weapon <= 0 || !IsValidEntity(weapon))
-		{
-			CloseHandle(hPack);
-			KillTimer(timer);
-			return Plugin_Stop;
-		}
-		
-		if (GetEntData(weapon, g_iSRS) == 0 || GetEntData(weapon, g_iSRS) == 2 )
-		{
-			new Float:flNextTime = GetGameTime() + addMod;
-			
-			SetEntDataFloat(weapon, g_ioPR, 1.0, true);
-			SetEntDataFloat(GetEntPropEnt(weapon, Prop_Data, "m_hOwner"), g_ioNA, flNextTime, true);
-			SetEntDataFloat(weapon,	g_ioTI, flNextTime, true);
-			SetEntDataFloat(weapon,	g_iNPA, flNextTime, true);
-			KillTimer(timer);
+	new weapon = ReadPackCell(hPack);
+	new iCid = GetEntPropEnt(weapon, Prop_Data, "m_hOwner");
+	if (iCid <= 0 || IsValidEntity(iCid)==false || IsClientInGame(iCid)==false)
+	return Plugin_Stop;
 
-			CloseHandle(hPack);
-			return Plugin_Stop;
-		}
-		
-		return Plugin_Continue;
+	new Float:flStartTime_calc = ReadPackFloat(hPack);
+	CloseHandle(hPack);
+	new iVMid = GetEntDataEnt2(iCid,g_iViewModelO);
+	SetEntDataFloat(iVMid, g_iVMStartTimeO, flStartTime_calc, true);
+	return Plugin_Stop;
+}
+
+public Action:CommandoPumpShotReload(Handle:timer, Handle:hOldPack)
+{
+	ResetPack(hOldPack);
+	new weapon = ReadPackCell(hOldPack);
+	new Float:fRLRat = GetConVarFloat(COMMANDO_RELOAD_RATIO);
+	new Float:start = ReadPackFloat(hOldPack);
+	new Float:insert = ReadPackFloat(hOldPack);
+	new Float:end = ReadPackFloat(hOldPack);
+
+	SetEntDataFloat(weapon,	g_iSSD,	start * fRLRat,	true);
+	SetEntDataFloat(weapon,	g_iSID,	insert * fRLRat,	true);
+	SetEntDataFloat(weapon,	g_iSED, end * fRLRat,	true);
+	SetEntDataFloat(weapon, g_ioPR, 1.0 / fRLRat, true);
+	
+	CloseHandle(hOldPack);
+	if (DEBUG_MODE == true) {
+		PrintToChatAll("\x03-spas shotgun detected, ratio \x01%i\x03, startO \x01%i\x03, insertO \x01%i\x03, endO \x01%i", fRLRat, g_iSSD, g_iSID, g_iSED);
+		PrintToChatAll("\x03- pre mod, start \x01%f\x03, insert \x01%f\x03, end \x01%f",g_fl_SpasS, g_fl_SpasI, g_fl_SpasE);
 	}
-
-	public Action:Event_WeaponFire(Handle:event, const String:name[], bool:dontBroadcast)
+	
+	new Handle:hPack = CreateDataPack();
+	WritePackCell(hPack, weapon);
+	
+	if (GetEntData(weapon, g_iSRS) != 2)
 	{
-		new client = GetClientOfUserId(GetEventInt(event, "userid"));
+		WritePackFloat(hPack, 0.2);
+		CreateTimer(0.3, CommandoShotCalculate, hPack, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+	}
+	else
+	{
+		WritePackFloat(hPack, 1.0);
+		CreateTimer(0.3, CommandoShotCalculate, hPack, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+	}
+	
+	return Plugin_Stop;
+}
+
+public Action:CommandoShotCalculate(Handle:timer, Handle:hPack)
+{
+	ResetPack(hPack);
+	new weapon = ReadPackCell(hPack);
+	new Float:addMod = ReadPackFloat(hPack);
+	
+	if (weapon <= 0 || !IsValidEntity(weapon))
+	{
+		CloseHandle(hPack);
+		KillTimer(timer);
+		return Plugin_Stop;
+	}
+	
+	if (GetEntData(weapon, g_iSRS) == 0 || GetEntData(weapon, g_iSRS) == 2 )
+	{
+		new Float:flNextTime = GetGameTime() + addMod;
 		
-		if (ClientData[client].ChosenClass == NONE && GetClientTeam(client) == 2)
+		SetEntDataFloat(weapon, g_ioPR, 1.0, true);
+		SetEntDataFloat(GetEntPropEnt(weapon, Prop_Data, "m_hOwner"), g_ioNA, flNextTime, true);
+		SetEntDataFloat(weapon,	g_ioTI, flNextTime, true);
+		SetEntDataFloat(weapon,	g_iNPA, flNextTime, true);
+		KillTimer(timer);
+
+		CloseHandle(hPack);
+		return Plugin_Stop;
+	}
+	
+	return Plugin_Continue;
+}
+
+public Action:Event_WeaponFire(Handle:event, const String:name[], bool:dontBroadcast)
+{
+	new client = GetClientOfUserId(GetEventInt(event, "userid"));
+	
+	if (ClientData[client].ChosenClass == NONE && GetClientTeam(client) == 2)
+	{
+		if(client > 0 && client < MAXPLAYERS + 1 && ClassHint == false)
 		{
-			if(client > 0 && client < MAXPLAYERS + 1 && ClassHint == false)
-			{
-				if (RoundStarted == true) {
-					ClassHint = true;
-				}
-				PrintHintText(client,"You really should pick a class, 1,5,7 are good for beginners.");
-				CreatePlayerClassMenu(client);
+			if (RoundStarted == true) {
+				ClassHint = true;
 			}
+			PrintHintText(client,"You really should pick a class, 1,5,7 are good for beginners.");
+			CreatePlayerClassMenu(client);
 		}
-		
-		if(ClientData[client].ChosenClass == COMMANDO)
-		{
-			GetEventString(event, "weapon", ClientData[client].EquippedGun, 64);
-			//PrintToChat(client,"weapon shot fired");	
-		}
-		return Plugin_Continue;
 	}
-
-	public getCommandoDamageBonus(client)
+	
+	if(ClientData[client].ChosenClass == COMMANDO)
 	{
-		if (StrContains(ClientData[client].EquippedGun,"grenade", false)!=-1)
-		{
-			return GetConVarInt(COMMANDO_DAMAGE_GRENADE);
-		}
-		if (StrContains(ClientData[client].EquippedGun,"shotgun", false)!=-1)
-		{
-			return GetConVarInt(COMMANDO_DAMAGE_SHOTGUN);
-		}
-		if (StrContains(ClientData[client].EquippedGun, "sniper", false)!=-1)
-		{
-			return GetConVarInt(COMMANDO_DAMAGE_SNIPER);
-		}
-		if (StrContains(ClientData[client].EquippedGun, "hunting", false)!=-1)
-		{
-			return GetConVarInt(COMMANDO_DAMAGE_HUNTING);
-		}
-		if (StrContains(ClientData[client].EquippedGun, "pistol", false)!=-1)
-		{
-			return GetConVarInt(COMMANDO_DAMAGE_PISTOL);
-		}
-		if (StrContains(ClientData[client].EquippedGun, "smg", false)!=-1)
-		{
-			return GetConVarInt(COMMANDO_DAMAGE_SMG);
-		}
-		if (StrContains(ClientData[client].EquippedGun,"rifle", false)!=-1)
-		{
-			return GetConVarInt(COMMANDO_DAMAGE_RIFLE);
-		}
-		// default
-		return GetConVarInt(COMMANDO_DAMAGE);
+		GetEventString(event, "weapon", ClientData[client].EquippedGun, 64);
+		//PrintToChat(client,"weapon shot fired");	
 	}
+	return Plugin_Continue;
+}
 
-
-
-	///////////////////////////////////////////////////////////////////////////////////
-	// Soldier
-	///////////////////////////////////////////////////////////////////////////////////
-
-	public OnGameFrame()
+public getCommandoDamageBonus(client)
+{
+	if (StrContains(ClientData[client].EquippedGun,"grenade", false)!=-1)
 	{
-		if (!g_iRC)
-			return;
+		return GetConVarInt(COMMANDO_DAMAGE_GRENADE);
+	}
+	if (StrContains(ClientData[client].EquippedGun,"shotgun", false)!=-1)
+	{
+		return GetConVarInt(COMMANDO_DAMAGE_SHOTGUN);
+	}
+	if (StrContains(ClientData[client].EquippedGun, "sniper", false)!=-1)
+	{
+		return GetConVarInt(COMMANDO_DAMAGE_SNIPER);
+	}
+	if (StrContains(ClientData[client].EquippedGun, "hunting", false)!=-1)
+	{
+		return GetConVarInt(COMMANDO_DAMAGE_HUNTING);
+	}
+	if (StrContains(ClientData[client].EquippedGun, "pistol", false)!=-1)
+	{
+		return GetConVarInt(COMMANDO_DAMAGE_PISTOL);
+	}
+	if (StrContains(ClientData[client].EquippedGun, "smg", false)!=-1)
+	{
+		return GetConVarInt(COMMANDO_DAMAGE_SMG);
+	}
+	if (StrContains(ClientData[client].EquippedGun,"rifle", false)!=-1)
+	{
+		return GetConVarInt(COMMANDO_DAMAGE_RIFLE);
+	}
+	// default
+	return GetConVarInt(COMMANDO_DAMAGE);
+}
 
-		decl client;
-		decl bweapon;
-		decl Float:fNTC;
-		decl Float:fNTR;
-		new Float:fGT = GetGameTime();
+///////////////////////////////////////////////////////////////////////////////////
+// Soldier
+///////////////////////////////////////////////////////////////////////////////////
+
+public OnGameFrame()
+{
+	if (!g_iRC)
+	return;
+
+	decl client;
+	decl bweapon;
+	decl Float:fNTC;
+	decl Float:fNTR;
+	new Float:fGT = GetGameTime();
+	
+	for (new i = 1; i <= g_iRC; i++)
+	{
+		client = g_iRI[i];
 		
-		for (new i = 1; i <= g_iRC; i++)
-		{
-			client = g_iRI[i];
-			
-			if (!client
+		if (!client
 			|| client >= MAXPLAYERS
 			|| !IsValidEntity(client)
 			|| !IsClientInGame(client)
 			|| !IsPlayerAlive(client)
 			|| GetClientTeam(client) != 2
 			|| ClientData[client].ChosenClass != SOLDIER)
-				continue;
-			
-			bweapon = GetEntDataEnt2(client, g_oAW);
-			
-			if(bweapon <= 0) 
-				continue;
-			
-			fNTR = GetEntDataFloat(bweapon, g_iNPA);
-			
-			if (g_iEi[client] == bweapon && g_fNT[client] >= fNTR)
-				continue;
-			
-			if (g_iEi[client] == bweapon && g_fNT[client] < fNTR)
+		continue;
+		
+		if(GetConVarBool(SOLDIER_SHOVE_PENALTY) == false)
+		{
+			//If the player is pressing the right click of the mouse, proceed
+			if(GetClientButtons(i) & IN_ATTACK2)
 			{
-				fNTC = ( fNTR - fGT ) * GetConVarFloat(SOLDIER_FIRE_RATE) + fGT;
-				g_fNT[client] = fNTC;
-				SetEntDataFloat(bweapon, g_iNPA, fNTC, true);
-				continue;
+				//This will reset the penalty, so it doesnt even get applied.
+				SetEntData(i, g_iShovePenalty, 0, 4);
+			}
+		}
+
+		bweapon = GetEntDataEnt2(client, g_oAW);
+		
+		if(bweapon <= 0) 
+		continue;
+		
+		fNTR = GetEntDataFloat(bweapon, g_iNPA);
+		
+		if (g_iEi[client] == bweapon && g_fNT[client] >= fNTR)
+		continue;
+		
+		if (g_iEi[client] == bweapon && g_fNT[client] < fNTR)
+		{
+			fNTC = ( fNTR - fGT ) * GetConVarFloat(SOLDIER_FIRE_RATE) + fGT;
+			g_fNT[client] = fNTC;
+			SetEntDataFloat(bweapon, g_iNPA, fNTC, true);
+			continue;
+		}
+		
+		if (g_iEi[client] != bweapon)
+		{
+			g_iEi[client] = bweapon;
+			g_fNT[client] = fNTR;
+			continue;
+		}
+	}
+}
+public Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, int &damagetype, int &weapon, float damageForce[3], float damagePosition[3], int damagecustom)
+{
+	return Plugin_Continue;
+}
+
+public Action:OnTakeDamagePre(victim, &attacker, &inflictor, &Float:damage, &damagetype)
+{
+	if (!IsServerProcessing())
+	return Plugin_Continue;
+	
+	if (victim && attacker && IsValidEntity(attacker) && attacker <= MaxClients && IsValidEntity(victim) && victim <= MaxClients)
+	{
+		if( damagetype & DMG_BLAST && GetEntProp(inflictor, Prop_Data, "m_iHammerID") == 1078682)
+		{
+			if(GetClientTeam(victim) == 2 )
+				damage = GetConVarFloat(SABOTEUR_BOMB_DAMAGE_SURV);
+			else if(GetClientTeam(victim) == 3 )
+				damage = GetConVarFloat(SABOTEUR_BOMB_DAMAGE_INF);
+			return Plugin_Changed;
+		}
+
+		//PrintToChatAll("%s", m_attacker);
+		if(ClientData[victim].ChosenClass == SOLDIER && GetClientTeam(victim) == 2)
+		{
+			//PrintToChat(victim, "Damage: %f, New: %f", damage, damage*0.5);
+			damage = damage * GetConVarFloat(SOLDIER_DAMAGE_REDUCE_RATIO);
+			return Plugin_Changed;
+		}
+		if (ClientData[attacker].ChosenClass == COMMANDO && GetClientTeam(attacker) == 2 && GetClientTeam(victim) == 3)
+		{
+			damage = damage + getCommandoDamageBonus(attacker);
+			//PrintToChat(attacker,"%f",damage);
+			return Plugin_Changed;
+		}
+	}
+
+	
+	return Plugin_Continue;
+}
+
+public void CreateAirStrike(int client) {
+	
+	float vPos[3];
+
+	if (SetClientLocation(client, vPos)) {
+		char color[12];
+
+		int entity = CreateEntityByName("info_particle_system");
+		TeleportEntity(entity, vPos, NULL_VECTOR, NULL_VECTOR);
+		DispatchKeyValue(entity, "effect_name", BOMB_GLOW);
+		DispatchSpawn(entity);
+		DispatchSpawn(entity);
+		ActivateEntity(entity);
+		AcceptEntityInput(entity, "start");
+
+		CreateBeamRing(entity, { 255, 0, 255, 255 },0.1, 180.0, 3);		
+		PrintHintTextToAll("%N ordered airstrike, take cover!", client);
+		GetConVarString(SABOTEUR_ACTIVE_BOMB_COLOR, color, sizeof(color));
+		SetupPrjEffects(entity, vPos, color); // Red
+
+		EmitSoundToAll(SOUND_DROP_BOMB);
+
+		new Handle:pack = CreateDataPack();
+		WritePackCell(pack, client);
+		WritePackFloat(pack, vPos[0]);
+		WritePackFloat(pack, vPos[1]);
+		WritePackFloat(pack, vPos[2]);
+		WritePackFloat(pack, GetGameTime());
+		WritePackCell(pack, entity);									
+		CreateTimer(1.0, TimerAirstrike, pack, TIMER_FLAG_NO_MAPCHANGE ); 	
+ 		CreateTimer(10.0, DeleteParticles, entity, TIMER_FLAG_NO_MAPCHANGE ); 													
+	} 
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+// Mines & Airstrikes
+///////////////////////////////////////////////////////////////////////////////////
+
+public void DropBomb(client)
+{
+	decl Float:pos[3];
+	GetClientAbsOrigin(client, pos);
+	int index = ClientData[client].SpecialsUsed;		
+
+	new Handle:hPack = CreateDataPack();
+
+	WritePackFloat(hPack, pos[0]);
+	WritePackFloat(hPack, pos[1]);
+	WritePackFloat(hPack, pos[2]);
+	WritePackCell(hPack, client);
+	WritePackCell(hPack, RndSession);
+	WritePackCell(hPack, index);
+
+	CreateTimer(GetConVarFloat(SABOTEUR_BOMB_ACTIVATE), TimerActivateBomb, hPack, TIMER_FLAG_NO_MAPCHANGE);
+
+	TE_SetupBeamRingPoint(pos, 10.0, 256.0, g_BeamSprite, g_HaloSprite, 0, 15, 0.5, 5.0, 0.0, greenColor, 10, 0);
+	TE_SendToAll();
+	TE_SetupBeamRingPoint(pos, 10.0, 256.0, g_BeamSprite, g_HaloSprite, 0, 10, 0.6, 10.0, 0.5, redColor, 10, 0);
+	TE_SendToAll();
+	BombActive = true;
+	BombIndex[index] = true;
+
+	ClientData[client].SpecialsUsed++;
+
+	CreateParticleInPos(pos, BOMB_GLOW, index);
+
+	EmitSoundToAll(SOUND_DROP_BOMB);
+	PrintHintTextToAll("%N planted a mine! (%i/%i)", client, ClientData[client].SpecialsUsed, GetConVarInt(SABOTEUR_MAX_BOMBS));
+}
+
+public DropMineEntity(Float:pos[3], int index)
+{
+	char mineName[32];
+	Format(mineName, sizeof(mineName), "mineExplosive%d", index);
+	int entity = CreateEntityByName("prop_dynamic_override");
+	DispatchKeyValue(entity, "model", MODEL_MINE);
+	TeleportEntity(entity, pos, NULL_VECTOR, NULL_VECTOR);
+	DispatchSpawn(entity);	
+	SetEntProp(entity, Prop_Send, "m_iGlowType", 2);
+	SetEntProp(entity, Prop_Send, "m_glowColorOverride", GetColor("255 0 0"));
+	SetEntProp(entity, Prop_Send, "m_nGlowRange", 520);
+	SetEntProp(entity, Prop_Data, "m_iHammerID", 1078682);
+	SetEntProp(entity, Prop_Data, "m_usSolidFlags", 152);
+	SetEntProp(entity, Prop_Data, "m_CollisionGroup", 1);
+	SetEntityMoveType(entity, MOVETYPE_NONE);
+	SetEntProp(entity, Prop_Data, "m_MoveCollide", 0);
+	SetEntProp(entity, Prop_Data, "m_nSolidType", 6);
+	DispatchKeyValue(entity, "targetname", mineName);
+
+	return entity;
+}
+public Action:TimerAirstrike(Handle timer, Handle:hPack)
+{
+
+	new Float:pos[3];
+	new Float:time;
+	int client;
+	int entity;
+	ResetPack(hPack);
+	client = ReadPackCell(hPack);		
+	pos[0] = ReadPackFloat(hPack);
+	pos[1] = ReadPackFloat(hPack);
+	pos[2] = ReadPackFloat(hPack);
+	time =  ReadPackFloat(hPack);
+	entity = ReadPackCell(hPack);
+	CloseHandle(hPack);
+
+	if (RoundToFloor(GetGameTime()-time) < 10) {
+		PrintHintTextToAll("Airstrike in %i, take cover!",10-(RoundToFloor(GetGameTime()-time)));
+		new Handle:pack = CreateDataPack();
+		WritePackCell(pack, client);
+		WritePackFloat(pack, pos[0]);
+		WritePackFloat(pack, pos[1]);
+		WritePackFloat(pack, pos[2]);
+		WritePackFloat(pack, time);
+		WritePackCell(pack, entity);
+		CreateTimer(1.0, TimerAirstrike, pack, TIMER_FLAG_NO_MAPCHANGE ); 									
+
+	} else {
+		g_bAirstrikeValid = true;
+		if(IsValidEntity(entity))
+		{
+			AcceptEntityInput(entity, "Kill");
+		}
+		ClientData[client].SpecialsUsed++;
+		F18_ShowAirstrike(pos, GetRandomFloat(0.0, 180.0));
+		return Plugin_Stop;
+	}
+
+	return Plugin_Continue;
+}
+
+public Action:TimerActivateBomb(Handle:hTimer, Handle:hPack)
+{
+	CreateTimer(0.3, TimerCheckBombSensors, hPack, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+	
+	return Plugin_Stop;
+}
+
+public Action:TimerCheckBombSensors(Handle:hTimer, Handle:hPack)
+{
+	new Float:pos[3];
+	decl Float:clientpos[3];
+	
+	ResetPack(hPack);
+	pos[0] = ReadPackFloat(hPack);
+	pos[1] = ReadPackFloat(hPack);
+	pos[2] = ReadPackFloat(hPack);
+	new owner = ReadPackCell(hPack);
+	new session = ReadPackCell(hPack);
+	int index = ReadPackCell(hPack);
+
+	if (index < 0) index = 0;
+
+	if (session != RndSession)
+	return Plugin_Stop;
+	
+	for (new client = 1; client <= MaxClients; client++)
+	{
+
+		if (!IsValidEntity(client) || !IsClientInGame(client) || IsGhost(client)) 
+		continue;
+		if(GetClientTeam(client) == 3 || GetClientTeam(client) == 2 || IsWitch(client))
+		{
+			char classname[32];
+			GetClientAbsOrigin(client, clientpos);
+			GetEdictClassname(client, classname, sizeof(classname));
+
+			if (GetVectorDistance(pos, clientpos) < GetConVarFloat(SABOTEUR_BOMB_RADIUS))
+			{
+				if (GetClientTeam(client) == 3 || IsWitch(client)) {
+					PrintHintTextToAll("%N's mine detonated!", owner);
+					CreateExplosion(pos, owner, false);
+					BombActive = false;
+					BombIndex[index] = false;
+					CloseHandle(hPack);
+					return Plugin_Stop;
+				}
+				else if (GetClientTeam(client) == 2) {
+					if (!mineWarning[client] || mineWarning[client] < GetGameTime() + 5) {
+						PrintHintText(client, "Warning! You are nearby armed mine.");
+						mineWarning[client] = GetGameTime();
+					}
+				}
 			}
 			
-			if (g_iEi[client] != bweapon)
+		}
+	}
+	return Plugin_Continue;
+}
+
+public Action:timerHurtEntity(Handle:timer, Handle:pack)
+{
+	ResetPack(pack);
+	new client = ReadPackCell(pack);
+	new attacker = ReadPackCell(pack);
+	new Float:amount = ReadPackFloat(pack);
+	new type = ReadPackCell(pack);
+	CloseHandle(pack);
+	HurtEntity(client, attacker, amount, type);
+}
+
+stock DetonateMolotov(Float:pos[3], owner)
+{
+	pos[2]+=5.0;
+	new Handle:sdkDetonateFire;
+	StartPrepSDKCall(SDKCall_Static);
+	if (!PrepSDKCall_SetSignature(SDKLibrary_Server, "\x8B\x44**\x8B\x4C**\x53\x56\x57\x8B\x7C**\x57\x50\x51\x68****\xE8****\x8B\x5C**\xD9**\x83\xEC*\xDD***\x8B\xF0\xD9**\x8B\x44**\xDD***\xD9*\xDD***\xD9**\xDD***\xD9**\xDD***\xD9*\xDD**\x68****", 85))
+	PrepSDKCall_SetSignature(SDKLibrary_Server, "@_ZN18CMolotovProjectile6CreateERK6VectorRK6QAngleS2_S2_P20CBaseCombatCharacter", 0);
+	PrepSDKCall_AddParameter(SDKType_Vector, SDKPass_ByRef);
+	PrepSDKCall_AddParameter(SDKType_QAngle, SDKPass_ByRef);
+	PrepSDKCall_AddParameter(SDKType_Vector, SDKPass_ByRef);
+	PrepSDKCall_AddParameter(SDKType_Vector, SDKPass_ByRef);
+	PrepSDKCall_AddParameter(SDKType_CBasePlayer, SDKPass_Pointer);
+	sdkDetonateFire = EndPrepSDKCall();
+	if(sdkDetonateFire == INVALID_HANDLE)
+	{
+		LogError("Invalid Function Call at DetonateMolotov()");
+		CloseHandle(sdkDetonateFire);
+		return;
+	}
+	new Float:vec[3];
+	SDKCall(sdkDetonateFire, pos, vec, vec, vec, owner);
+	CloseHandle(sdkDetonateFire);
+}
+
+stock DealDamage(iVictim, iAttacker, Float:flAmount, iType = 0)
+{
+	new Handle:hPack = CreateDataPack();
+	WritePackCell(hPack, iVictim);
+	WritePackCell(hPack, iAttacker);
+	WritePackFloat(hPack, flAmount);
+	WritePackCell(hPack, iType);
+	CreateTimer(0.1, timerHurtEntity, hPack);
+}
+
+stock HurtEntity(client, attacker, Float:amount, type)
+{
+	new damage = RoundFloat(amount);
+	if (IsValidEntity(client))
+	{
+		decl String:sUser[256], String:sDamage[11], String:sType[11];
+		IntToString(client+25, sUser, sizeof(sUser));
+		IntToString(damage, sDamage, sizeof(sDamage));
+		IntToString(type, sType, sizeof(sType));
+		new iDmgEntity = CreateEntityByName("point_hurt");
+		DispatchKeyValue(client, "targetname", sUser);
+		DispatchKeyValue(iDmgEntity, "DamageTarget", sUser);
+		DispatchKeyValue(iDmgEntity, "Damage", sDamage);
+		DispatchKeyValue(iDmgEntity, "DamageType", sType);
+		DispatchSpawn(iDmgEntity);
+		if (IsValidEntity(iDmgEntity))
+		{
+			AcceptEntityInput(iDmgEntity, "Hurt", client);
+			AcceptEntityInput(iDmgEntity, "Kill");
+		}
+	}
+}
+
+stock CreateExplosion(Float:expPos[3], attacker = 0, bool:panic = true)
+{
+	decl String:sRadius[16], String:sPower[16], String:sInterval[11];
+	new Float:flMxDistance = 450.0;
+	new Float:power = GetConVarFloat(SABOTEUR_BOMB_POWER);
+	//new iDamageSurv = GetConVarInt(SABOTEUR_BOMB_DAMAGE_SURV);
+	new Float:iDamageInf = GetConVarFloat(SABOTEUR_BOMB_DAMAGE_INF);
+	new Float:flInterval = 0.1;
+	FloatToString(flInterval, sInterval, sizeof(sInterval));
+	IntToString(450, sRadius, sizeof(sRadius));
+	IntToString(800, sPower, sizeof(sPower));
+	
+	new exParticle2 = CreateEntityByName("info_particle_system");
+	new exParticle3 = CreateEntityByName("info_particle_system");
+	new exTrace = CreateEntityByName("info_particle_system");
+	new exPhys = CreateEntityByName("env_physexplosion");
+	new exHurt = CreateEntityByName("point_hurt");
+	new exParticle = CreateEntityByName("info_particle_system");
+	new exEntity = CreateEntityByName("env_explosion");
+	
+	//Set up the particle explosion
+	DispatchKeyValue(exParticle, "effect_name", EXPLOSION_PARTICLE);
+	DispatchSpawn(exParticle);
+	ActivateEntity(exParticle);
+	TeleportEntity(exParticle, expPos, NULL_VECTOR, NULL_VECTOR);
+	
+	DispatchKeyValue(exParticle2, "effect_name", EXPLOSION_PARTICLE2);
+	DispatchSpawn(exParticle2);
+	ActivateEntity(exParticle2);
+	TeleportEntity(exParticle2, expPos, NULL_VECTOR, NULL_VECTOR);
+	
+	DispatchKeyValue(exParticle3, "effect_name", EXPLOSION_PARTICLE3);
+	DispatchSpawn(exParticle3);
+	ActivateEntity(exParticle3);
+	TeleportEntity(exParticle3, expPos, NULL_VECTOR, NULL_VECTOR);
+	
+	DispatchKeyValue(exTrace, "effect_name", EFIRE_PARTICLE);
+	DispatchSpawn(exTrace);
+	ActivateEntity(exTrace);
+	TeleportEntity(exTrace, expPos, NULL_VECTOR, NULL_VECTOR);
+	
+	//Set up explosion entity
+	DispatchKeyValue(exEntity, "fireballsprite", "sprites/muzzleflash4.vmt");
+	DispatchKeyValue(exEntity, "iMagnitude", "150");
+	DispatchKeyValue(exEntity, "iRadiusOverride", sRadius);
+	DispatchKeyValue(exEntity, "spawnflags", "828");
+	SetEntProp(exEntity, Prop_Data, "m_iHammerID", 1078682);	
+
+	DispatchSpawn(exEntity);
+	TeleportEntity(exEntity, expPos, NULL_VECTOR, NULL_VECTOR);
+	
+	//Set up physics movement explosion
+	DispatchKeyValue(exPhys, "radius", sRadius);
+	DispatchKeyValue(exPhys, "magnitude", sPower);
+	DispatchKeyValue(exPhys, "spawnflags", "1");
+	SetEntProp(exPhys, Prop_Data, "m_iHammerID", 1078682);	
+
+	DispatchSpawn(exPhys);
+	TeleportEntity(exPhys, expPos, NULL_VECTOR, NULL_VECTOR);
+	
+	//Set up hurt point
+	DispatchKeyValue(exHurt, "DamageRadius", sRadius);
+	DispatchKeyValue(exHurt, "DamageDelay", sInterval);
+	DispatchKeyValue(exHurt, "Damage", "1");
+	DispatchKeyValue(exHurt, "DamageType", "128");
+	SetEntProp(exHurt, Prop_Data, "m_iHammerID", 1078682);	
+	DispatchSpawn(exHurt);
+	TeleportEntity(exHurt, expPos, NULL_VECTOR, NULL_VECTOR);
+	
+	//DetonateMolotov(expPos, attacker);
+	
+	for(new i = 1; i <= 2; i++)
+	//DetonateMolotov(expPos, attacker);
+	
+	switch(GetRandomInt(1,3))
+	{
+		case 1:
+		EmitSoundToAll(EXPLOSION_SOUND);
+		
+		case 2:
+		EmitSoundToAll(EXPLOSION_SOUND2);
+		
+		case 3:
+		EmitSoundToAll(EXPLOSION_SOUND3);
+	}
+	
+	AcceptEntityInput(exParticle, "Start");
+	AcceptEntityInput(exParticle2, "Start");
+	AcceptEntityInput(exParticle3, "Start");
+	AcceptEntityInput(exTrace, "Start");
+	AcceptEntityInput(exEntity, "Explode");
+	AcceptEntityInput(exPhys, "Explode");
+	AcceptEntityInput(exHurt, "TurnOn");
+	
+	new Handle:pack2 = CreateDataPack();
+	WritePackCell(pack2, exParticle);
+	WritePackCell(pack2, exParticle2);
+	WritePackCell(pack2, exParticle3);
+	WritePackCell(pack2, exTrace);
+	WritePackCell(pack2, exEntity);
+	WritePackCell(pack2, exPhys);
+	WritePackCell(pack2, exHurt);
+	CreateTimer(6.0, TimerDeleteParticles, pack2, TIMER_FLAG_NO_MAPCHANGE);
+	
+	new Handle:pack = CreateDataPack();
+	WritePackCell(pack, exTrace);
+	WritePackCell(pack, exHurt);
+	CreateTimer(4.5, TimerStopFire, pack, TIMER_FLAG_NO_MAPCHANGE);
+	
+	decl Float:survivorPos[3], Float:traceVec[3], Float:resultingFling[3], Float:currentVelVec[3];
+	
+	for (new i = 1; i <= MaxClients; i++)
+	{
+		if (!IsClientInGame(i) || !IsPlayerAlive(i))
+		continue;
+
+		GetEntPropVector(i, Prop_Data, "m_vecOrigin", survivorPos);
+		
+		if (GetVectorDistance(expPos, survivorPos) <= flMxDistance)
+		{
+			MakeVectorFromPoints(expPos, survivorPos, traceVec);
+			GetVectorAngles(traceVec, resultingFling);
+			
+			resultingFling[0] = Cosine(DegToRad(resultingFling[1])) * power;
+			resultingFling[1] = Sine(DegToRad(resultingFling[1])) * power;
+			resultingFling[2] = power;
+			
+			GetEntPropVector(i, Prop_Data, "m_vecVelocity", currentVelVec);
+			resultingFling[0] += currentVelVec[0];
+			resultingFling[1] += currentVelVec[1];
+			resultingFling[2] += currentVelVec[2];
+			
+			TeleportEntity(i, NULL_VECTOR, NULL_VECTOR, resultingFling);
+			
+			if (attacker > 0)
 			{
-				g_iEi[client] = bweapon;
-				g_fNT[client] = fNTR;
-				continue;
+				if (GetClientTeam(i) == 2) {
+					//DealDamage(i, attacker, iDamageSurv, 8);
+				}
+				else
+				DealDamage(i, attacker, iDamageInf, 8);
 			}
 		}
 	}
 	
-	public Action:OnTakeDamagePre(victim, &attacker, &inflictor, &Float:damage, &damagetype)
+	decl String:class[32];
+	for (new i=MaxClients+1; i<=2048; i++)
 	{
-		if (!IsServerProcessing())
-			return Plugin_Continue;
-		
-		if (victim && attacker && IsValidEntity(attacker) && attacker <= MaxClients && IsValidEntity(victim) && victim <= MaxClients)
+		if (!IsValidEntity(i))  continue;
+
+		GetEdictClassname(i, class, sizeof(class));
+		if (StrEqual(class, "prop_physics") || StrEqual(class, "prop_physics_multiplayer"))
 		{
-
-			//PrintToChatAll("%s", m_attacker);
-			if(ClientData[victim].ChosenClass == SOLDIER && GetClientTeam(victim) == 2)
-			{
-				//PrintToChat(victim, "Damage: %f, New: %f", damage, damage*0.5);
-				damage = damage * GetConVarFloat(SOLDIER_DAMAGE_REDUCE_RATIO);
-				return Plugin_Changed;
-			}
-			if (ClientData[attacker].ChosenClass == COMMANDO && GetClientTeam(attacker) == 2 && GetClientTeam(victim) == 3)
-			{
-				damage = damage + getCommandoDamageBonus(attacker);
-				//PrintToChat(attacker,"%f",damage);
-				return Plugin_Changed;
-			}
-		}
-		
-		return Plugin_Continue;
-	}
-
-	//////////////////////////////////////////////////////////////////////////////////////////////////////
-	//////////////////////////////////////////////////////////////////////////////////////////////////////
-	//////////////////////////////////////////////////////////////////////////////////////////////////////
-	//////////////////////////////////////////////////////////////////////////////////////////////////////
-	//////////////////////////////////////////////////////////////////////////////////////////////////////
-	//////////////////////////////////////////////////////////////////////////////////////////////////////
-
-	///////////////////////////////////////////////////////////////////////////////////
-	// Mines
-	///////////////////////////////////////////////////////////////////////////////////
-
-	public void DropBomb(client)
-	{
-		decl Float:pos[3];
-		GetClientAbsOrigin(client, pos);
-		int index = ClientData[client].BombsUsed;		
-
-		new Handle:hPack = CreateDataPack();
-
-		WritePackFloat(hPack, pos[0]);
-		WritePackFloat(hPack, pos[1]);
-		WritePackFloat(hPack, pos[2]);
-		WritePackCell(hPack, client);
-		WritePackCell(hPack, RndSession);
-		WritePackCell(hPack, index);
-
-		CreateTimer(GetConVarFloat(SABOTEUR_BOMB_ACTIVATE), TimerActivateBomb, hPack, TIMER_FLAG_NO_MAPCHANGE);
-
-		TE_SetupBeamRingPoint(pos, 10.0, 256.0, g_BeamSprite, g_HaloSprite, 0, 15, 0.5, 5.0, 0.0, greenColor, 10, 0);
-		TE_SendToAll();
-		TE_SetupBeamRingPoint(pos, 10.0, 256.0, g_BeamSprite, g_HaloSprite, 0, 10, 0.6, 10.0, 0.5, redColor, 10, 0);
-		TE_SendToAll();
-		BombActive = true;
-		BombIndex[index] = true;
-
-		ClientData[client].BombsUsed++;
-		CreateParticleInPos(pos, BOMB_GLOW, index);
-		EmitSoundToAll(SOUND_DROP_BOMB);
-		
-		PrintHintTextToAll("%N planted a mine! (%i/%i)", client, ClientData[client].BombsUsed, GetConVarInt(SABOTEUR_MAX_BOMBS));
-	}
-
-	public Action:TimerActivateBomb(Handle:hTimer, Handle:hPack)
-	{
-		CreateTimer(0.3, TimerCheckBombSensors, hPack, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
-		
-		return Plugin_Stop;
-	}
-
-	public Action:TimerCheckBombSensors(Handle:hTimer, Handle:hPack)
-	{
-		new Float:pos[3];
-		decl Float:clientpos[3];
-		
-		ResetPack(hPack);
-		pos[0] = ReadPackFloat(hPack);
-		pos[1] = ReadPackFloat(hPack);
-		pos[2] = ReadPackFloat(hPack);
-
-		new owner = ReadPackCell(hPack);
-		new session = ReadPackCell(hPack);
-		int index = ReadPackCell(hPack);
-
-		if (index < 0) index = 0;
-
-		if (session != RndSession)
-			return Plugin_Stop;
-		
-		for (new client = 1; client <= MaxClients; client++)
-		{
-			if (!IsValidEntity(client) || !IsClientInGame(client) || !IsPlayerAlive(client) || IsGhost(client))
-				continue;
-			if(GetClientTeam(client) == 3 || GetClientTeam(client) == 2)
-			{
-				GetClientAbsOrigin(client, clientpos);
-			
-				if (GetVectorDistance(pos, clientpos) < GetConVarFloat(SABOTEUR_BOMB_RADIUS))
-				{
-					if (GetClientTeam(client) == 3) {
-						PrintHintTextToAll("%N's mine detonated!", owner);
-						CreateExplosion(pos, owner, false);
-						BombActive = false;
-						BombIndex[index] = false;
-						CloseHandle(hPack);
-
-						return Plugin_Stop;
-					}
-					else if (GetClientTeam(client) == 2) {
-						PrintHintText(client, "Warning! You are nearby armed mine. Infected will blow it up");
-					}
-				}
-			
-			}
-		}
-		return Plugin_Continue;
-	}
-
-	public Action:timerHurtEntity(Handle:timer, Handle:pack)
-	{
-		ResetPack(pack);
-		new client = ReadPackCell(pack);
-		new attacker = ReadPackCell(pack);
-		new Float:amount = ReadPackFloat(pack);
-		new type = ReadPackCell(pack);
-		CloseHandle(pack);
-		HurtEntity(client, attacker, amount, type);
-	}
-	stock DetonateMolotov(Float:pos[3], owner)
-	{
-		pos[2]+=5.0;
-		new Handle:sdkDetonateFire;
-		StartPrepSDKCall(SDKCall_Static);
-		if (!PrepSDKCall_SetSignature(SDKLibrary_Server, "\x8B\x44**\x8B\x4C**\x53\x56\x57\x8B\x7C**\x57\x50\x51\x68****\xE8****\x8B\x5C**\xD9**\x83\xEC*\xDD***\x8B\xF0\xD9**\x8B\x44**\xDD***\xD9*\xDD***\xD9**\xDD***\xD9**\xDD***\xD9*\xDD**\x68****", 85))
-			PrepSDKCall_SetSignature(SDKLibrary_Server, "@_ZN18CMolotovProjectile6CreateERK6VectorRK6QAngleS2_S2_P20CBaseCombatCharacter", 0);
-		PrepSDKCall_AddParameter(SDKType_Vector, SDKPass_ByRef);
-		PrepSDKCall_AddParameter(SDKType_QAngle, SDKPass_ByRef);
-		PrepSDKCall_AddParameter(SDKType_Vector, SDKPass_ByRef);
-		PrepSDKCall_AddParameter(SDKType_Vector, SDKPass_ByRef);
-		PrepSDKCall_AddParameter(SDKType_CBasePlayer, SDKPass_Pointer);
-		sdkDetonateFire = EndPrepSDKCall();
-		if(sdkDetonateFire == INVALID_HANDLE)
-		{
-			LogError("Invalid Function Call at DetonateMolotov()");
-			CloseHandle(sdkDetonateFire);
-			return;
-		}
-		new Float:vec[3];
-		SDKCall(sdkDetonateFire, pos, vec, vec, vec, owner);
-		CloseHandle(sdkDetonateFire);
-	}
-
-	stock DealDamage(iVictim, iAttacker, Float:flAmount, iType = 0)
-	{
-		new Handle:hPack = CreateDataPack();
-		WritePackCell(hPack, iVictim);
-		WritePackCell(hPack, iAttacker);
-		WritePackFloat(hPack, flAmount);
-		WritePackCell(hPack, iType);
-		CreateTimer(0.1, timerHurtEntity, hPack);
-	}
-
-	stock HurtEntity(client, attacker, Float:amount, type)
-	{
-		new damage = RoundFloat(amount);
-		if (IsValidEntity(client))
-		{
-			decl String:sUser[256], String:sDamage[11], String:sType[11];
-			IntToString(client+25, sUser, sizeof(sUser));
-			IntToString(damage, sDamage, sizeof(sDamage));
-			IntToString(type, sType, sizeof(sType));
-			new iDmgEntity = CreateEntityByName("point_hurt");
-			DispatchKeyValue(client, "targetname", sUser);
-			DispatchKeyValue(iDmgEntity, "DamageTarget", sUser);
-			DispatchKeyValue(iDmgEntity, "Damage", sDamage);
-			DispatchKeyValue(iDmgEntity, "DamageType", sType);
-			DispatchSpawn(iDmgEntity);
-			if (IsValidEntity(iDmgEntity))
-			{
-				AcceptEntityInput(iDmgEntity, "Hurt", client);
-				AcceptEntityInput(iDmgEntity, "Kill");
-			}
-		}
-	}
-
-	stock CreateExplosion(Float:expPos[3], attacker = 0, bool:panic = true)
-	{
-		decl String:sRadius[16], String:sPower[16], String:sInterval[11];
-		new Float:flMxDistance = 450.0;
-		new Float:power = GetConVarFloat(SABOTEUR_BOMB_POWER);
-		//new iDamageSurv = GetConVarInt(SABOTEUR_BOMB_DAMAGE_SURV);
-		new Float:iDamageInf = GetConVarFloat(SABOTEUR_BOMB_DAMAGE_INF);
-		new Float:flInterval = 0.1;
-		FloatToString(flInterval, sInterval, sizeof(sInterval));
-		IntToString(450, sRadius, sizeof(sRadius));
-		IntToString(800, sPower, sizeof(sPower));
-		
-		new exParticle2 = CreateEntityByName("info_particle_system");
-		new exParticle3 = CreateEntityByName("info_particle_system");
-		new exTrace = CreateEntityByName("info_particle_system");
-		new exPhys = CreateEntityByName("env_physexplosion");
-		new exHurt = CreateEntityByName("point_hurt");
-		new exParticle = CreateEntityByName("info_particle_system");
-		new exEntity = CreateEntityByName("env_explosion");
-		
-		//Set up the particle explosion
-		DispatchKeyValue(exParticle, "effect_name", EXPLOSION_PARTICLE);
-		DispatchSpawn(exParticle);
-		ActivateEntity(exParticle);
-		TeleportEntity(exParticle, expPos, NULL_VECTOR, NULL_VECTOR);
-		
-		DispatchKeyValue(exParticle2, "effect_name", EXPLOSION_PARTICLE2);
-		DispatchSpawn(exParticle2);
-		ActivateEntity(exParticle2);
-		TeleportEntity(exParticle2, expPos, NULL_VECTOR, NULL_VECTOR);
-		
-		DispatchKeyValue(exParticle3, "effect_name", EXPLOSION_PARTICLE3);
-		DispatchSpawn(exParticle3);
-		ActivateEntity(exParticle3);
-		TeleportEntity(exParticle3, expPos, NULL_VECTOR, NULL_VECTOR);
-		
-		DispatchKeyValue(exTrace, "effect_name", EFIRE_PARTICLE);
-		DispatchSpawn(exTrace);
-		ActivateEntity(exTrace);
-		TeleportEntity(exTrace, expPos, NULL_VECTOR, NULL_VECTOR);
-		
-		
-		//Set up explosion entity
-		DispatchKeyValue(exEntity, "fireballsprite", "sprites/muzzleflash4.vmt");
-		DispatchKeyValue(exEntity, "iMagnitude", "150");
-		DispatchKeyValue(exEntity, "iRadiusOverride", sRadius);
-		DispatchKeyValue(exEntity, "spawnflags", "828");
-		DispatchSpawn(exEntity);
-		TeleportEntity(exEntity, expPos, NULL_VECTOR, NULL_VECTOR);
-		
-		//Set up physics movement explosion
-		DispatchKeyValue(exPhys, "radius", sRadius);
-		DispatchKeyValue(exPhys, "magnitude", sPower);
-		DispatchKeyValue(exPhys, "spawnflags", "1");
-
-		DispatchSpawn(exPhys);
-		TeleportEntity(exPhys, expPos, NULL_VECTOR, NULL_VECTOR);
-		
-		
-		//Set up hurt point
-		DispatchKeyValue(exHurt, "DamageRadius", sRadius);
-		DispatchKeyValue(exHurt, "DamageDelay", sInterval);
-		DispatchKeyValue(exHurt, "Damage", "1");
-		DispatchKeyValue(exHurt, "DamageType", "128");
-		DispatchSpawn(exHurt);
-		TeleportEntity(exHurt, expPos, NULL_VECTOR, NULL_VECTOR);
-		
-		//DetonateMolotov(expPos, attacker);
-		
-		for(new i = 1; i <= 2; i++)
-			//DetonateMolotov(expPos, attacker);
-		
-		switch(GetRandomInt(1,3))
-		{
-			case 1:
-				EmitSoundToAll(EXPLOSION_SOUND);
-			
-			case 2:
-				EmitSoundToAll(EXPLOSION_SOUND2);
-			
-			case 3:
-				EmitSoundToAll(EXPLOSION_SOUND3);
-		}
-		
-		AcceptEntityInput(exParticle, "Start");
-		AcceptEntityInput(exParticle2, "Start");
-		AcceptEntityInput(exParticle3, "Start");
-		AcceptEntityInput(exTrace, "Start");
-		AcceptEntityInput(exEntity, "Explode");
-		AcceptEntityInput(exPhys, "Explode");
-		AcceptEntityInput(exHurt, "TurnOn");
-		
-		new Handle:pack2 = CreateDataPack();
-		WritePackCell(pack2, exParticle);
-		WritePackCell(pack2, exParticle2);
-		WritePackCell(pack2, exParticle3);
-		WritePackCell(pack2, exTrace);
-		WritePackCell(pack2, exEntity);
-		WritePackCell(pack2, exPhys);
-		WritePackCell(pack2, exHurt);
-		CreateTimer(6.0, TimerDeleteParticles, pack2, TIMER_FLAG_NO_MAPCHANGE);
-		
-		new Handle:pack = CreateDataPack();
-		WritePackCell(pack, exTrace);
-		WritePackCell(pack, exHurt);
-		CreateTimer(4.5, TimerStopFire, pack, TIMER_FLAG_NO_MAPCHANGE);
-		
-		decl Float:survivorPos[3], Float:traceVec[3], Float:resultingFling[3], Float:currentVelVec[3];
-		
-		for (new i = 1; i <= MaxClients; i++)
-		{
-			if (!IsClientInGame(i) || !IsPlayerAlive(i))
-				continue;
-
 			GetEntPropVector(i, Prop_Data, "m_vecOrigin", survivorPos);
 			
+			//Vector and radius distance calcs by AtomicStryker!
 			if (GetVectorDistance(expPos, survivorPos) <= flMxDistance)
 			{
 				MakeVectorFromPoints(expPos, survivorPos, traceVec);
@@ -2277,1431 +2605,982 @@
 				resultingFling[2] += currentVelVec[2];
 				
 				TeleportEntity(i, NULL_VECTOR, NULL_VECTOR, resultingFling);
-				
-				if (attacker > 0)
-				{
-					if (GetClientTeam(i) == 2) {
-						//DealDamage(i, attacker, iDamageSurv, 8);
-					}
-					else
-						DealDamage(i, attacker, iDamageInf, 8);
-				}
-			}
-		}
-		
-		decl String:class[32];
-		for (new i=MaxClients+1; i<=2048; i++)
-		{
-			if (IsValidEntity(i))
-			{
-				GetEdictClassname(i, class, sizeof(class));
-				if (StrEqual(class, "prop_physics") || StrEqual(class, "prop_physics_multiplayer"))
-				{
-					GetEntPropVector(i, Prop_Data, "m_vecOrigin", survivorPos);
-					
-					//Vector and radius distance calcs by AtomicStryker!
-					if (GetVectorDistance(expPos, survivorPos) <= flMxDistance)
-					{
-						MakeVectorFromPoints(expPos, survivorPos, traceVec);
-						GetVectorAngles(traceVec, resultingFling);
-						
-						resultingFling[0] = Cosine(DegToRad(resultingFling[1])) * power;
-						resultingFling[1] = Sine(DegToRad(resultingFling[1])) * power;
-						resultingFling[2] = power;
-						
-						GetEntPropVector(i, Prop_Data, "m_vecVelocity", currentVelVec);
-						resultingFling[0] += currentVelVec[0];
-						resultingFling[1] += currentVelVec[1];
-						resultingFling[2] += currentVelVec[2];
-						
-						TeleportEntity(i, NULL_VECTOR, NULL_VECTOR, resultingFling);
-					}
-				}
 			}
 		}
 	}
+}
 
-	public Action:TimerStopFire(Handle:timer, Handle:pack)
+public Action:TimerStopFire(Handle:timer, Handle:pack)
+{
+	ResetPack(pack);
+	new particle = ReadPackCell(pack);
+	new hurt = ReadPackCell(pack);
+	CloseHandle(pack);
+	
+	if(IsValidEntity(particle))
 	{
-		ResetPack(pack);
-		new particle = ReadPackCell(pack);
-		new hurt = ReadPackCell(pack);
-		CloseHandle(pack);
-		
-		if(IsValidEntity(particle))
-		{
-			AcceptEntityInput(particle, "Stop");
-		}
-		
-		if(IsValidEntity(hurt))
-		{
-			AcceptEntityInput(hurt, "TurnOff");
-		}
+		AcceptEntityInput(particle, "Stop");
 	}
-
-	public Action:TimerDeleteParticles(Handle:timer, Handle:pack)
+	
+	if(IsValidEntity(hurt))
 	{
-		ResetPack(pack);
-		
-		new entity;
-		for (new i = 1; i <= 7; i++)
-		{
-			entity = ReadPackCell(pack);
-			
-			if(IsValidEntity(entity))
-			{
-				AcceptEntityInput(entity, "Kill");
-			}
-		}
-		
-		CloseHandle(pack);
+		AcceptEntityInput(hurt, "TurnOff");
 	}
+}
 
-
-	stock PrecacheParticle(const String:ParticleName[])
+public Action:TimerDeleteParticles(Handle:timer, Handle:pack)
+{
+	ResetPack(pack);
+	
+	new entity;
+	for (new i = 1; i <= 7; i++)
 	{
-		new Particle = CreateEntityByName("info_particle_system");
-		if (IsValidEntity(Particle) && IsValidEdict(Particle))
-		{
-			DispatchKeyValue(Particle, "effect_name", ParticleName);
-			DispatchSpawn(Particle);
-			ActivateEntity(Particle);
-			AcceptEntityInput(Particle, "start");
-			CreateTimer(0.3, TimerRemovePrecacheParticle, Particle, TIMER_FLAG_NO_MAPCHANGE);
-		}
-	}
-
-	public Action:TimerRemovePrecacheParticle(Handle:timer, any:Particle)
-	{
-		if (IsValidEdict(Particle))
-			AcceptEntityInput(Particle, "Kill");
-	}
-
-	stock CreateParticleInPos(Float:pos[3], String:Particle_Name[], int index)
-	{
-		new Particle = CreateEntityByName("info_particle_system");
-		TeleportEntity(Particle, pos, NULL_VECTOR, NULL_VECTOR);
-		DispatchKeyValue(Particle, "effect_name", Particle_Name);
+		entity = ReadPackCell(pack);
 		
-		DispatchSpawn(Particle);
-		DispatchSpawn(Particle);
-
-		ActivateEntity(Particle);
-		AcceptEntityInput(Particle, "start");
-		new Handle:pack = CreateDataPack();
-		WritePackCell(pack, Particle);
-		WritePackCell(pack, index);
-
-		CreateTimer(5.0, TimerStopAndRemoveBombParticle, pack, TIMER_FLAG_NO_MAPCHANGE);
-
-	}
-
-	stock CreateParticle(client, String:Particle_Name[], bool:Parent, Float:duration)
-	{
-		decl Float:pos[3], String:sName[64], String:sTargetName[64];
-		new Particle = CreateEntityByName("info_particle_system");
-		GetEntPropVector(client, Prop_Send, "m_vecOrigin", pos);
-		TeleportEntity(Particle, pos, NULL_VECTOR, NULL_VECTOR);
-		DispatchKeyValue(Particle, "effect_name", Particle_Name);
-		
-		if (Parent)
-		{
-			Format(sName, sizeof(sName), "%d", client+25);
-			DispatchKeyValue(client, "targetname", sName);
-			GetEntPropString(client, Prop_Data, "m_iName", sName, sizeof(sName));
-			
-			Format(sTargetName, sizeof(sTargetName), "%d", client+1000);
-			DispatchKeyValue(Particle, "targetname", sTargetName);
-			DispatchKeyValue(Particle, "parentname", sName);
-		}
-		
-		DispatchSpawn(Particle);
-		DispatchSpawn(Particle);
-		
-		if (Parent)
-		{
-			SetVariantString(sName);
-			AcceptEntityInput(Particle, "SetParent", Particle, Particle);
-		}
-		
-		ActivateEntity(Particle);
-		AcceptEntityInput(Particle, "start");
-		CreateTimer(duration, TimerActivateBombParticle, Particle, TIMER_FLAG_NO_MAPCHANGE);
-	}
-
-	public Action:TimerActivateBombParticle(Handle:timer, any:entity)
-	{
-		if (entity > 0 && IsValidEntity(entity))
+		if(IsValidEntity(entity))
 		{
 			AcceptEntityInput(entity, "Kill");
 		}
-
 	}
-	public Action:TimerStopAndRemoveParticle(Handle:timer, any:entity)
+	
+	CloseHandle(pack);
+}
+
+stock PrecacheParticle(const String:ParticleName[])
+{
+	new Particle = CreateEntityByName("info_particle_system");
+	if (IsValidEntity(Particle) && IsValidEdict(Particle))
 	{
-		if (entity > 0 && IsValidEntity(entity))
-		{
-			if (BombActive == true) {
-				CreateTimer(5.0, TimerStopAndRemoveParticle, entity, TIMER_FLAG_NO_MAPCHANGE);			
-			} else {
-				AcceptEntityInput(entity, "Kill");
-			}
-		}		
+		DispatchKeyValue(Particle, "effect_name", ParticleName);
+		DispatchSpawn(Particle);
+		ActivateEntity(Particle);
+		AcceptEntityInput(Particle, "start");
+		CreateTimer(0.3, TimerRemovePrecacheParticle, Particle, TIMER_FLAG_NO_MAPCHANGE);
 	}
-	public Action:TimerStopAndRemoveBombParticle(Handle:timer, Handle:pack)
+}
+
+public Action:TimerRemovePrecacheParticle(Handle:timer, any:Particle)
+{
+	if (IsValidEdict(Particle))
+	AcceptEntityInput(Particle, "Kill");
+}
+
+stock CreateParticleInPos(Float:pos[3], String:Particle_Name[], int index)
+{
+	new Particle = CreateEntityByName("info_particle_system");
+	TeleportEntity(Particle, pos, NULL_VECTOR, NULL_VECTOR);
+	DispatchKeyValue(Particle, "effect_name", Particle_Name);
+	int mine = DropMineEntity(pos, index);
+	DispatchSpawn(Particle);
+	DispatchSpawn(Particle);
+
+	ActivateEntity(Particle);
+	AcceptEntityInput(Particle, "start");
+	new Handle:pack = CreateDataPack();
+	WritePackCell(pack, Particle);
+	WritePackCell(pack, index);
+	WritePackCell(pack, mine);
+
+	CreateTimer(5.0, TimerStopAndRemoveBombParticle, pack, TIMER_FLAG_NO_MAPCHANGE);
+
+}
+
+stock CreateParticle(client, String:Particle_Name[], bool:Parent, Float:duration)
+{
+	decl Float:pos[3], String:sName[64], String:sTargetName[64];
+	new Particle = CreateEntityByName("info_particle_system");
+	GetEntPropVector(client, Prop_Send, "m_vecOrigin", pos);
+	TeleportEntity(Particle, pos, NULL_VECTOR, NULL_VECTOR);
+	DispatchKeyValue(Particle, "effect_name", Particle_Name);
+	
+	if (Parent)
 	{
-		ResetPack(pack);
-		int entity = ReadPackCell(pack);
-		int index = ReadPackCell(pack);
-		CloseHandle(pack);
-		if (entity > 0 && IsValidEntity(entity)) 
-		{
-			if (BombActive == false) {
-				AcceptEntityInput(entity, "Kill");
-			} else {
-				AcceptEntityInput(entity, "stop");
-				BombActive = true;
+		Format(sName, sizeof(sName), "%d", client+25);
+		DispatchKeyValue(client, "targetname", sName);
+		GetEntPropString(client, Prop_Data, "m_iName", sName, sizeof(sName));
+		
+		Format(sTargetName, sizeof(sTargetName), "%d", client+1000);
+		DispatchKeyValue(Particle, "targetname", sTargetName);
+		DispatchKeyValue(Particle, "parentname", sName);
+	}
+	
+	DispatchSpawn(Particle);
+	DispatchSpawn(Particle);
+	
+	if (Parent)
+	{
+		SetVariantString(sName);
+		AcceptEntityInput(Particle, "SetParent", Particle, Particle);
+	}
+	
+	ActivateEntity(Particle);
+	AcceptEntityInput(Particle, "start");
+	CreateTimer(duration, TimerActivateBombParticle, Particle, TIMER_FLAG_NO_MAPCHANGE);
+}
 
-				static float vPos[3];
-				char color[12];
-				new Handle:hPack = CreateDataPack();
-				WritePackCell(hPack, index);
-				WritePackCell(hPack, entity);
-				GetConVarString(SABOTEUR_ACTIVE_BOMB_COLOR, color, sizeof(color));
-				SetupPrjEffects(entity, vPos, color); // Red
-				int defibParticle;
-				int elmosParticle;
-
-				// Particle
-				defibParticle = DisplayParticle(false, PARTICLE_DEFIB, vPos, NULL_VECTOR);				
-				WritePackCell(hPack, defibParticle);
-
-				if (defibParticle) InputKill(defibParticle, 2.0);
-				elmosParticle = DisplayParticle(defibParticle, PARTICLE_ELMOS, vPos, NULL_VECTOR);
-				if (elmosParticle) InputKill(elmosParticle, 3.0);
-				WritePackCell(hPack, elmosParticle);
-
-				CreateTimer(15.0, TimerDeleteBombs, hPack, TIMER_FLAG_NO_MAPCHANGE);			
-			}
-		}
+public Action:TimerActivateBombParticle(Handle:timer, any:entity)
+{
+	if (entity > 0 && IsValidEntity(entity))
+	{
+		AcceptEntityInput(entity, "Kill");
 	}
 
-	public Action:TimerDeleteBombs(Handle:timer, Handle:pack)
-	{		
-
-		ResetPack(pack);
-		int index = ReadPackCell(pack);
-		bool removed = false;
-
-		if (BombIndex[index] == false) {
-			for (new i = 0; i <= 2; i++)
-			{
-				int entity = ReadPackCell(pack);
-				if(entity > 0 && IsValidEntity(entity))
-				{
-					AcceptEntityInput(entity, "Kill");
-					removed = true;
-				}
-			}
+}
+public Action:TimerStopAndRemoveParticle(Handle:timer, any:entity)
+{
+	if (entity > 0 && IsValidEntity(entity))
+	{
+		if (BombActive == true) {
+			CreateTimer(5.0, TimerStopAndRemoveParticle, entity, TIMER_FLAG_NO_MAPCHANGE);			
 		} else {
-			CloseHandle(pack);
+			AcceptEntityInput(entity, "Kill");
+		}
+	}		
+}
+
+public Action:TimerStopAndRemoveBombParticle(Handle:timer, Handle:pack)
+{
+	ResetPack(pack);
+	int entity = ReadPackCell(pack);
+	int index = ReadPackCell(pack);
+	int mine = ReadPackCell(pack);	
+	CloseHandle(pack);
+	if (entity > 0 && IsValidEntity(entity)) 
+	{
+		if (BombActive == false) {
+			AcceptEntityInput(entity, "Kill");
+		} else {
+			AcceptEntityInput(entity, "stop");
+			BombActive = true;
+			static float vPos[3];
+			char color[12];
 			new Handle:hPack = CreateDataPack();
 			WritePackCell(hPack, index);
-			int entity = ReadPackCell(pack);
 			WritePackCell(hPack, entity);
-			int defibParticle = ReadPackCell(pack);
+			GetConVarString(SABOTEUR_ACTIVE_BOMB_COLOR, color, sizeof(color));
+			SetupPrjEffects(entity, vPos, color); // Red
+			int defibParticle;
+			int elmosParticle;
+			// Particle
+			defibParticle = DisplayParticle(false, PARTICLE_DEFIB, vPos, NULL_VECTOR);				
 			WritePackCell(hPack, defibParticle);
-			int elmosParticle = ReadPackCell(pack);
+
+			if (defibParticle) InputKill(defibParticle, 2.0);
+			elmosParticle = DisplayParticle(defibParticle, PARTICLE_ELMOS, vPos, NULL_VECTOR);
+			if (elmosParticle) InputKill(elmosParticle, 3.0);
 			WritePackCell(hPack, elmosParticle);
-			CreateTimer(5.0, TimerDeleteBombs, hPack, TIMER_FLAG_NO_MAPCHANGE);		
-			return Plugin_Continue;
-		}
-		if (removed == true) {
-			KillTimer(timer);
-			return Plugin_Stop;
-		} 
-	}
+			WritePackCell(hPack, mine);
 
-	//////////////////////////////////////////////////////////////////////////////////////////////////////
-	//////////////////////////////////////////////////////////////////////////////////////////////////////
-	//////////////////////////////////////////////////////////////////////////////////////////////////////
-	//////////////////////////////////////////////////////////////////////////////////////////////////////
-	//////////////////////////////////////////////////////////////////////////////////////////////////////
-
-	#include <sdktools_functions>
-
-	#define Pai 3.14159265358979323846 
-
-	#define PARTICLE_MUZZLE_FLASH		"weapon_muzzle_flash_autoshotgun"  
-	#define PARTICLE_WEAPON_TRACER		"weapon_tracers" 
-	#define PARTICLE_WEAPON_TRACER2		"weapon_tracers_50cal"//weapon_tracers_50cal" //"weapon_tracers_explosive" weapon_tracers_50cal
-	 
-	#define PARTICLE_BLOOD		"blood_impact_red_01"
-	#define PARTICLE_BLOOD2		"blood_impact_headshot_01"
-
-	#define SOUND_IMPACT1		"physics/flesh/flesh_impact_bullet1.wav"  
-	#define SOUND_IMPACT2		"physics/concrete/concrete_impact_bullet1.wav"  
-	#define SOUND_FIRE		"weapons/50cal/50cal_shoot.wav"  
-	#define MODEL_GUN "models/w_models/weapons/w_minigun.mdl"
-
-	new MachineCount = 0;
-
-	#define EnemyArraySize 300
-	new InfectedsArray[EnemyArraySize];
-	new InfectedCount;
-
-	new UseCount[MAXPLAYERS+1]; 
-
-	new Float:ScanTime=0.0;
-
-	new Gun[MAXPLAYERS+1];
-	new GunOwner[MAXPLAYERS+1];
-	new GunEnemy[MAXPLAYERS+1];
-
-	new Float:GunFireStopTime[MAXPLAYERS+1];
-	new Float:GunFireTime[MAXPLAYERS+1];
-	new Float:GunFireTotolTime[MAXPLAYERS+1];
-	new GunScanIndex[MAXPLAYERS+1]; 
-	new Float:LastTime[MAXPLAYERS+1]; 
-
-
-	new Float:FireInterval=0.08; 
-	new Float:FireOverHeatTime=10.0;
-	new Float:FireRange=1000.0;
-
-	GetMinigun(client )
-	{ 
-		new ent= GetClientAimTarget(client, false);
-		if(ent>0)
-		{			
-			decl String:classname[64];
-			GetEdictClassname(ent, classname, 64);			
-			if(StrEqual(classname, "prop_minigun") || StrEqual(classname, "prop_minigun_l4d1"))
-			{
-			}
-			else ent=0;
-		}  
-		return ent;
-	}
-	 
-	machine(client)
-	{
-		if(ClientData[client].ItemsBuilt>=4)
-		{
-			PrintToChat(client, "You can use it more than %d times",4);
-			return;
-		}
-		if(client>0 && IsClientInGame(client) && IsPlayerAlive(client))
-		{
-			CreateMachine(client);
+			CreateTimer(15.0, TimerDeleteBombs, hPack, TIMER_FLAG_NO_MAPCHANGE);			
 		}
 	}
-	bool:removemachine(client)
-	{
-		if(client>0 && IsClientInGame(client) && IsPlayerAlive(client))
+}
+
+public Action:TimerDeleteBombs(Handle:timer, Handle:pack)
+{		
+	ResetPack(pack);
+	int index = ReadPackCell(pack);
+	bool removed = false;
+
+	if (BombIndex[index] == false) {
+		for (new i = 0; i <= 3; i++)
 		{
-			new gun=GetMinigun(client);
-			new index=FindGunIndex(gun);
-			if(index<0)
+			int entity = ReadPackCell(pack);
+			if(entity > 0 && IsValidEntity(entity))
 			{
-				return false;
-			}
-			else
-			{
-				RemoveMachine(index);
-				return true;
+				AcceptEntityInput(entity, "Kill");
+				removed = true;
 			}
 		}
-		return false;
+	} else {
+		new Handle:hPack = CreateDataPack();
+		WritePackCell(hPack, index);
+		int entity = ReadPackCell(pack);
+		WritePackCell(hPack, entity);
+		int defibParticle = ReadPackCell(pack);
+		WritePackCell(hPack, defibParticle);
+		int elmosParticle = ReadPackCell(pack);
+		WritePackCell(hPack, elmosParticle);
+		int mine = ReadPackCell(pack);
+		WritePackCell(hPack, mine);
+		CloseHandle(pack);
+
+		CreateTimer(5.0, TimerDeleteBombs, hPack, TIMER_FLAG_NO_MAPCHANGE);		
+		return Plugin_Continue;
+	}
+	if (removed == true) {
+		KillTimer(timer);
+		return Plugin_Stop;
 	} 
+	return Plugin_Continue;
+}
 
-	public bool:TraceRayDontHitSelf(entity, mask, any:data)
+///////////////////////////////////////////////////////////////////////////////////	
+// Graphics & effects
+///////////////////////////////////////////////////////////////////////////////////
+
+public ShowParticle(Float:pos[3], Float:ang[3],String:particlename[], Float:time)
+{
+	new particle = CreateEntityByName("info_particle_system");
+	if (IsValidEdict(particle))
 	{
-		if(entity == data) 
-		{
-			return false; 
-		} 
-		return true;
-	}
-	CopyVector(Float:source[3], Float:target[3])
-	{
-		target[0]=source[0];
-		target[1]=source[1];
-		target[2]=source[2];
-	}
-
-	public void PrecacheTurret()
-	{
-		PrecacheModel(MODEL_GUN);
-		 
-		PrecacheSound(SOUND_FIRE);
-		PrecacheSound(SOUND_IMPACT1);	
-		PrecacheSound(SOUND_IMPACT2);
-	 
-		PrecacheParticle(PARTICLE_MUZZLE_FLASH);
-			
-		PrecacheParticle(PARTICLE_WEAPON_TRACER2);
-		PrecacheParticle(PARTICLE_BLOOD);
-		PrecacheParticle(PARTICLE_BLOOD2);
-
-	}
-
-	public Action:DeleteParticles(Handle:timer, any:particle)
-	{
-		if (IsValidEntity(particle))
-		{
-			decl String:classname[64];
-			GetEdictClassname(particle, classname, sizeof(classname));
-			if (StrEqual(classname, "info_particle_system", false))
-			{
-				AcceptEntityInput(particle, "stop");
-				AcceptEntityInput(particle, "kill");
-				RemoveEdict(particle);
-			}
-		}
-	}
-
-	ShowMuzzleFlash(Float:pos[3],  Float:angle[3])
-	{  
-	 	new particle = CreateEntityByName("info_particle_system");
-		DispatchKeyValue(particle, "effect_name", PARTICLE_MUZZLE_FLASH); 
+		DispatchKeyValue(particle, "effect_name", particlename); 
 		DispatchSpawn(particle);
-		ActivateEntity(particle); 
-		TeleportEntity(particle, pos, angle, NULL_VECTOR);
-		AcceptEntityInput(particle, "start");	
-		CreateTimer(0.01, DeleteParticles, particle, TIMER_FLAG_NO_MAPCHANGE);	
-	}
-	ResetAllState()
+		ActivateEntity(particle);
+		TeleportEntity(particle, pos, ang, NULL_VECTOR);
+		AcceptEntityInput(particle, "start");		
+		CreateTimer(time, DeleteParticles, particle, TIMER_FLAG_NO_MAPCHANGE);
+		return particle;
+	}  
+	return 0;
+}
+
+public Action:DeleteParticles(Handle:timer, any:particle)
+{
+	if (IsValidEntity(particle))
 	{
-		MachineCount=0;
-		ScanTime=0.0;
-		for(new i=1; i<=MaxClients; i++)
-		{ 
-			UseCount[i]=0;
-		}
-		for (new i = 0; i < 16; i++)
+		decl String:classname[64];
+		GetEdictClassname(particle, classname, sizeof(classname));
+		if (StrEqual(classname, "info_particle_system", false))
 		{
-			BombIndex[i] = false;
+			AcceptEntityInput(particle, "stop");
+			AcceptEntityInput(particle, "kill");
+			RemoveEdict(particle);
 		}
-		for (int i = 0; i < MaxClients; i++)
-			g_bHide[i] = false;
-
-		InfectedCount=0;	
-	} 
-	ScanEnemys()
-	{	
-		if(IsWitch(InfectedsArray[0]))
-		{
-			InfectedCount=1;
-		}
-		else InfectedCount=0;
-		
-		for(new i=1 ; i<=MaxClients; i++)
-		{
-			if(IsClientInGame(i) && IsPlayerAlive(i))
-			{
-				InfectedsArray[InfectedCount++]=i;
-			}
-		}
-		new ent=-1;
-		while ((ent = FindEntityByClassname(ent,  "infected" )) != -1 && InfectedCount<EnemyArraySize-1)
-		{
-			InfectedsArray[InfectedCount++]=ent;
-		} 
 	}
-	bool:CreateMachine(client)
+}
+
+stock GlowPlayer(int client, char[] sColor, FX:fx=FxGlowShell)
+{
+
+	if (!IsClientInGame(client) || !IsPlayerAlive(client)) return false;
+	
+	new color = FindColor(sColor);
+	
+	if (color == -1 && strcmp(sColor, "none", false) != 0)
 	{
-		if(MachineCount >= 4)
-		{
-			PrintToChat(client, "There are too many machine");
-			return false;
-		} 
-		if(IsClientInGame(client) && IsPlayerAlive(client))
-		{
-			if(!(GetEntityFlags(client) & FL_ONGROUND))return false;
-			Gun[MachineCount]=SpawnMiniGun(client);  
-			LastTime[MachineCount]=GetEngineTime();
-			
-			GunScanIndex[MachineCount]=0;
-			GunEnemy[MachineCount]=0;
-			GunFireTime[MachineCount]=0.0;
-			GunFireStopTime[MachineCount]=0.0;
-			GunFireTotolTime[MachineCount]=0.0;
-			GunOwner[MachineCount]=client;		
-			
-			SDKUnhook( Gun[MachineCount], SDKHook_Think,  PreThinkGun); 
-			SDKHook( Gun[MachineCount], SDKHook_Think,  PreThinkGun); 
-
-			UseCount[client]++;
-			if(MachineCount==0)
-			{
-				ScanEnemys();
-			} 
-			MachineCount++;
-			return true;
-		}
-		return false;
-	}
-	RemoveMachine(index)
-	{
-		SDKUnhook( Gun[index], SDKHook_Think,  PreThinkGun);   
-		if(Gun[index]>0 && IsValidEdict(Gun[index]) && IsValidEntity(Gun[index]))AcceptEntityInput((Gun[index]), "Kill");
-		Gun[index]=0;
-		if(MachineCount>1)
-		{		
-			Gun[index]=Gun[MachineCount-1];
-			LastTime[index]=LastTime[MachineCount-1];
-	 
-			GunScanIndex[index]=GunScanIndex[MachineCount-1];
-			GunEnemy[index]=GunEnemy[MachineCount-1];
-			GunFireTime[index]=GunFireTime[MachineCount-1];
-			GunFireStopTime[index]=GunFireStopTime[MachineCount-1];
-			GunFireTotolTime[index]=GunFireTotolTime[MachineCount-1];
-			GunOwner[index]=GunOwner[MachineCount-1];
-		}
-		MachineCount--;
-	 
-		if(MachineCount<0)MachineCount=0; 
-	}
-
-	SpawnMiniGun(client)
-	{
-		decl Float:VecOrigin[3], Float:VecAngles[3], Float:VecDirection[3]; 
-		new gun=0;
-		gun=CreateEntityByName ( "prop_minigun"); 
-		SetEntityModel (gun, MODEL_GUN);		
-		DispatchSpawn(gun);
-		GetClientAbsOrigin(client, VecOrigin);
-		GetClientEyeAngles(client, VecAngles);
-		GetAngleVectors(VecAngles, VecDirection, NULL_VECTOR, NULL_VECTOR);
-		VecOrigin[0] += VecDirection[0] * 45;
-		VecOrigin[1] += VecDirection[1] * 45;
-		VecOrigin[2] += VecDirection[2] * 1;   
-		VecAngles[0] = 0.0;
-		VecAngles[2] = 0.0;
-		DispatchKeyValueFloat(gun, "MaxPitch", 360.00);
-		DispatchKeyValueFloat(gun, "MinPitch", -360.00);
-		DispatchKeyValueFloat(gun, "MaxYaw", 90.00);
-		DispatchKeyValueVector(gun, "Angles", VecAngles);
-		SetEntData(gun, g_CollisionOffset, 1, 4, true );
-		TeleportEntity(gun, VecOrigin, NULL_VECTOR, NULL_VECTOR);
-		SetEntProp(gun, Prop_Send, "m_iTeamNum", 2);  
-		SetColor(gun);
-		return gun;
-	}
-	SetColor(gun)
-	{
-		SetEntProp(gun, Prop_Send, "m_iGlowType", 3);
-		SetEntProp(gun, Prop_Send, "m_nGlowRange", 0);
-		SetEntProp(gun, Prop_Send, "m_nGlowRangeMin", 1);
-		new red=0;
-		new gree=250;
-		new blue=0;
-		SetEntProp(gun, Prop_Send, "m_glowColorOverride", red + (gree * 256) + (blue* 65536));	
-	}
-
-	FindGunIndex(gun)
-	{
-		new index=-1;
-		for(new i=0; i<MachineCount; i++)
-		{
-			if(Gun[i]==gun)
-			{
-				index=i;
-				break;
-			}
-		}
-		return index;
-	}
-
-	public PreThinkGun(gun)
-	{	
-		new index=FindGunIndex(gun);	
-		if(index!=-1)
-		{
-			new Float:time=GetEngineTime( );
-			new Float:interval=time-LastTime[index];  
-			LastTime[index]=time; 
-			ScanAndShootEnemy(index, time, interval); 
-		}
-	}
-	ScanAndShootEnemy(index , Float:time, Float:interval)
-	{
-		new gun1=Gun[index]; 
-		new user=GunOwner[index];
-		if(user>0 && IsClientInGame(user))user=user+0;
-		else user=0;
-		
-		if(time-ScanTime>1.0)
-		{
-			ScanTime=time;
-			ScanEnemys(); 
-		}	
-		
-		decl Float:gun1pos[3];
-		decl Float:gun1angle[3];
-		decl Float:hitpos[3];
-		decl Float:temp[3];
-		decl Float:shotangle[3];
-		decl Float:gunDir[3];
-		 
-		GetEntPropVector(gun1, Prop_Send, "m_vecOrigin", gun1pos);	
-		GetEntPropVector(gun1, Prop_Send, "m_angRotation", gun1angle);	
-		 
-		GetAngleVectors(gun1angle, gunDir, NULL_VECTOR, NULL_VECTOR );
-		NormalizeVector(gunDir, gunDir);
-		CopyVector(gunDir, temp);	
-		ScaleVector(temp, 50.0);
-		AddVectors(gun1pos, temp ,gun1pos);
-		GetAngleVectors(gun1angle, NULL_VECTOR, NULL_VECTOR, temp );
-		NormalizeVector(temp, temp);
-		//ShowDir(2, gun1pos, temp, 0.06);
-		ScaleVector(temp, 43.0);
-	 
-		AddVectors(gun1pos, temp ,gun1pos);
-	 
-		new newenemy=GunEnemy[index];
-		if( IsValidEnemy(newenemy))
-		{
-			newenemy = IsEnemyVisible(gun1, newenemy, gun1pos, hitpos,shotangle);		
-		}
-		else newenemy=0;
-	 
-		if(InfectedCount>0 && newenemy==0)
-		{
-			if(GunScanIndex[index]>=InfectedCount)
-			{
-				GunScanIndex[index]=0;
-			}
-			GunEnemy[index]=InfectedsArray[GunScanIndex[index]];
-			GunScanIndex[index]++;
-			newenemy=0;
-			
-		}
-
-		if(newenemy==0)
-		{
-			SetEntProp(gun1, Prop_Send, "m_firing", 0);
-
-			return;
-		}
-		decl Float:enemyDir[3]; 
-		decl Float:newGunAngle[3]; 
-		if(newenemy>0)
-		{
-			SubtractVectors(hitpos, gun1pos, enemyDir);				
-		}
-		else
-		{
-			CopyVector(gunDir, enemyDir); 
-			enemyDir[2]=0.0; 
-		}
-		NormalizeVector(enemyDir,enemyDir);	 
-		
-		decl Float:targetAngle[3]; 
-		GetVectorAngles(enemyDir, targetAngle);
-		new Float:diff0=AngleDiff(targetAngle[0], gun1angle[0]);
-		new Float:diff1=AngleDiff(targetAngle[1], gun1angle[1]);
-		
-		new Float:turn0=45.0*Sign(diff0)*interval;
-		new Float:turn1=180.0*Sign(diff1)*interval;
-		if(FloatAbs(turn0)>=FloatAbs(diff0))
-		{
-			turn0=diff0;
-		}
-		if(FloatAbs(turn1)>=FloatAbs(diff1))
-		{
-			turn1=diff1;
-		}
-		 
-		newGunAngle[0]=gun1angle[0]+turn0;
-		newGunAngle[1]=gun1angle[1]+turn1; 
-		 
-		newGunAngle[2]=0.0; 
-		
-		DispatchKeyValueVector(gun1, "Angles", newGunAngle);
-		new overheated=GetEntProp(gun1, Prop_Send, "m_overheated");
-		
-		GetAngleVectors(newGunAngle, gunDir, NULL_VECTOR, NULL_VECTOR); 
-		
-		if(overheated==0)
-		{
-			if( newenemy>0 && FloatAbs(diff1)<40.0)
-			{ 
-				if(time>=GunFireTime[index] )
-				{
-					GunFireTime[index]=time+FireInterval;  								
-					Shot(user,index, gun1, gun1pos, newGunAngle); 
-					
-					GunFireStopTime[index]=time+0.05; 	
-				} 
-			} 
-		}
-		new Float:heat=GetEntPropFloat(gun1, Prop_Send, "m_heat"); 
-		
-		if(time<GunFireStopTime[index])
-		{
-			GunFireTotolTime[index]+=interval;
-			heat=GunFireTotolTime[index]/FireOverHeatTime;
-			if(heat>=1.0)heat=1.0;
-			SetEntProp(gun1, Prop_Send, "m_firing", 1); 		
-			SetEntPropFloat(gun1, Prop_Send, "m_heat", heat);
-		}
-		else 
-		{
-			SetEntProp(gun1, Prop_Send, "m_firing", 0); 	
-			heat=heat-interval/4.0;
-			if(heat<0.0)
-			{
-				heat=0.0;
-				SetEntProp(gun1, Prop_Send, "m_overheated", 0);
-				SetEntPropFloat(gun1, Prop_Send, "m_heat", 0.0 );
-			}
-			else SetEntPropFloat(gun1, Prop_Send, "m_heat", heat ); 
-			GunFireTotolTime[index]=FireOverHeatTime*heat; 
-		}
-
 		return;
 	}
-	IsEnemyVisible( gun, ent, Float:gunpos[3], Float:hitpos[3], Float:angle[3])
-	{		
-		if(ent<=0)return 0;
-		
-		GetEntPropVector(ent, Prop_Send, "m_vecOrigin", hitpos);
-		hitpos[2]+=35.0; 
 
-		SubtractVectors(hitpos, gunpos, angle);
-		GetVectorAngles(angle, angle); 
-		new Handle:trace=TR_TraceRayFilterEx(gunpos, angle, MASK_SHOT, RayType_Infinite, TraceRayDontHitSelf, gun); 	 
-
-		new newenemy=0;
-		 
-		if(TR_DidHit(trace))
-		{		 
-			TR_GetEndPosition(hitpos, trace);
-			newenemy = TR_GetEntityIndex(trace);  
-			if(GetVectorDistance(gunpos, hitpos)>FireRange)newenemy=0;	 
-		}
-		else
-		{
-			newenemy=ent;
-		}
-		if(newenemy>0)
-		{		 
-			if(newenemy<=MaxClients)
-			{
-				if(!(IsClientInGame(newenemy) && IsPlayerAlive(newenemy) && GetClientTeam(newenemy)== 3))
-					newenemy = 0;
-			}
-			else	
-			{
-				decl String:classname[32];
-				GetEdictClassname(newenemy, classname,32);
-				if(StrEqual(classname, "infected", true) || StrEqual(classname, "witch", true) )
-				{
-					newenemy=newenemy+0;
-				}
-				else newenemy=0;
-			}
-		} 
-		CloseHandle(trace); 
-		return newenemy;
-	}
-	Shot(client, index  ,gun, Float:gunpos[3],  Float:shotangle[3])
+	if (color == -1)
 	{
-		decl Float:temp[3];
-		decl Float:ang[3];
-		GetAngleVectors(shotangle, temp, NULL_VECTOR,NULL_VECTOR); 
-		NormalizeVector(temp, temp); 
-		 
-		new Float:acc=0.020; // add some spread
-		temp[0] += GetRandomFloat(-1.0, 1.0)*acc;
-		temp[1] += GetRandomFloat(-1.0, 1.0)*acc;
-		temp[2] += GetRandomFloat(-1.0, 1.0)*acc;
-		GetVectorAngles(temp, ang);
-
-		new Handle:trace= TR_TraceRayFilterEx(gunpos, ang, MASK_SHOT, RayType_Infinite, TraceRayDontHitSelf, gun); 
-		new enemy=0;	
-		 
-		if(TR_DidHit(trace))
-		{			
-			decl Float:hitpos[3];		 
-			TR_GetEndPosition(hitpos, trace);		
-			enemy=TR_GetEntityIndex(trace); 
-			
-			if(enemy>0)
-			{			
-				decl String:classname[32];
-				GetEdictClassname(enemy, classname, 32);	
-				if(enemy >=1 && enemy<=MaxClients)//if enemy is a client
-				{
-					if(GetClientTeam(enemy)==2 ) {enemy=0;}	
-				}
-				else if(StrEqual(classname, "infected") || StrEqual(classname, "witch" ) )
-				{
-
-				} 	
-				else enemy=0;
-			} 
-			if(enemy>0)
-			{
-				if(client>0 && IsPlayerAlive(client))client=client+0;
-				else client=0;
-				HurtEntity(enemy, client, 25.0, 0);
-				decl Float:Direction[3];
-				GetAngleVectors(ang, Direction, NULL_VECTOR, NULL_VECTOR);
-				ScaleVector(Direction, -1.0);
-				GetVectorAngles(Direction,Direction);
-				ShowParticle(hitpos, Direction, PARTICLE_BLOOD, 0.1);				
-				EmitSoundToAll(SOUND_IMPACT1, 0,  SNDCHAN_AUTO, SNDLEVEL_NORMAL, SND_NOFLAGS,1.0, SNDPITCH_NORMAL, -1,hitpos, NULL_VECTOR,true, 0.0);
-			}
-			else
-			{		
-				decl Float:Direction[3];
-				Direction[0] = GetRandomFloat(-1.0, 1.0);
-				Direction[1] = GetRandomFloat(-1.0, 1.0);
-				Direction[2] = GetRandomFloat(-1.0, 1.0);
-				TE_SetupSparks(hitpos,Direction,1,3);
-				TE_SendToAll();
-				EmitSoundToAll(SOUND_IMPACT2, 0,  SNDCHAN_AUTO, SNDLEVEL_NORMAL, SND_NOFLAGS,1.0, SNDPITCH_NORMAL, -1,hitpos, NULL_VECTOR,true, 0.0);
-			}
-			ShowMuzzleFlash(gunpos, ang);
-			EmitSoundToAll(SOUND_FIRE, 0,  SNDCHAN_WEAPON, SNDLEVEL_NORMAL, SND_NOFLAGS,1.0, SNDPITCH_NORMAL, -1,gunpos, NULL_VECTOR,true, 0.0);
-		}
-		CloseHandle(trace);
+		set_rendering(client);
 	}
-
-	Float:AngleDiff(Float:a, Float:b)
+	else
 	{
-		new Float:d=0.0;
-		if(a>=b)
-		{
-			d=a-b;
-			if(d>=180.0)d=d-360.0;
-		}
-		else
-		{
-			d=a-b;
-			if(d<=-180.0)d=360+d;
-		}
-		return d;
+		set_rendering(client, fx, g_Colors[color][0], g_Colors[color][1], g_Colors[color][2], g_Render, 250);
 	}
 
-	Float:Sign(Float:v)
-	{	// positive or negitive number returns 1, 0 ,-1
-		if(v==0.0)return 0.0;
-		else if(v>0.0)return 1.0;
-		else return -1.0;
-	}
+	return;	
+}
 
-	bool:IsValidEnemy(enemy)
-	{	
-		new bool:r=false;
-		if(enemy<=0)return r;
-		if( enemy<=MaxClients)
-		{ //if enemy is a client
-			if(IsClientInGame(enemy) && IsPlayerAlive(enemy) && GetClientTeam(enemy)== 3)
-			{
-				r=true;
-			} 
-		}
-		else if( IsValidEntity(enemy) && IsValidEdict(enemy))
-		{
-			decl String:classname[32];
-			GetEdictClassname(enemy, classname,32);
-			if(StrEqual(classname, "infected", true) )
-			{
-				r=true;
-				new flag=GetEntProp(enemy, Prop_Send, "m_bIsBurning");
-				if(flag==1)
-				{
-					r=false; 
-				}
-			}
-			else if (StrEqual(classname, "witch", true))
-			{
-				r=true;
-			}
-		} 
-		return r;
-	}
+public Action:RemoveGlowFromAll() {
 
-	///////////////////////////////////////////////////////////////////////////////////	
-	// Graphics & effects
-	///////////////////////////////////////////////////////////////////////////////////
-	public ShowParticle(Float:pos[3], Float:ang[3],String:particlename[], Float:time)
+	for(new i = 0; i < MaxClients; i++)
 	{
-		new particle = CreateEntityByName("info_particle_system");
-		if (IsValidEdict(particle))
-		{
-			DispatchKeyValue(particle, "effect_name", particlename); 
-			DispatchSpawn(particle);
-			ActivateEntity(particle);
-			TeleportEntity(particle, pos, ang, NULL_VECTOR);
-			AcceptEntityInput(particle, "start");		
-			CreateTimer(time, DeleteParticles, particle, TIMER_FLAG_NO_MAPCHANGE);
-			return particle;
-		}  
+		if(IsClientConnected(i) && IsClientInGame(i))
+			set_rendering(i);		
+	}
+	return Plugin_Handled;
+}
+
+public Action:GlowTimer(Handle:timer, Handle:pack)
+{
+	ResetPack(pack);
+	int client = ReadPackCell(pack);
+	int health = ReadPackCell(pack);
+	CloseHandle(pack);
+
+	if (!IsClientInGame(client) || !IsPlayerAlive(client)) return Plugin_Stop;
+	new newHp = GetClientHealth(client);
+	new TempHealth = GetClientTempHealth(client);
+	new totalHp = newHp+TempHealth;
+
+	if (totalHp > health) {
+		new Handle:hPack = CreateDataPack();
+		WritePackCell(hPack, client);
+		WritePackCell(hPack, totalHp);
+
+		CreateTimer(1.0, GlowTimer, hPack, TIMER_FLAG_NO_MAPCHANGE);
+		return Plugin_Continue;
+	} else {
+		set_rendering(client);
+	}
+
+	return Plugin_Stop;
+}
+
+// None, White, Red, Green, Blue, Yellow, Purple, Cyan, Orange, Pink, Olive, Lime, Violet, and Lightblue
+FindColor(String:color[])
+{
+	for (new i = 0; i < 12; i++)
+	{
+		if(strcmp(color, g_ColorNames[i], false) == 0)
+			return i;
+	}
+	
+	return -1;
+}
+
+stock set_rendering(index, FX:fx=FxNone, r=255, g=255, b=255, Render:render=Normal, amount=255)
+{
+	SetEntProp(index, Prop_Send, "m_nRenderFX", _:fx, 1);
+	SetEntProp(index, Prop_Send, "m_nRenderMode", _:render, 1);
+
+	new offset = GetEntSendPropOffs(index, "m_clrRender");
+	
+	SetEntData(index, offset, r, 1, true);
+	SetEntData(index, offset + 1, g, 1, true);
+	SetEntData(index, offset + 2, b, 1, true);
+	SetEntData(index, offset + 3, amount, 1, true);
+}
+
+int GetColor(char[] sTemp)
+{
+	if (strcmp(sTemp, "") == 0) {
+		return 0;
+	}
+	
+	char sColors[3][4];
+	int iColor = ExplodeString(sTemp, " ", sColors, 3, 4);
+
+	if (iColor != 3) {
+		return 0;
+	}
+	
+	iColor = StringToInt(sColors[0]);
+	iColor += 256 * StringToInt(sColors[1]);
+	iColor += 65536 * StringToInt(sColors[2]);
+
+	return iColor;
+}
+
+void SetupPrjEffects(int entity, float vPos[3], const char[] color)
+{
+	// Grenade Pos
+	GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", vPos);
+
+	// Sprite
+	CreateEnvSprite(entity, color);
+
+	// Steam
+	static float vAng[3];
+	GetEntPropVector(entity, Prop_Data, "m_angRotation", vAng);
+	MakeEnvSteam(entity, vPos, vAng, color);
+
+	// Light
+	int light = MakeLightDynamic(entity, vPos);
+	SetVariantEntity(light);
+	SetVariantString(color);
+	AcceptEntityInput(light, "color");
+	AcceptEntityInput(light, "TurnOn");
+}
+
+void CreateBeamRing(int entity, int iColor[4], float min, float max, max_rings)
+{
+	// Grenade Pos
+	static float vPos[3];
+	GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", vPos);
+
+	// Make beam rings
+	for( int i = 1; i <= max_rings; i++ )
+	{
+		vPos[2] += 20;
+		TE_SetupBeamRingPoint(vPos, min, max, g_BeamSprite, g_HaloSprite, 0, 15, 1.0, 1.0, 2.0, iColor, 20, 0);
+		TE_SendToAll();
+	}
+}
+void MakeEnvSteam(int target, const float vPos[3], const float vAng[3], const char[] sColor)
+{
+	int entity = CreateEntityByName("env_steam");
+	if( entity == -1 )
+	{
+		LogError("Failed to create 'env_steam'");
+		return;
+	}
+	static char sTemp[16];
+	Format(sTemp, sizeof(sTemp), "silv_steam_%d", target);
+	DispatchKeyValue(entity, "targetname", sTemp);
+	DispatchKeyValue(entity, "SpawnFlags", "1");
+	DispatchKeyValue(entity, "rendercolor", sColor);
+	DispatchKeyValue(entity, "SpreadSpeed", "10");
+	DispatchKeyValue(entity, "Speed", "100");
+	DispatchKeyValue(entity, "StartSize", "5");
+	DispatchKeyValue(entity, "EndSize", "10");
+	DispatchKeyValue(entity, "Rate", "50");
+	DispatchKeyValue(entity, "JetLength", "100");
+	DispatchKeyValue(entity, "renderamt", "150");
+	DispatchKeyValue(entity, "InitialState", "1");
+	DispatchSpawn(entity);
+	AcceptEntityInput(entity, "TurnOn");
+	TeleportEntity(entity, vPos, vAng, NULL_VECTOR);
+
+	// Attach
+	if( target )
+	{
+		SetVariantString("!activator");
+		AcceptEntityInput(entity, "SetParent", target);
+	}
+
+	return;
+}
+
+void CreateEnvSprite(int target, const char[] sColor)
+{
+	int entity = CreateEntityByName("env_sprite");
+	if( entity == -1)
+	{
+		LogError("Failed to create 'env_sprite'");
+		return;
+	}
+
+	DispatchKeyValue(entity, "rendercolor", sColor);
+	DispatchKeyValue(entity, "model", MODEL_SPRITE);
+	DispatchKeyValue(entity, "spawnflags", "3");
+	DispatchKeyValue(entity, "rendermode", "9");
+	DispatchKeyValue(entity, "GlowProxySize", "0.1");
+	DispatchKeyValue(entity, "renderamt", "175");
+	DispatchKeyValue(entity, "scale", "0.1");
+	DispatchSpawn(entity);
+
+	// Attach
+	if( target )
+	{
+		SetVariantString("!activator");
+		AcceptEntityInput(entity, "SetParent", target);
+	}
+}
+
+int MakeLightDynamic(int target, const float vPos[3])
+{
+	int entity = CreateEntityByName("light_dynamic");
+	if( entity == -1 )
+	{
+		LogError("Failed to create 'light_dynamic'");
 		return 0;
 	}
 
-	void SetupPrjEffects(int entity, float vPos[3], const char[] color)
+	DispatchKeyValue(entity, "_light", "0 255 0 0");
+	DispatchKeyValue(entity, "brightness", "0.1");
+	DispatchKeyValueFloat(entity, "spotlight_radius", 32.0);
+	DispatchKeyValueFloat(entity, "distance", 600.0);
+	DispatchKeyValue(entity, "style", "6");
+	DispatchSpawn(entity);
+	AcceptEntityInput(entity, "TurnOff");
+
+	TeleportEntity(entity, vPos, NULL_VECTOR, NULL_VECTOR);
+	// Attach
+	if( target )
 	{
-	        // Grenade Pos
-	        GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", vPos);
+		SetVariantString("!activator");
+		AcceptEntityInput(entity, "SetParent", target);
+	}
+	return entity;
+}
 
-	        // Sprite
-	        CreateEnvSprite(entity, color);
-
-	        // Steam
-	        static float vAng[3];
-	        GetEntPropVector(entity, Prop_Data, "m_angRotation", vAng);
-	        MakeEnvSteam(entity, vPos, vAng, color);
-
-	        // Light
-	        int light = MakeLightDynamic(entity, vPos);
-	        SetVariantEntity(light);
-	        SetVariantString(color);
-	        AcceptEntityInput(light, "color");
-	        AcceptEntityInput(light, "TurnOn");
+int DisplayParticle(int target, const char[] sParticle, const float vPos[3], const float vAng[3], float refire = 0.0)
+{
+	int entity = CreateEntityByName("info_particle_system");	
+	if( entity == -1)
+	{
+		LogError("Failed to create 'info_particle_system'");
+		return 0;
 	}
 
-	void MakeEnvSteam(int target, const float vPos[3], const float vAng[3], const char[] sColor)
+	DispatchKeyValue(entity, "effect_name", sParticle);
+	DispatchSpawn(entity);
+	ActivateEntity(entity);
+	AcceptEntityInput(entity, "start");
+	TeleportEntity(entity, vPos, vAng, NULL_VECTOR);
+
+	// Refire
+	if( refire )
 	{
-		int entity = CreateEntityByName("env_steam");
-		if( entity == -1 )
-		{
-			LogError("Failed to create 'env_steam'");
-			return;
-		}
-		static char sTemp[16];
-		Format(sTemp, sizeof(sTemp), "silv_steam_%d", target);
-		DispatchKeyValue(entity, "targetname", sTemp);
-		DispatchKeyValue(entity, "SpawnFlags", "1");
-		DispatchKeyValue(entity, "rendercolor", sColor);
-		DispatchKeyValue(entity, "SpreadSpeed", "10");
-		DispatchKeyValue(entity, "Speed", "100");
-		DispatchKeyValue(entity, "StartSize", "5");
-		DispatchKeyValue(entity, "EndSize", "10");
-		DispatchKeyValue(entity, "Rate", "50");
-		DispatchKeyValue(entity, "JetLength", "100");
-		DispatchKeyValue(entity, "renderamt", "150");
-		DispatchKeyValue(entity, "InitialState", "1");
-		DispatchSpawn(entity);
-		AcceptEntityInput(entity, "TurnOn");
-		TeleportEntity(entity, vPos, vAng, NULL_VECTOR);
-
-		// Attach
-		if( target )
-		{
-			SetVariantString("!activator");
-			AcceptEntityInput(entity, "SetParent", target);
-		}
-
-		return;
+		static char sTemp[48];
+		Format(sTemp, sizeof(sTemp), "OnUser1 !self:Stop::%f:-1", refire - 0.05);
+		SetVariantString(sTemp);
+		AcceptEntityInput(entity, "AddOutput");
+		Format(sTemp, sizeof(sTemp), "OnUser1 !self:FireUser2::%f:-1", refire);
+		SetVariantString(sTemp);
+		AcceptEntityInput(entity, "AddOutput");
+		AcceptEntityInput(entity, "FireUser1");
+		SetVariantString("OnUser2 !self:Start::0:-1");
+		AcceptEntityInput(entity, "AddOutput");
+		SetVariantString("OnUser2 !self:FireUser1::0:-1");
+		AcceptEntityInput(entity, "AddOutput");
+	}
+	// Attach
+	if( target )
+	{
+		SetVariantString("!activator");
+		AcceptEntityInput(entity, "SetParent", target);
 	}
 
-	void CreateEnvSprite(int target, const char[] sColor)
+	return entity;
+}
+
+// Get Position on map
+
+public bool SetClientLocation(int client, float vPos[3])
+{
+	GetClientEyePosition(client, vPos);
+	static float vAng[3];
+	GetClientEyeAngles(client, vAng);
+	static Handle trace;
+	trace = TR_TraceRayFilterEx(vPos, vAng, MASK_SHOT, RayType_Infinite, ExcludeSelf_Filter, client);
+
+	if( TR_DidHit(trace) )
 	{
-	    int entity = CreateEntityByName("env_sprite");
-	    if( entity == -1)
-	    {
-	            LogError("Failed to create 'env_sprite'");
-	            return;
-	    }
+		TR_GetEndPosition(vPos, trace);
 
-	    DispatchKeyValue(entity, "rendercolor", sColor);
-	    DispatchKeyValue(entity, "model", MODEL_SPRITE);
-	    DispatchKeyValue(entity, "spawnflags", "3");
-	    DispatchKeyValue(entity, "rendermode", "9");
-	    DispatchKeyValue(entity, "GlowProxySize", "0.1");
-	    DispatchKeyValue(entity, "renderamt", "175");
-	    DispatchKeyValue(entity, "scale", "0.1");
-	    DispatchSpawn(entity);
-
-	    // Attach
-	    if( target )
-	    {
-	            SetVariantString("!activator");
-	            AcceptEntityInput(entity, "SetParent", target);
-	    }
+		static float vDir[3];
+		GetAngleVectors(vAng, vDir, NULL_VECTOR, NULL_VECTOR);
+		vPos[0] -= vDir[0] * 10;
+		vPos[1] -= vDir[1] * 10;
+		vPos[2] -= vDir[2] * 10;
+	}
+	else
+	{
+		delete trace;
+		return false;
 	}
 
-	int MakeLightDynamic(int target, const float vPos[3])
+	delete trace;
+	return true;
+}
+
+public bool ExcludeSelf_Filter(int entity, int contentsMask, any client)
+{
+	if( entity == client )
+	return false;
+	return true;
+}
+
+/**
+* STOCK FUNCTIONS
+*/
+
+stock GetClientTempHealth(client)
+{
+	if (!client
+		|| !IsValidEntity(client)
+		|| !IsClientInGame(client)
+		|| !IsPlayerAlive(client)
+		|| IsClientObserver(client)
+		|| GetClientTeam(client) != 2)
 	{
-		int entity = CreateEntityByName("light_dynamic");
-		if( entity == -1 )
-		{
-		        LogError("Failed to create 'light_dynamic'");
-		        return 0;
-		}
+		return -1;
+	}
+	
+	new Float:buffer = GetEntPropFloat(client, Prop_Send, "m_healthBuffer");
+	
+	new Float:TempHealth;
+	
+	if (buffer <= 0.0)
+	TempHealth = 0.0;
+	else
+	{
+		new Float:difference = GetGameTime() - GetEntPropFloat(client, Prop_Send, "m_healthBufferTime");
+		new Float:decay = GetConVarFloat(FindConVar("pain_pills_decay_rate"));
+		new Float:constant = 1.0/decay;
+		TempHealth = buffer - (difference / constant);
+	}
+	
+	if(TempHealth < 0.0)
+	TempHealth = 0.0;
+	
+	return RoundToFloor(TempHealth);
+}
 
-		DispatchKeyValue(entity, "_light", "0 255 0 0");
-		DispatchKeyValue(entity, "brightness", "0.1");
-		DispatchKeyValueFloat(entity, "spotlight_radius", 32.0);
-		DispatchKeyValueFloat(entity, "distance", 600.0);
-		DispatchKeyValue(entity, "style", "6");
-		DispatchSpawn(entity);
-		AcceptEntityInput(entity, "TurnOff");
+stock SetClientTempHealth(client, iValue)
+{
+	if (!client
+		|| !IsValidEntity(client)
+		|| !IsClientInGame(client)
+		|| !IsPlayerAlive(client)
+		|| IsClientObserver(client)
+		|| GetClientTeam(client) != 2)
+	return;
+	
+	SetEntPropFloat(client, Prop_Send, "m_healthBuffer", iValue*1.0);
+	SetEntPropFloat(client, Prop_Send, "m_healthBufferTime", GetGameTime());
+	
+	new Handle:hPack = CreateDataPack();
+	WritePackCell(hPack, client);
+	WritePackCell(hPack, iValue);
+	
+	CreateTimer(0.1, TimerSetClientTempHealth, hPack, TIMER_FLAG_NO_MAPCHANGE);
+}
 
-		TeleportEntity(entity, vPos, NULL_VECTOR, NULL_VECTOR);
-		// Attach
-		if( target )
-		{
-		        SetVariantString("!activator");
-		        AcceptEntityInput(entity, "SetParent", target);
-		}
-		return entity;
+public Action:TimerSetClientTempHealth(Handle:hTimer, Handle:hPack)
+{
+	ResetPack(hPack);
+	new client = ReadPackCell(hPack);
+	new iValue = ReadPackCell(hPack);
+	CloseHandle(hPack);
+	
+	if(!client
+		|| !IsValidEntity(client)
+		|| !IsClientInGame(client)
+		|| !IsPlayerAlive(client)
+		|| IsClientObserver(client)
+		|| GetClientTeam(client) != 2)
+	return;
+	
+	SetEntPropFloat(client, Prop_Send, "m_healthBuffer", iValue*1.0);
+	SetEntPropFloat(client, Prop_Send, "m_healthBufferTime", GetGameTime());
+}
+
+void InputKill(int entity, float time)
+{
+	static char temp[40];
+	Format(temp, sizeof(temp), "OnUser4 !self:Kill::%f:-1", time);
+	SetVariantString(temp);
+	AcceptEntityInput(entity, "AddOutput");
+	AcceptEntityInput(entity, "FireUser4");
+}
+
+stock bool:IsWitch(client)
+{
+	if(client > 0 && IsValidEntity(client) && IsValidEdict(client))
+	{
+		decl String:strClassName[64];
+		GetEdictClassname(client, strClassName, sizeof(strClassName));
+		return StrEqual(strClassName, "witch");
+	}
+	return false;
+}
+
+stock IsGhost(client)
+{
+	return GetEntProp(client, Prop_Send, "m_isGhost");
+}
+
+stock bool:IsIncapacitated(client)
+{
+	return bool:GetEntProp(client, Prop_Send, "m_isIncapacitated");
+}
+
+stock bool:IsHanging(client)
+{
+	return bool:GetEntProp(client, Prop_Send, "m_isHangingFromLedge");
+}
+
+stock FindAttacker(iClient)
+{
+	//Pummel
+	new iAttacker = GetEntPropEnt(iClient, Prop_Send, "m_pummelAttacker");
+	if (iAttacker > 0)
+	return iAttacker;
+	
+	//Pounce
+	iAttacker = GetEntPropEnt(iClient, Prop_Send, "m_pounceAttacker");
+	if (iAttacker > 0)
+	return iAttacker;
+	
+	//Jockey
+	iAttacker = GetEntPropEnt(iClient, Prop_Send, "m_jockeyAttacker");
+	if (iAttacker > 0)
+	return iAttacker;
+	
+	//Smoker
+	iAttacker = GetEntPropEnt(iClient, Prop_Send, "m_tongueOwner");
+	if (iAttacker > 0)
+	return iAttacker;
+	
+	iAttacker = 0;
+	return iAttacker;
+}
+
+stock int CountPlayersWithClass( class ) {
+	new count = 0;
+
+	for (new i = 1; i <= MaxClients; i++)
+	{
+		if (!IsClientInGame(i) || !IsPlayerAlive(i))
+		continue;
+
+		if(ClientData[i].ChosenClass == class)
+		count++;
 	}
 
-	int DisplayParticle(int target, const char[] sParticle, const float vPos[3], const float vAng[3], float refire = 0.0)
+	return count;
+}
+
+stock PushEntity(client, Float:clientEyeAngle[3], Float:power)
+{
+	decl Float:forwardVector[3], Float:newVel[3];
+	
+	GetEntPropVector(client, Prop_Data, "m_vecVelocity", newVel);
+	GetAngleVectors(clientEyeAngle, forwardVector, NULL_VECTOR, NULL_VECTOR);
+	NormalizeVector(forwardVector, forwardVector);
+	ScaleVector(forwardVector, power);
+	AddVectors(forwardVector, newVel, newVel);
+	
+	TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, newVel);
+}
+
+stock bool:IsInEndingSaferoom(client)
+{
+	decl String:class[128], Float:pos[3], Float:dpos[3];
+	GetClientAbsOrigin(client, pos);
+	for (new i = MaxClients+1; i < 2048; i++)
 	{
-		int entity = CreateEntityByName("info_particle_system");	
-		if( entity == -1)
+		if (IsValidEntity(i) && IsValidEdict(i))
 		{
-			LogError("Failed to create 'info_particle_system'");
-			return 0;
+			GetEdictClassname(i, class, sizeof(class));
+			if (StrEqual(class, "prop_door_rotating_checkpoint"))
+			{
+				GetEntPropString(i, Prop_Data, "m_ModelName", class, sizeof(class));
+				if (StrContains(class, "checkpoint_door_02") != -1)
+				{
+					GetEntPropVector(i, Prop_Send, "m_vecOrigin", dpos);
+					if (GetVectorDistance(pos, dpos) <= 600.0)
+					return true;
+				}
+			}
 		}
+	}
+	return false;
+}
 
-		DispatchKeyValue(entity, "effect_name", sParticle);
-		DispatchSpawn(entity);
-		ActivateEntity(entity);
-		AcceptEntityInput(entity, "start");
-		TeleportEntity(entity, vPos, vAng, NULL_VECTOR);
+stock bool:IsPlayerInSaferoom(client)
+{
+	decl Float:pos[3];
+	GetClientAbsOrigin(client, pos);
+	return g_bInSaferoom[client] || GetVectorDistance(g_SpawnPos[client], pos) <= 600.0;
+}
 
-	    // Refire
-		if( refire )
-		{
-			static char sTemp[48];
-			Format(sTemp, sizeof(sTemp), "OnUser1 !self:Stop::%f:-1", refire - 0.05);
-			SetVariantString(sTemp);
-			AcceptEntityInput(entity, "AddOutput");
-			Format(sTemp, sizeof(sTemp), "OnUser1 !self:FireUser2::%f:-1", refire);
-			SetVariantString(sTemp);
-			AcceptEntityInput(entity, "AddOutput");
-			AcceptEntityInput(entity, "FireUser1");
-			SetVariantString("OnUser2 !self:Start::0:-1");
-			AcceptEntityInput(entity, "AddOutput");
-			SetVariantString("OnUser2 !self:FireUser1::0:-1");
-			AcceptEntityInput(entity, "AddOutput");
-		}
-		// Attach
-		if( target )
-		{
-			SetVariantString("!activator");
-			AcceptEntityInput(entity, "SetParent", target);
-		}
+stock Water_Level:GetClientWaterLevel(client)
+{	
+	return Water_Level:GetEntProp(client, Prop_Send, "m_nWaterLevel");
+}
 
-		return entity;
+stock bool:IsClientOnLadder(client)
+{	
+	new MoveType:movetype = GetEntityMoveType(client);
+	
+	if (movetype == MOVETYPE_LADDER)
+	return true;
+	
+	return false;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////
+// Parachute 
+///////////////////////////////////////////////////////////////////////////////////
+
+public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:angles[3], &weapon)
+{
+	if (!IsClientInGame(client) || !IsPlayerAlive(client) || GetClientTeam(client) != 2)
+	return Plugin_Continue;
+	
+	new flags = GetEntityFlags(client);
+	
+	if (!(buttons & IN_DUCK) || !(flags & FL_ONGROUND)) {
+		ClientData[client].HideStartTime= GetGameTime();
+		ClientData[client].HealStartTime= GetGameTime();
 	}
 
-	/**
-	 * STOCK FUNCTIONS
-	 */
-
-	stock GetClientTempHealth(client)
+	if (IsFakeClient(client) || IsHanging(client) || IsIncapacitated(client) || FindAttacker(client) > 0 || IsClientOnLadder(client) || GetClientWaterLevel(client) > Water_Level:WATER_LEVEL_FEET_IN_WATER)
+	return Plugin_Continue;
+	
+	if (ClientData[client].ChosenClass == ATHLETE)
 	{
-		if (!client
-				|| !IsValidEntity(client)
-				|| !IsClientInGame(client)
-				|| !IsPlayerAlive(client)
-				|| IsClientObserver(client)
-				|| GetClientTeam(client) != 2)
+		if (buttons & IN_JUMP && flags & FL_ONGROUND )
 		{
-			return -1;
+			PushEntity(client, Float:{-90.0,0.0,0.0}, GetConVarFloat(ATHLETE_JUMP_VEL));
+			flags &= ~FL_ONGROUND;
+			SetEntityFlags(client,flags);
+
 		}
-		
-		new Float:buffer = GetEntPropFloat(client, Prop_Send, "m_healthBuffer");
-		
-		new Float:TempHealth;
-		
-		if (buffer <= 0.0)
-			TempHealth = 0.0;
+
+		if(parachuteEnabled.BoolValue == false) return Plugin_Continue;
+
+		if(g_bParachute[client])
+		{
+			if(!(buttons & IN_USE) || !IsPlayerAlive(client))
+			{
+				DisableParachute(client);
+				return Plugin_Continue;
+			}
+
+			float fVel[3];
+			GetEntDataVector(client, g_iVelocity, fVel);
+
+			if(fVel[2] >= 0.0)
+			{
+				DisableParachute(client);
+				return Plugin_Continue;
+			}
+
+			if(GetEntityFlags(client) & FL_ONGROUND)
+			{
+				DisableParachute(client);
+				return Plugin_Continue;
+			}
+			
+			float fOldSpeed = fVel[2];
+
+			if(fVel[2] < 100.0 * -1.0) fVel[2] = 100.0 * -1.0;
+
+			if(fOldSpeed != fVel[2])
+			TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, fVel);
+		}
 		else
 		{
-			new Float:difference = GetGameTime() - GetEntPropFloat(client, Prop_Send, "m_healthBufferTime");
-			new Float:decay = GetConVarFloat(FindConVar("pain_pills_decay_rate"));
-			new Float:constant = 1.0/decay;
-			TempHealth = buffer - (difference / constant);
-		}
-		
-		if(TempHealth < 0.0)
-		TempHealth = 0.0;
-		
-		return RoundToFloor(TempHealth);
-	}
-
-	stock SetClientTempHealth(client, iValue)
-	{
-		if (!client
-				|| !IsValidEntity(client)
-				|| !IsClientInGame(client)
-				|| !IsPlayerAlive(client)
-				|| IsClientObserver(client)
-				|| GetClientTeam(client) != 2)
-		return;
-		
-		SetEntPropFloat(client, Prop_Send, "m_healthBuffer", iValue*1.0);
-		SetEntPropFloat(client, Prop_Send, "m_healthBufferTime", GetGameTime());
-		
-		new Handle:hPack = CreateDataPack();
-		WritePackCell(hPack, client);
-		WritePackCell(hPack, iValue);
-		
-		CreateTimer(0.1, TimerSetClientTempHealth, hPack, TIMER_FLAG_NO_MAPCHANGE);
-	}
-
-	public Action:TimerSetClientTempHealth(Handle:hTimer, Handle:hPack)
-	{
-		ResetPack(hPack);
-		new client = ReadPackCell(hPack);
-		new iValue = ReadPackCell(hPack);
-		CloseHandle(hPack);
-		
-		if(!client
-	    || !IsValidEntity(client)
-	    || !IsClientInGame(client)
-		|| !IsPlayerAlive(client)
-	    || IsClientObserver(client)
-		|| GetClientTeam(client) != 2)
-	        return;
-	    
-		SetEntPropFloat(client, Prop_Send, "m_healthBuffer", iValue*1.0);
-		SetEntPropFloat(client, Prop_Send, "m_healthBufferTime", GetGameTime());
-	}
-
-
-	void InputKill(int entity, float time)
-	{
-	        static char temp[40];
-	        Format(temp, sizeof(temp), "OnUser4 !self:Kill::%f:-1", time);
-	        SetVariantString(temp);
-	        AcceptEntityInput(entity, "AddOutput");
-	        AcceptEntityInput(entity, "FireUser4");
-	}
-
-	stock bool:IsWitch(client)
-	{
-	    if(client > 0 && IsValidEntity(client) && IsValidEdict(client))
-	    {
-	        decl String:strClassName[64];
-	        GetEdictClassname(client, strClassName, sizeof(strClassName));
-	        return StrEqual(strClassName, "witch");
-	    }
-	    return false;
-	}
-	stock IsGhost(client)
-	{
-		return GetEntProp(client, Prop_Send, "m_isGhost");
-	}
-
-	stock bool:IsIncapacitated(client)
-	{
-		return bool:GetEntProp(client, Prop_Send, "m_isIncapacitated");
-	}
-
-	stock bool:IsHanging(client)
-	{
-		return bool:GetEntProp(client, Prop_Send, "m_isHangingFromLedge");
-	}
-
-	stock FindAttacker(iClient)
-	{
-		//Pummel
-		new iAttacker = GetEntPropEnt(iClient, Prop_Send, "m_pummelAttacker");
-		if (iAttacker > 0)
-			return iAttacker;
-		
-		//Pounce
-		iAttacker = GetEntPropEnt(iClient, Prop_Send, "m_pounceAttacker");
-		if (iAttacker > 0)
-			return iAttacker;
-		
-		//Jockey
-		iAttacker = GetEntPropEnt(iClient, Prop_Send, "m_jockeyAttacker");
-		if (iAttacker > 0)
-			return iAttacker;
-		
-		//Smoker
-		iAttacker = GetEntPropEnt(iClient, Prop_Send, "m_tongueOwner");
-		if (iAttacker > 0)
-			return iAttacker;
-		
-		iAttacker = 0;
-		return iAttacker;
-	}
-
-	stock PushEntity(client, Float:clientEyeAngle[3], Float:power)
-	{
-		decl Float:forwardVector[3], Float:newVel[3];
-		
-		GetEntPropVector(client, Prop_Data, "m_vecVelocity", newVel);
-		GetAngleVectors(clientEyeAngle, forwardVector, NULL_VECTOR, NULL_VECTOR);
-		NormalizeVector(forwardVector, forwardVector);
-		ScaleVector(forwardVector, power);
-		AddVectors(forwardVector, newVel, newVel);
-		
-		TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, newVel);
-	}
-
-	stock bool:IsInEndingSaferoom(client)
-	{
-		decl String:class[128], Float:pos[3], Float:dpos[3];
-		GetClientAbsOrigin(client, pos);
-		for (new i = MaxClients+1; i < 2048; i++)
-		{
-			if (IsValidEntity(i) && IsValidEdict(i))
-			{
-				GetEdictClassname(i, class, sizeof(class));
-				if (StrEqual(class, "prop_door_rotating_checkpoint"))
-				{
-					GetEntPropString(i, Prop_Data, "m_ModelName", class, sizeof(class));
-					if (StrContains(class, "checkpoint_door_02") != -1)
-					{
-						GetEntPropVector(i, Prop_Send, "m_vecOrigin", dpos);
-						if (GetVectorDistance(pos, dpos) <= 600.0)
-							return true;
-					}
-				}
-			}
-		}
-		return false;
-	}
-
-	stock bool:IsPlayerInSaferoom(client)
-	{
-		decl Float:pos[3];
-		GetClientAbsOrigin(client, pos);
-		return g_bInSaferoom[client] || GetVectorDistance(g_SpawnPos[client], pos) <= 600.0;
-	}
-
-	stock Water_Level:GetClientWaterLevel(client)
-	{	
-		return Water_Level:GetEntProp(client, Prop_Send, "m_nWaterLevel");
-	}
-
-	stock bool:IsClientOnLadder(client)
-	{	
-		new MoveType:movetype = GetEntityMoveType(client);
-		
-		if (movetype == MOVETYPE_LADDER)
-			return true;
-		
-		return false;
-	}
-
-
-	///////////////////////////////////////////////////////////////////////////////////
-	// Parachute 
-	///////////////////////////////////////////////////////////////////////////////////
-
-	public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:angles[3], &weapon)
-	{
-		if (!IsClientInGame(client) || !IsPlayerAlive(client) || GetClientTeam(client) != 2)
+			if(!(buttons & IN_USE) || !IsPlayerAlive(client))
 			return Plugin_Continue;
-		
-		new flags = GetEntityFlags(client);
-		
-		if (!(buttons & IN_DUCK) || !(flags & FL_ONGROUND)) {
-			ClientData[client].HideStartTime= GetGameTime();
-			ClientData[client].HealStartTime= GetGameTime();
+
+			if(GetEntityFlags(client) & FL_ONGROUND)
+			return Plugin_Continue;
+
+			float fVel[3];
+			GetEntDataVector(client, g_iVelocity, fVel);
+
+			if(fVel[2] >= 0.0)
+			return Plugin_Continue;
+
+			int iEntity = CreateEntityByName("prop_dynamic_override"); 
+			DispatchKeyValue(iEntity, "model", g_bLeft4Dead2 ? g_sModels[0] : g_sModels[1]);
+			DispatchSpawn(iEntity);
+			
+			SetEntityMoveType(iEntity, MOVETYPE_NOCLIP);
+
+			float ParachutePos[3], ParachuteAng[3];
+			GetClientAbsOrigin(client, ParachutePos);
+			GetClientAbsAngles(client, ParachuteAng);
+			ParachutePos[2] += 80.0;
+			ParachuteAng[0] = 0.0;
+
+			TeleportEntity(iEntity, ParachutePos, ParachuteAng, NULL_VECTOR);
+			
+			int R = GetRandomInt(0, 255), G = GetRandomInt(0, 255), B = GetRandomInt(0, 255); 
+			SetEntProp(iEntity, Prop_Send, "m_nGlowRange", 1000);
+			SetEntProp(iEntity, Prop_Send, "m_iGlowType", 3);
+			SetEntProp(iEntity, Prop_Send, "m_glowColorOverride", R + (G * 256) + (B * 65536));
+			SetEntPropFloat(iEntity, Prop_Data, "m_flModelScale", 0.3);
+
+			SetEntityRenderMode(iEntity, RENDER_TRANSCOLOR);
+			SetEntityRenderColor(iEntity, 255, 255, 255, 2);
+			SetVariantString("!activator");
+			AcceptEntityInput(iEntity, "SetParent", client);
+			g_iParaEntRef[client] = EntIndexToEntRef(iEntity);
+			g_bParachute[client] = true;
 		}
 
-		if (IsFakeClient(client) || IsHanging(client) || IsIncapacitated(client) || FindAttacker(client) > 0 || IsClientOnLadder(client) || GetClientWaterLevel(client) > Water_Level:WATER_LEVEL_FEET_IN_WATER)
-			return Plugin_Continue;
-		
-		if (ClientData[client].ChosenClass == ATHLETE)
-		{
-			if (buttons & IN_JUMP && flags & FL_ONGROUND )
-			{
-				PushEntity(client, Float:{-90.0,0.0,0.0}, GetConVarFloat(ATHLETE_JUMP_VEL));
-				flags &= ~FL_ONGROUND;
-				SetEntityFlags(client,flags);
+	}	
+	ClientData[client].LastButtons = buttons;
+	
+	return Plugin_Continue;
+}
 
-			}
-
-			if(parachuteEnabled.BoolValue == false) return Plugin_Continue;
-
-			if(g_bParachute[client])
-			{
-				if(!(buttons & IN_USE) || !IsPlayerAlive(client))
-				{
-					DisableParachute(client);
-					return Plugin_Continue;
-				}
-
-				float fVel[3];
-				GetEntDataVector(client, g_iVelocity, fVel);
-
-				if(fVel[2] >= 0.0)
-				{
-					DisableParachute(client);
-					return Plugin_Continue;
-				}
-
-				if(GetEntityFlags(client) & FL_ONGROUND)
-				{
-					DisableParachute(client);
-					return Plugin_Continue;
-				}
-				
-				float fOldSpeed = fVel[2];
-
-				if(fVel[2] < 100.0 * -1.0) fVel[2] = 100.0 * -1.0;
-
-				if(fOldSpeed != fVel[2])
-					TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, fVel);
-			}
-			else
-			{
-				if(!(buttons & IN_USE) || !IsPlayerAlive(client))
-					return Plugin_Continue;
-
-				if(GetEntityFlags(client) & FL_ONGROUND)
-					return Plugin_Continue;
-
-				float fVel[3];
-				GetEntDataVector(client, g_iVelocity, fVel);
-
-				if(fVel[2] >= 0.0)
-					return Plugin_Continue;
-
-				int iEntity = CreateEntityByName("prop_dynamic_override"); 
-				DispatchKeyValue(iEntity, "model", g_bLeft4Dead2 ? g_sModels[0] : g_sModels[1]);
-				DispatchSpawn(iEntity);
-				
-				SetEntityMoveType(iEntity, MOVETYPE_NOCLIP);
-
-				float ParachutePos[3], ParachuteAng[3];
-				GetClientAbsOrigin(client, ParachutePos);
-				GetClientAbsAngles(client, ParachuteAng);
-				ParachutePos[2] += 80.0;
-				ParachuteAng[0] = 0.0;
-
-				TeleportEntity(iEntity, ParachutePos, ParachuteAng, NULL_VECTOR);
-				
-				int R = GetRandomInt(0, 255), G = GetRandomInt(0, 255), B = GetRandomInt(0, 255); 
-				SetEntProp(iEntity, Prop_Send, "m_nGlowRange", 1000);
-				SetEntProp(iEntity, Prop_Send, "m_iGlowType", 3);
-				SetEntProp(iEntity, Prop_Send, "m_glowColorOverride", R + (G * 256) + (B * 65536));
-				SetEntPropFloat(iEntity, Prop_Data, "m_flModelScale", 0.3);
-
-				SetEntityRenderMode(iEntity, RENDER_TRANSCOLOR);
-				SetEntityRenderColor(iEntity, 255, 255, 255, 2);
-				SetVariantString("!activator");
-				AcceptEntityInput(iEntity, "SetParent", client);
-				g_iParaEntRef[client] = EntIndexToEntRef(iEntity);
-				g_bParachute[client] = true;
-			}
-
-		}	
-		ClientData[client].LastButtons = buttons;
-		
+public Action Timer_Parachute( Handle timer, any iEntity)
+{
+	int iParachute = EntRefToEntIndex(iEntity);
+	if (IsValidEntity(iParachute))
+	{
+		RotateParachute(iParachute, 100.0, 1);
 		return Plugin_Continue;
 	}
+	return Plugin_Stop;
+}
 
-	public Action Timer_Parachute( Handle timer, any iEntity)
+public void RotateParachute(int index, float value, int axis)
+{
+	if (IsValidEntity(index))
 	{
-		int iParachute = EntRefToEntIndex(iEntity);
-		if (IsValidEntity(iParachute))
-		{
-			RotateParachute(iParachute, 100.0, 1);
-			return Plugin_Continue;
-		}
-		return Plugin_Stop;
+		float s_rotation[3];
+		GetEntPropVector(index, Prop_Data, "m_angRotation", s_rotation);
+		s_rotation[axis] += value;
+		TeleportEntity( index, NULL_VECTOR, s_rotation, NULL_VECTOR);
+	}
+}
+
+public void DisableParachute(int client)
+{
+	int iEntity = EntRefToEntIndex(g_iParaEntRef[client]);
+	if(iEntity != INVALID_ENT_REFERENCE)
+	{
+		AcceptEntityInput(iEntity, "ClearParent");
+		AcceptEntityInput(iEntity, "kill");
 	}
 
-	public void RotateParachute(int index, float value, int axis)
+	ParachuteDrop(client);
+	g_bParachute[client] = false;
+	g_iParaEntRef[client] = INVALID_ENT_REFERENCE;
+}
+
+public void ParachuteDrop(int client)
+{
+	if (!IsClientInGame(client))
+	return;
+	if( !g_bLeft4Dead2 ) StopSound(client, SNDCHAN_STATIC, SOUND_HELICOPTER);	
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+// Invisibility
+///////////////////////////////////////////////////////////////////////////////////
+
+public bool:TraceFilter(entity, contentsMask, any:client)
+{
+	if( entity == client )
+	return false;
+	return true;
+}
+
+public bool:IsPlayerHidden(client) 
+{
+	if (ClientData[client].ChosenClass == SABOTEUR && (GetGameTime() - ClientData[client].HideStartTime) >= (GetConVarFloat(SABOTEUR_INVISIBLE_TIME))) 
 	{
-		if (IsValidEntity(index))
-		{
-			float s_rotation[3];
-			GetEntPropVector(index, Prop_Data, "m_angRotation", s_rotation);
-			s_rotation[axis] += value;
-			TeleportEntity( index, NULL_VECTOR, s_rotation, NULL_VECTOR);
-		}
-	}
-
-	public void DisableParachute(int client)
-	{
-		int iEntity = EntRefToEntIndex(g_iParaEntRef[client]);
-		if(iEntity != INVALID_ENT_REFERENCE)
-		{
-			AcceptEntityInput(iEntity, "ClearParent");
-			AcceptEntityInput(iEntity, "kill");
-		}
-
-		ParachuteDrop(client);
-		g_bParachute[client] = false;
-		g_iParaEntRef[client] = INVALID_ENT_REFERENCE;
-	}
-
-	public void ParachuteDrop(int client)
-	{
-		if (!IsClientInGame(client))
-			return;
-		if( !g_bLeft4Dead2 ) StopSound(client, SNDCHAN_STATIC, SOUND_HELICOPTER);	
-	}
-
-	///////////////////////////////////////////////////////////////////////////////////
-	// Invisibility
-	///////////////////////////////////////////////////////////////////////////////////
-
-	public bool:TraceFilter(entity, contentsMask, any:client)
-	{
-		if( entity == client )
-			return false;
 		return true;
 	}
+	return false;
+}
 
-	public bool:IsPlayerHidden(client) 
-	{
-		if (ClientData[client].ChosenClass == SABOTEUR && (GetGameTime() - ClientData[client].HideStartTime) >= (GetConVarFloat(SABOTEUR_INVISIBLE_TIME))) 
-		{
-			return true;
-		}
-		return false;
-	}
-
-	public Action:Hook_SetTransmit(entity, client) 
-	{ 
-		if (DEBUG_MODE) {
+public Action:Hook_SetTransmit(entity, client) 
+{ 
+	if (DEBUG_MODE) {
 		//	PrintToChatAll("client %i entity %i, client is %s", client, entity, g_bHide[client] ? "hidden" : "not hidden");
+	}
+	return !(entity < MAXPLAYERS && g_bHide[entity] == true && client != entity) ? Plugin_Continue : Plugin_Handled; 
+}
+
+public bool IsPlayerVisible(client) {
+	return g_bHide[client] ? true:false;
+}
+
+public Action:HidePlayer(client)
+{
+	g_bHide[client] = !g_bHide[client];
+	PrintHintText(client, "You are %s", g_bHide[client] ? "invisible" : "visible again");
+	return Plugin_Handled;
+}
+
+public Action:UnhidePlayer(client)
+{
+	if (g_bHide[client] == true) HidePlayer(client);
+	g_bHide[client] = false;
+}
+
+public Action:HideCommand(client, args)
+{
+	if (isAdmin(client)) {
+
+		new String:str[32];
+		new type=GetCmdArg(1, str, 32);
+		if(type==0) {
 		}
-		return !(entity < MAXPLAYERS && g_bHide[entity] == true && client != entity) ? Plugin_Continue : Plugin_Handled; 
-	}
-
-	public bool IsPlayerVisible(client) {
-		return g_bHide[client] ? true:false;
-	}
-
-	public Action:HidePlayer(client)
-	{
-		g_bHide[client] = !g_bHide[client];
-		PrintHintText(client, "You are %s", g_bHide[client] ? "invisible" : "visible again");
-		
-		return Plugin_Handled;
-	}
-	public Action:UnhidePlayer(client)
-	{
-		g_bHide[client] = false;
-	}
-	public Action:HideCommand(client, args)
-	{
-		if (isAdmin(client)) {
-
-			new String:str[32];
-			new type=GetCmdArg(1, str, 32);
-			if(type==0) {
+		else
+		{
+			int c = StringToInt(str);
+			if (c || IsValidEntity(c) || IsClientInGame(c)){
+				client = c;					
 			}
-			else
-			{
-				int c = StringToInt(str);
-				if (c || IsValidEntity(c) || IsClientInGame(c)){
-					client = c;					
-				}
-			}			
-			HidePlayer(client);
-		}
-		return Plugin_Handled;
+		}			
+		HidePlayer(client);
 	}
+	
+	return Plugin_Handled;
+}
