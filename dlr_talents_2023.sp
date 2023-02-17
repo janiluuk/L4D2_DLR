@@ -767,10 +767,8 @@ public Action:TimerThink(Handle:hTimer, any:client)
 
 				if (iDropTime < GetConVarInt(SABOTEUR_BOMB_ACTIVATE)) {
 
-					if (BombHintTimestamp != iDropTime) {
 						PrintHintText(client, "Mine is arming in %i seconds", client, GetConVarInt(SABOTEUR_BOMB_ACTIVATE) - iDropTime);
-						BombHintTimestamp = iDropTime;
-					}
+					
 				}
 				else if (iDropTime == GetConVarInt(SABOTEUR_BOMB_ACTIVATE)) {
 										
@@ -785,11 +783,12 @@ public Action:TimerThink(Handle:hTimer, any:client)
 			{
 
 				float hidingTime = GetGameTime() - ClientData[client].HideStartTime;
-				SetEntDataFloat(client, g_ioLMV, 1.8, true);
 
 				if (hidingTime >= GetConVarFloat(SABOTEUR_INVISIBLE_TIME)) {
 					if (InvisibilityTimestamp != RoundToFloor(hidingTime) && InvisibilityHint == false) 
 					{
+						SetEntDataFloat(client, g_ioLMV, 1.8, true);
+
 						HidePlayer(client);
 
 						//SetEntityRenderFx(client, RENDERFX_PULSE_SLOW);
@@ -813,8 +812,9 @@ public Action:TimerThink(Handle:hTimer, any:client)
 				{
 					UnhidePlayer(client);
 					set_rendering(client);
-					SetEntDataFloat(client, g_ioLMV, 1.0, true);
 				}
+				SetEntDataFloat(client, g_ioLMV, 1.0, true);
+
 				InvisibilityHint = false;
 			}
 			
@@ -936,7 +936,7 @@ public void useSpecialSkill(client,skillName)
 }
 
 public bool canUseSpecialSkill(client, char[] pendingMessage)
-{
+{	
 	new Float:fCanDropTime = (GetGameTime() - ClientData[client].LastDropTime);
 	new bool:CanDrop = (fCanDropTime >= ClientData[client].SpecialDropInterval);
 	char pendMsg[128];
@@ -1836,7 +1836,7 @@ public Action:TimerDetectHealthChanges(Handle:hTimer, any:client)
 					new newHp = GetClientHealth(i);
 
 					new totalHp = newHp + TempHealth;
-					GlowPlayer(i, "Pink");
+					GlowPlayer(i, "Orange", Fx:FxGlowShell);
 					new Handle:hPack = CreateDataPack();
 					WritePackCell(hPack, i);
 					WritePackCell(hPack, totalHp);
@@ -2325,6 +2325,7 @@ public DropMineEntity(Float:pos[3], int index)
 	SetEntProp(entity, Prop_Send, "m_iGlowType", 2);
 	SetEntProp(entity, Prop_Send, "m_glowColorOverride", GetColor("255 0 0"));
 	SetEntProp(entity, Prop_Send, "m_nGlowRange", 520);
+	SetEntProp(entity, Prop_Data, "m_iHammerID", 1078682);
 	SetEntProp(entity, Prop_Data, "m_usSolidFlags", 152);
 	SetEntProp(entity, Prop_Data, "m_CollisionGroup", 1);
 	SetEntityMoveType(entity, MOVETYPE_NONE);
@@ -2424,7 +2425,7 @@ public Action:TimerCheckBombSensors(Handle:hTimer, Handle:hPack)
 				}
 				else if (GetClientTeam(client) == 2) {
 					if (!mineWarning[client] || mineWarning[client] < (RoundToFloor(GetGameTime()) + 5)) {
-						PrintHintText(client, "Warning! You are nearby armed mine. Infected will blow it up");
+						PrintHintText(client, "Warning! You are nearby armed mine.");
 						mineWarning[client] = RoundToFloor(GetGameTime());
 					}
 				}
@@ -2552,6 +2553,8 @@ stock CreateExplosion(Float:expPos[3], attacker = 0, bool:panic = true)
 	DispatchKeyValue(exEntity, "iMagnitude", "150");
 	DispatchKeyValue(exEntity, "iRadiusOverride", sRadius);
 	DispatchKeyValue(exEntity, "spawnflags", "828");
+	SetEntProp(exEntity, Prop_Data, "m_iHammerID", 1078682);	
+
 	DispatchSpawn(exEntity);
 	TeleportEntity(exEntity, expPos, NULL_VECTOR, NULL_VECTOR);
 	
@@ -3579,6 +3582,8 @@ public Action:HidePlayer(client)
 }
 public Action:UnhidePlayer(client)
 {
+	if (g_bHide[client] == true) HidePlayer(client);
+
 	g_bHide[client] = false;
 }
 public Action:HideCommand(client, args)
