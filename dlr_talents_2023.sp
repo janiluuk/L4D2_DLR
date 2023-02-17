@@ -537,17 +537,6 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	return APLRes_Success;
 }
 
-public Native_GetPlayerClassName(Handle:plugin, numParams)
-{
-	new client = GetNativeCell(1);
-
-	if (client < 1 || client > MaxClients)
-	{
-		return ThrowNativeError(SP_ERROR_NATIVE, "Invalid client index (%d)", client);
-	}
-	return ClientData[client].ChosenClass;
-}
-
 // ====================================================================================================
 //					L4D2 - F-18 AIRSTRIKE
 // ====================================================================================================
@@ -609,7 +598,7 @@ public void OnLibraryAdded(const char[] sName)
 	}
 	else if( g_bLeft4Dead2 && strcmp(sName, "l4d2_airstrike") == 0 )
 	{
-		g_bAirstrike = true;1
+		g_bAirstrike = true;
 		// Assuming valid for late load
 		if( g_bLateLoad )
 		g_bAirstrikeValid = true;
@@ -627,6 +616,7 @@ public void OnLibraryRemoved(const char[] sName)
 // ====================================================================================================
 //		Events & Timers
 // ====================================================================================================
+
 public OnMapStart()
 {
 	// Sounds
@@ -643,6 +633,7 @@ public OnMapStart()
 	g_HaloSprite = PrecacheModel("materials/sprites/glow01.vmt");
 	PrecacheModel(ENGINEER_MACHINE_GUN);
 	PrecacheModel(AMMO_PILE);
+
 	// Particles
 	PrecacheParticle(EXPLOSION_PARTICLE);
 	PrecacheParticle(EXPLOSION_PARTICLE2);
@@ -657,10 +648,11 @@ public OnMapStart()
 	ClassHint = false;
 
 	for (int i = 0; i < 2; i++)
-	PrecacheModel(g_sModels[i]);
+		PrecacheModel(g_sModels[i]);
 
 	for (int i = 0; i < MAXPLAYERS +1; i++)
-	g_bHide[i] = false;
+		g_bHide[i] = false;
+		
 	g_iShovePenalty = FindSendPropInfo("CTerrorPlayer", "m_iShovePenalty");
 }
 
@@ -951,40 +943,6 @@ public bool canUseSpecialSkill(client, char[] pendingMessage)
 	return true;
 }
 
-public void CreateAirStrike(int client) {
-	
-	float vPos[3];
-
-	if (SetClientLocation(client, vPos)) {
-		char color[12];
-
-		int entity = CreateEntityByName("info_particle_system");
-		TeleportEntity(entity, vPos, NULL_VECTOR, NULL_VECTOR);
-		DispatchKeyValue(entity, "effect_name", BOMB_GLOW);
-		DispatchSpawn(entity);
-		DispatchSpawn(entity);
-		ActivateEntity(entity);
-		AcceptEntityInput(entity, "start");
-
-		CreateBeamRing(entity, { 255, 0, 255, 255 },0.1, 180.0, 3);		
-		PrintHintTextToAll("%N ordered airstrike, take cover!", client);
-		GetConVarString(SABOTEUR_ACTIVE_BOMB_COLOR, color, sizeof(color));
-		SetupPrjEffects(entity, vPos, color); // Red
-
-		EmitSoundToAll(SOUND_DROP_BOMB);
-
-		new Handle:pack = CreateDataPack();
-		WritePackCell(pack, client);
-		WritePackFloat(pack, vPos[0]);
-		WritePackFloat(pack, vPos[1]);
-		WritePackFloat(pack, vPos[2]);
-		WritePackFloat(pack, GetGameTime());
-		WritePackCell(pack, entity);									
-		CreateTimer(1.0, TimerAirstrike, pack, TIMER_FLAG_NO_MAPCHANGE ); 	
- 		CreateTimer(10.0, DeleteParticles, entity, TIMER_FLAG_NO_MAPCHANGE ); 													
-	} 
-}
-
 stock SetupProgressBar(client, Float:time)
 {
 	SetEntPropFloat(client, Prop_Send, "m_flProgressBarStartTime", GetGameTime());
@@ -999,6 +957,7 @@ stock KillProgressBar(client)
 
 new String:Gauge1[2] = "-";
 new String:Gauge3[2] = "#";
+
 public ShowBar(client, String:msg[], Float:pos, Float:max)
 {
 	new i;
@@ -1115,6 +1074,18 @@ public Action:Event_LeftStartArea(Handle:event, const String:name[], bool:dontBr
 	PrintToChatAll("%sPlayers left safe area, classes now locked!",PRINT_PREFIX);	
 }
 
+public Event_PlayerTeam(Handle:hEvent, String:sName[], bool:bDontBroadcast)
+{
+	new client = GetClientOfUserId(GetEventInt(hEvent, "userid"));
+	new team = GetEventInt(hEvent, "team");
+	
+	if (team == 2 && LastClassConfirmed[client] != 0)
+	{
+		ClientData[client].ChosenClass = LastClassConfirmed[client];
+		PrintToChat(client, "You are currently a \x04%s", MENU_OPTIONS[LastClassConfirmed[client]]);
+	}
+}
+
 ///////////////////////////////////////////////////////////////////////////////////
 // Class selections
 ///////////////////////////////////////////////////////////////////////////////////
@@ -1128,18 +1099,6 @@ public Action:CmdClassInfo(client, args)
 	PrintToChat(client,"\x05Commando\x01 = Has fast reload, deals extra damage");
 	PrintToChat(client,"\x05Engineer\x01 = Drops auto turrets and ammo");
 	PrintToChat(client,"\x05Brawler\x01 = Has Lots of health");	
-}
-
-public Event_PlayerTeam(Handle:hEvent, String:sName[], bool:bDontBroadcast)
-{
-	new client = GetClientOfUserId(GetEventInt(hEvent, "userid"));
-	new team = GetEventInt(hEvent, "team");
-	
-	if (team == 2 && LastClassConfirmed[client] != 0)
-	{
-		ClientData[client].ChosenClass = LastClassConfirmed[client];
-		PrintToChat(client, "You are currently a \x04%s", MENU_OPTIONS[LastClassConfirmed[client]]);
-	}
 }
 
 public Action:CreatePlayerClassMenuDelay(Handle:hTimer, any:client)
@@ -1346,21 +1305,6 @@ public Action:CmdClassMenu(client, args)
 	CreatePlayerClassMenu(client);
 }
 
-public int CountPlayersWithClass( class ) {
-	new count = 0;
-
-	for (new i = 1; i <= MaxClients; i++)
-	{
-		if (!IsClientInGame(i) || !IsPlayerAlive(i))
-		continue;
-
-		if(ClientData[i].ChosenClass == class)
-		count++;
-	}
-
-	return count;
-}
-
 public int GetMaxWithClass( class ) {
 	switch(class) {
 		case SOLDIER:
@@ -1380,6 +1324,17 @@ public int GetMaxWithClass( class ) {
 		default:
 		return -1;
 	}
+}
+
+public Native_GetPlayerClassName(Handle:plugin, numParams)
+{
+	new client = GetNativeCell(1);
+
+	if (client < 1 || client > MaxClients)
+	{
+		return ThrowNativeError(SP_ERROR_NATIVE, "Invalid client index (%d)", client);
+	}
+	return ClientData[client].ChosenClass;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////
@@ -1808,14 +1763,12 @@ public Action:TimerDetectHealthChanges(Handle:hTimer, any:client)
 
 					Format(sMessage, sizeof(sMessage), "%N is healing you!", client);
 
-
 					ShowBar(i, sMessage, float(GetClientHealth(i)), float(MaxHealth));
 					SetEntityHealth(i, GetClientHealth(i) + GetConVarInt(MEDIC_HEALTH_VALUE));
 					SetClientTempHealth(i, TempHealth);
 					
 					// post-heal set values
 					new newHp = GetClientHealth(i);
-
 					new totalHp = newHp + TempHealth;
 					GlowPlayer(i, "Orange", FX:FxGlowShell);
 					new Handle:hPack = CreateDataPack();
@@ -2219,41 +2172,38 @@ public Action:OnTakeDamagePre(victim, &attacker, &inflictor, &Float:damage, &dam
 	return Plugin_Continue;
 }
 
-// Get Position on map
+public void CreateAirStrike(int client) {
+	
+	float vPos[3];
 
-public bool SetClientLocation(int client, float vPos[3])
-{
-	GetClientEyePosition(client, vPos);
-	static float vAng[3];
-	GetClientEyeAngles(client, vAng);
-	static Handle trace;
-	trace = TR_TraceRayFilterEx(vPos, vAng, MASK_SHOT, RayType_Infinite, ExcludeSelf_Filter, client);
+	if (SetClientLocation(client, vPos)) {
+		char color[12];
 
-	if( TR_DidHit(trace) )
-	{
-		TR_GetEndPosition(vPos, trace);
+		int entity = CreateEntityByName("info_particle_system");
+		TeleportEntity(entity, vPos, NULL_VECTOR, NULL_VECTOR);
+		DispatchKeyValue(entity, "effect_name", BOMB_GLOW);
+		DispatchSpawn(entity);
+		DispatchSpawn(entity);
+		ActivateEntity(entity);
+		AcceptEntityInput(entity, "start");
 
-		static float vDir[3];
-		GetAngleVectors(vAng, vDir, NULL_VECTOR, NULL_VECTOR);
-		vPos[0] -= vDir[0] * 10;
-		vPos[1] -= vDir[1] * 10;
-		vPos[2] -= vDir[2] * 10;
-	}
-	else
-	{
-		delete trace;
-		return false;
-	}
+		CreateBeamRing(entity, { 255, 0, 255, 255 },0.1, 180.0, 3);		
+		PrintHintTextToAll("%N ordered airstrike, take cover!", client);
+		GetConVarString(SABOTEUR_ACTIVE_BOMB_COLOR, color, sizeof(color));
+		SetupPrjEffects(entity, vPos, color); // Red
 
-	delete trace;
-	return true;
-}
+		EmitSoundToAll(SOUND_DROP_BOMB);
 
-public bool ExcludeSelf_Filter(int entity, int contentsMask, any client)
-{
-	if( entity == client )
-	return false;
-	return true;
+		new Handle:pack = CreateDataPack();
+		WritePackCell(pack, client);
+		WritePackFloat(pack, vPos[0]);
+		WritePackFloat(pack, vPos[1]);
+		WritePackFloat(pack, vPos[2]);
+		WritePackFloat(pack, GetGameTime());
+		WritePackCell(pack, entity);									
+		CreateTimer(1.0, TimerAirstrike, pack, TIMER_FLAG_NO_MAPCHANGE ); 	
+ 		CreateTimer(10.0, DeleteParticles, entity, TIMER_FLAG_NO_MAPCHANGE ); 													
+	} 
 }
 
 ///////////////////////////////////////////////////////////////////////////////////
@@ -2520,7 +2470,7 @@ stock CreateExplosion(Float:expPos[3], attacker = 0, bool:panic = true)
 	DispatchKeyValue(exTrace, "effect_name", EFIRE_PARTICLE);
 	DispatchSpawn(exTrace);
 	ActivateEntity(exTrace);
-	TeleportEntity(exTrace, expPos, NULL_VECTOR, NULL_VECTOR)
+	TeleportEntity(exTrace, expPos, NULL_VECTOR, NULL_VECTOR);
 	
 	//Set up explosion entity
 	DispatchKeyValue(exEntity, "fireballsprite", "sprites/muzzleflash4.vmt");
@@ -3166,6 +3116,43 @@ int DisplayParticle(int target, const char[] sParticle, const float vPos[3], con
 	return entity;
 }
 
+// Get Position on map
+
+public bool SetClientLocation(int client, float vPos[3])
+{
+	GetClientEyePosition(client, vPos);
+	static float vAng[3];
+	GetClientEyeAngles(client, vAng);
+	static Handle trace;
+	trace = TR_TraceRayFilterEx(vPos, vAng, MASK_SHOT, RayType_Infinite, ExcludeSelf_Filter, client);
+
+	if( TR_DidHit(trace) )
+	{
+		TR_GetEndPosition(vPos, trace);
+
+		static float vDir[3];
+		GetAngleVectors(vAng, vDir, NULL_VECTOR, NULL_VECTOR);
+		vPos[0] -= vDir[0] * 10;
+		vPos[1] -= vDir[1] * 10;
+		vPos[2] -= vDir[2] * 10;
+	}
+	else
+	{
+		delete trace;
+		return false;
+	}
+
+	delete trace;
+	return true;
+}
+
+public bool ExcludeSelf_Filter(int entity, int contentsMask, any client)
+{
+	if( entity == client )
+	return false;
+	return true;
+}
+
 /**
 * STOCK FUNCTIONS
 */
@@ -3300,6 +3287,21 @@ stock FindAttacker(iClient)
 	
 	iAttacker = 0;
 	return iAttacker;
+}
+
+stock int CountPlayersWithClass( class ) {
+	new count = 0;
+
+	for (new i = 1; i <= MaxClients; i++)
+	{
+		if (!IsClientInGame(i) || !IsPlayerAlive(i))
+		continue;
+
+		if(ClientData[i].ChosenClass == class)
+		count++;
+	}
+
+	return count;
 }
 
 stock PushEntity(client, Float:clientEyeAngle[3], Float:power)
