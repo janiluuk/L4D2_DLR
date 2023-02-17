@@ -51,6 +51,8 @@ native void OnSpecialSkillSuccess(int client, char[] skillName);
  */
 native void OnSpecialSkillFail(int client, char[] skillName, char[] reason);  
 
+native void RegisterDLRSkill(int client, char[] skillName, char[] reason);  
+
 stock char[] Translate(int iClient, const char[] format, any ...)
 {
 	char buffer[192];

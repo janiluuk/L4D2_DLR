@@ -74,6 +74,7 @@ new Handle:g_hSkillMenu = INVALID_HANDLE;
 
 //Forward Handlers
 new Handle:g_hOnSkillSelected = INVALID_HANDLE;
+
 //Player Related Variables
 new g_iPlayerSkill[MAXPLAYERS+1];
 
@@ -132,7 +133,6 @@ enum struct PlayerInfo
 }
 
 PlayerInfo ClientData[MAXPLAYERS+1];
-
 
 // API
 bool g_bLeft4Dead2, g_bLateLoad;
@@ -400,7 +400,7 @@ public OnPluginStart( )
 	g_hSkillArray = CreateArray(16);
     
     //Create a Class Selection forward
-    g_hOnSkillSelected = CreateGlobalForward("DLROnSkillSelected", ET_Event, Param_Cell, Param_Cell);
+    g_hOnSkillSelected = CreateGlobalForward("OnSkillSelected", ET_Event, Param_Cell, Param_Cell);
 
 	// Offsets
 	g_iNPA = FindSendPropInfo("CBaseCombatqWeapon", "m_flNextPrimaryAttack");
@@ -549,7 +549,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	}
 	RegPluginLibrary("dlr_talents_2023");
 	CreateNative("GetPlayerClassName", Native_GetPlayerClassName);
-	CreateNative("RegisterDLRClass", Native_RegisterClass);
+	CreateNative("RegisterDLRSkill", Native_RegisterSkill);
 	CreateNative("OnSpecialSkillSuccess", Native_OnSpecialSkillSuccess);
 	CreateNative("OnSpecialSkillFail", Native_OnSpecialSkillFail);
     CreateNative("GetPlayerSkillID", Native_GetPlayerSkillID);
@@ -565,11 +565,11 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 }
 
 // NATIVES
-public Native_RegisterClass(Handle:plugin, numParams)
+public Native_RegisterSkill(Handle:plugin, numParams)
 {
 	new String:SkillName[32], String:ItemInfo[3];
 
-	if(GetNativeString(1, ClassName, sizeof(ClassName)) == SP_ERROR_NONE)
+	if(GetNativeString(1, SkillName, sizeof(SkillName)) == SP_ERROR_NONE)
 	{
 		if(++g_iSkillCounter <= MAX_CLASSES)
 		{
@@ -1560,8 +1560,8 @@ public Native_GetPlayerSkillName(Handle:plugin, numParams)
 public CreateDLRSkillMenu() {
 
     //Create menu and set properties
-    g_hSkillMenu = CreateMenu(DLRClassMenuHandler);
-    SetMenuTitle(g_hSkillMenu, "Choose class");
+    g_hSkillMenu = CreateMenu(DLRSkillMenuHandler);
+    SetMenuTitle(g_hSkillMenu, "Choose skill");
     SetMenuExitButton(g_hSkillMenu, true);
     
     //Create a Class Selection forward
