@@ -32,9 +32,8 @@ Changes:
 * Warnings for players that go near armed mine
 - Countdown notification before mine becoming armed.
 - Support for multiple types of mines (freeze, vomit, antigravity, black hole), ui missing
-- Engineer, medic and saboteur get countdown for next deployment when trying to deploy too early, and notification if out of supplies.
+- Engineer, medic and saboteur get notification if out of supplies.
 - More helpful class descriptions and help system.
-- Support for external plugins for turret system.
 - Internal turret system fixed
 - Gun reload glitches fixed
 - Invisibility rewrite, it never really worked properly before.
