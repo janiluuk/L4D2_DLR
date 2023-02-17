@@ -13,6 +13,8 @@
  */
 native int:GetPlayerClassName(client);
 
+native void F18_ShowAirstrike(float origin[3], float direction);
+
 /**
  * Called when player changed class
  *
@@ -30,7 +32,26 @@ forward OnPlayerClassChange(client, className, previousClass);
  * @param className      Skill that user just used
  * @noreturn
  */
-forward OnPlayerUsedSpecialSkill(client, skillName, className);  
+native void OnSpecialSkillUse(client, skillName, className);  
+
+/**
+ * Called when player has successfully used special skill
+ *
+ * @param client         The client index of the player playing tetris.
+ * @param className      Skill that user just used
+ * @noreturn
+ */
+native void OnSpecialSkillSuccess(int client, char[] skillName);  
+
+/**
+ * Called when player has successfully used special skill
+ *
+ * @param client         The client index of the player playing tetris.
+ * @param className      Skill that user just used
+ * @param reason         Reason for failure
+ * @noreturn
+ */
+forward OnSpecialSkillFail(int client, char[] skillName, char[] reason);  
 
 stock char[] Translate(int iClient, const char[] format, any ...)
 {

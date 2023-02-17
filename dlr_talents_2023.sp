@@ -67,6 +67,11 @@ static bool:DEBUG_MODE = false;
 new Handle:g_hfwdOnPlayerUsedSpecialSkill;
 new Handle:g_hfwdOnPlayerClassChange;
 
+
+//Class variables
+new Handle:g_hClassArray = INVALID_HANDLE;
+new g_iClassCounter = -1;
+
 // What formatting string to use when printing to the chatbox
 #define PRINT_PREFIX 	"\x05[DLR] \x01" 
 
@@ -379,8 +384,9 @@ public OnPluginStart( )
 {
 	// Api
 	g_hfwdOnPlayerClassChange = CreateGlobalForward("OnPlayerClassChange", ET_Ignore, Param_Cell, Param_Cell, Param_Cell);
-	g_hfwdOnPlayerUsedSpecialSkill = CreateGlobalForward("OnPlayerUsedSpecialSkill", ET_Ignore, Param_Cell, Param_Cell, Param_Cell);
-
+	g_hfwdOnPlayerSpecialSkill = CreateGlobalForward("OnPlayerSpecialSkillUse", ET_Ignore, Param_Cell, Param_Cell, Param_Cell);
+	MarkNativeAsOptional("OnSpecialSkillSuccess");
+	MarkNativeAsOptional("OnSpecialSkillFail");
 	// Offsets
 	g_iNPA = FindSendPropInfo("CBaseCombatWeapon", "m_flNextPrimaryAttack");
 	g_oAW = FindSendPropInfo("CTerrorPlayer", "m_hActiveWeapon");
@@ -528,6 +534,9 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	}
 	RegPluginLibrary("dlr_talents_2023");
 	CreateNative("GetPlayerClassName", Native_GetPlayerClassName);
+	CreateNative("RegisterDLRClass", Native_RegisterClass);
+	CreateNative("OnSpecialSkillSuccess", Native_OnSpecialSkillSuccess);
+	CreateNative("OnSpecialSkillFail", Native_OnSpecialSkillFail);
 
 	MarkNativeAsOptional("DLR_Airstrike");
 	MarkNativeAsOptional("DLR_Multiturret");
@@ -536,6 +545,21 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 
 	g_bLateLoad = late;
 	return APLRes_Success;
+}
+
+// NATIVES
+public Native_RegisterClass(Handle:plugin, numParams)
+{
+	new String:ClassName[32], String:ItemInfo[3];
+
+	if(GetNativeString(1, ClassName, sizeof(ClassName)) == SP_ERROR_NONE)
+	{
+	if(++g_iClassCounter <= MAX_CLASSES)
+	{
+		IntToString(g_iClassCounter, ItemInfo, sizeof(ItemInfo));
+		PushArrayString(g_hClassArray, szClassName);
+		AddMenuItem(g_hClassMenu, ItemInfo, ClassName);
+	return g_iClassCounter;
 }
 
 // ====================================================================================================
@@ -574,6 +598,56 @@ public void F18_OnPluginState(int pluginstate)
 // ====================================================================================================
 //					DLR - Multiturret
 // ====================================================================================================
+
+any Native_OnSpecialSkillSuccess(Handle plugin, int numParams)
+{
+	int client = GetNativeCell(1);
+	if (client < 1 || client > MaxClients)
+	{
+		return ThrowNativeError(SP_ERROR_NATIVE, "Invalid client index (%d)", client);
+	}
+
+	int len;
+	GetNativeStringLength(2, len);
+ 
+	if (len <= 0)
+	{
+		return;
+	}
+ 
+	char[] str = new char[len + 1];
+	GetNativeString(2, str, len + 1);
+	PrintToChat(client, "%s skillname was success!", skillName);
+}
+
+any Native_OnSpecialSkillFail(Handle plugin, int numParams)
+{
+	int client = GetNativeCell(1);
+	if (client < 1 || client > MaxClients)
+	{
+		return ThrowNativeError(SP_ERROR_NATIVE, "Invalid client index (%d)", client);
+	}
+
+	int len;
+	GetNativeStringLength(2, len);
+
+	if (len <= 0)
+	{
+		return;
+	} 
+	char[] name = new char[len + 1];
+	GetNativeString(2, name, len + 1);
+	GetNativeStringLength(3, len);
+	if (len <= 0)
+	{
+		return;
+	}
+
+	char[] reason = new char[len + 1];
+	GetNativeString(3, reason, len + 1);
+	PrintToChat(client, "%s skillname was fail!", name, reason);
+}
+
 
 public void Multiturret_OnPluginState(int pluginstate)
 {
