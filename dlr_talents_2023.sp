@@ -18,7 +18,7 @@
 #tryinclude <MultiTurrets>
 #define REQUIRE_PLUGIN
 #if !defined _DLRCore_included
-native int DLC_GetCurrentClass(int player);
+native int GetCurrentClass(int player);
 #endif
 
 #define PLUGIN_VERSION "1.3"
@@ -122,13 +122,9 @@ enum struct PlayerInfo
 	int SpecialLimit;
 	SpecialSkill SpecialSkill;			
 	char EquippedGun[64];
-
 }
 
 PlayerInfo ClientData[MAXPLAYERS+1];
-
-// Stores client plugin data
-//new ClientData[MAXPLAYERS+1][PLAYERDATA];
 
 // Rapid fire variables
 new g_iRI[MAXPLAYERS+1] = { -1 },
@@ -278,14 +274,12 @@ new Handle:PILLS_HEALTH_BUFFER;
 new Handle:ADRENALINE_DURATION;
 new Handle:ADRENALINE_HEALTH_BUFFER;
 
-
 // Soldier
 new Handle:SOLDIER_FIRE_RATE;
 new Handle:SOLDIER_DAMAGE_REDUCE_RATIO;
 new Handle:SOLDIER_SPEED;
 new Handle:SOLDIER_SHOVE_PENALTY;
 new Handle:SOLDIER_MAX_AIRSTRIKES;
-
 
 // Athlete
 new Handle:ATHLETE_SPEED;
@@ -298,7 +292,6 @@ new Handle:MEDIC_MAX_ITEMS;
 new Handle:MEDIC_HEALTH_INTERVAL;
 new Handle:MEDIC_HEAL_RATIO;
 new Handle:MEDIC_REVIVE_RATIO;
-
 new Handle:MEDIC_MAX_BUILD_RANGE;
 
 // Saboteur
@@ -616,8 +609,7 @@ public void OnLibraryAdded(const char[] sName)
 	}
 	else if( g_bLeft4Dead2 && strcmp(sName, "l4d2_airstrike") == 0 )
 	{
-		g_bAirstrike = true;
-
+		g_bAirstrike = true;1
 		// Assuming valid for late load
 		if( g_bLateLoad )
 		g_bAirstrikeValid = true;
@@ -671,7 +663,6 @@ public OnMapStart()
 	g_bHide[i] = false;
 	g_iShovePenalty = FindSendPropInfo("CTerrorPlayer", "m_iShovePenalty");
 }
-
 
 public void OnMapEnd()
 {
@@ -927,7 +918,6 @@ public Action:TimerThink(Handle:hTimer, any:client)
 // Inform other plugins.
 public void useSpecialSkill(client,skillName)
 {
-
 	Call_StartForward(g_hfwdOnPlayerUsedSpecialSkill);
 	Call_PushCell(client);
 	Call_PushCell(ClientData[client].SpecialSkill);
@@ -985,7 +975,6 @@ public void CreateAirStrike(int client) {
 		EmitSoundToAll(SOUND_DROP_BOMB);
 
 		new Handle:pack = CreateDataPack();
-
 		WritePackCell(pack, client);
 		WritePackFloat(pack, vPos[0]);
 		WritePackFloat(pack, vPos[1]);
@@ -993,8 +982,7 @@ public void CreateAirStrike(int client) {
 		WritePackFloat(pack, GetGameTime());
 		WritePackCell(pack, entity);									
 		CreateTimer(1.0, TimerAirstrike, pack, TIMER_FLAG_NO_MAPCHANGE ); 	
- 		CreateTimer(10.0, DeleteParticles, entity, TIMER_FLAG_NO_MAPCHANGE ); 									
-								
+ 		CreateTimer(10.0, DeleteParticles, entity, TIMER_FLAG_NO_MAPCHANGE ); 													
 	} 
 }
 
@@ -1009,7 +997,6 @@ stock KillProgressBar(client)
 	SetEntPropFloat(client, Prop_Send, "m_flProgressBarStartTime", GetGameTime());
 	SetEntPropFloat(client, Prop_Send, "m_flProgressBarDuration", 0.0);
 }
-
 
 new String:Gauge1[2] = "-";
 new String:Gauge3[2] = "#";
@@ -1032,7 +1019,6 @@ public ShowBar(client, String:msg[], Float:pos, Float:max)
 	/* Display gauge */
 	PrintHintText(client, "%s  %3.0f %\n<< %s >>", msg, GaugeNum, ChargeBar);
 }
-
 
 public ClearCache()
 {
@@ -1072,7 +1058,6 @@ public Event_RoundChange(Handle:event, String:name[], bool:dontBroadcast)
 	
 	RndSession++;
 	RoundStarted = false;
-
 }
 
 public Event_PlayerSpawn(Handle:hEvent, String:sName[], bool:bDontBroadcast)
@@ -1450,7 +1435,6 @@ public CreateDlrMenu(client) {
 	DrawPanelItem(hPanel, "Toggle infected");
 	DrawPanelText(hPanel, " ");
 	DrawPanelItem(hPanel, "Exit");
-	
 	SendPanelToClient(hPanel, client, PanelHandler_DlrMenu, MENU_OPEN_TIME);
 	CloseHandle(hPanel);
 	
@@ -1634,7 +1618,6 @@ public bool:CreatePlayerMedicMenu(client)
 	DrawPanelItem(hPanel, "Adrenaline");
 	DrawPanelItem(hPanel, "Pills");
 	DrawPanelItem(hPanel, "Exit");
-	
 	SendPanelToClient(hPanel, client, PanelHandler_SelectMedicItem, MENU_OPEN_TIME);
 	CloseHandle(hPanel);
 	
@@ -2436,9 +2419,6 @@ public Action:TimerCheckBombSensors(Handle:hTimer, Handle:hPack)
 	return Plugin_Continue;
 }
 
-
-
-
 public Action:timerHurtEntity(Handle:timer, Handle:pack)
 {
 	ResetPack(pack);
@@ -2449,6 +2429,7 @@ public Action:timerHurtEntity(Handle:timer, Handle:pack)
 	CloseHandle(pack);
 	HurtEntity(client, attacker, amount, type);
 }
+
 stock DetonateMolotov(Float:pos[3], owner)
 {
 	pos[2]+=5.0;
@@ -2545,8 +2526,7 @@ stock CreateExplosion(Float:expPos[3], attacker = 0, bool:panic = true)
 	DispatchKeyValue(exTrace, "effect_name", EFIRE_PARTICLE);
 	DispatchSpawn(exTrace);
 	ActivateEntity(exTrace);
-	TeleportEntity(exTrace, expPos, NULL_VECTOR, NULL_VECTOR);
-	
+	TeleportEntity(exTrace, expPos, NULL_VECTOR, NULL_VECTOR)
 	
 	//Set up explosion entity
 	DispatchKeyValue(exEntity, "fireballsprite", "sprites/muzzleflash4.vmt");
@@ -2558,7 +2538,6 @@ stock CreateExplosion(Float:expPos[3], attacker = 0, bool:panic = true)
 	DispatchSpawn(exEntity);
 	TeleportEntity(exEntity, expPos, NULL_VECTOR, NULL_VECTOR);
 	
-
 	//Set up physics movement explosion
 	DispatchKeyValue(exPhys, "radius", sRadius);
 	DispatchKeyValue(exPhys, "magnitude", sPower);
@@ -2567,7 +2546,6 @@ stock CreateExplosion(Float:expPos[3], attacker = 0, bool:panic = true)
 
 	DispatchSpawn(exPhys);
 	TeleportEntity(exPhys, expPos, NULL_VECTOR, NULL_VECTOR);
-	
 	
 	//Set up hurt point
 	DispatchKeyValue(exHurt, "DamageRadius", sRadius);
@@ -2807,11 +2785,12 @@ public Action:TimerStopAndRemoveParticle(Handle:timer, any:entity)
 	{
 		if (BombActive == true) {
 			CreateTimer(5.0, TimerStopAndRemoveParticle, entity, TIMER_FLAG_NO_MAPCHANGE);			
-			} else {
-				AcceptEntityInput(entity, "Kill");
-			}
-		}		
-	}
+		} else {
+			AcceptEntityInput(entity, "Kill");
+		}
+	}		
+}
+
 public Action:TimerStopAndRemoveBombParticle(Handle:timer, Handle:pack)
 {
 	ResetPack(pack);
@@ -2887,7 +2866,6 @@ public Action:TimerDeleteBombs(Handle:timer, Handle:pack)
 		return Plugin_Stop;
 	} 
 	return Plugin_Continue;
-
 }
 
 ///////////////////////////////////////////////////////////////////////////////////	
@@ -3268,7 +3246,6 @@ public Action:TimerSetClientTempHealth(Handle:hTimer, Handle:hPack)
 	SetEntPropFloat(client, Prop_Send, "m_healthBufferTime", GetGameTime());
 }
 
-
 void InputKill(int entity, float time)
 {
 	static char temp[40];
@@ -3288,6 +3265,7 @@ stock bool:IsWitch(client)
 	}
 	return false;
 }
+
 stock IsGhost(client)
 {
 	return GetEntProp(client, Prop_Send, "m_isGhost");
@@ -3577,15 +3555,15 @@ public Action:HidePlayer(client)
 {
 	g_bHide[client] = !g_bHide[client];
 	PrintHintText(client, "You are %s", g_bHide[client] ? "invisible" : "visible again");
-	
 	return Plugin_Handled;
 }
+
 public Action:UnhidePlayer(client)
 {
 	if (g_bHide[client] == true) HidePlayer(client);
-
 	g_bHide[client] = false;
 }
+
 public Action:HideCommand(client, args)
 {
 	if (isAdmin(client)) {
