@@ -24,6 +24,7 @@ Changes:
 - Turrets don't block anymore, so you cannot abuse it by boxing in opponents.
 - Saboteur moves faster when crouched and shows visibility status.
 - Saboteur has visual effect on turning invisible and specific glow.
+- Redefine visual effect for mines, and actually leave a visible mine. 
 - Mines do less damage to survivors. Standing really close to the mine can still incap.
 - Mines do more damage to infected, 1500hp. Some edge over tank
 - Mines glow now so players know to avoid the spot or lure someone to it.
@@ -36,8 +37,6 @@ Changes:
 - Support for external plugins for turret system.
 - Internal turret system fixed
 - Gun reload glitches fixed
-- Mine placement rewrite, now we keep track of the type and index of each mine and their particles, so effects can vary individually.
-- Redefine visual effect for mines, and actually leave a visible mine.
 - Invisibility rewrite, it never really worked properly before.
 - Wipe out all infected from admin menu
 - Debug mode for admins
@@ -64,3 +63,40 @@ Roadmap
 
 
 See https://forums.alliedmods.net/showthread.php?t=273312 for more info
+
+## Adding a plugin
+Adding new plugin requires including dlr_core.sp file, and implementing following methods:
+```
+/**
+ * Called when player changed class
+ *
+ * @param client         The client index of the player playing tetris.
+ * @param className      Classname that user just selected
+ * @param previousClass  Previous class of user
+ * @noreturn
+ */
+forward OnPlayerClassChange(client, className, previousClass);  
+
+/**
+ * Called when player uses special skill
+ *
+ * @param client         The client index of the player playing tetris.
+ * @param className      Skill that user just used
+ * @noreturn
+ */
+forward OnPlayerUsedSpecialSkill(client, skillName, className);  
+``` 
+
+Native methods that are available:
+
+```
+/**
+ * Get player classname
+ *
+ * @param client  Client index.
+ * @return        Classname
+ */
+native int:GetPlayerClassName(client);
+``` 
+
+See F18 implementation in the code as an example.
