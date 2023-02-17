@@ -385,8 +385,6 @@ public OnPluginStart( )
 	// Api
 	g_hfwdOnPlayerClassChange = CreateGlobalForward("OnPlayerClassChange", ET_Ignore, Param_Cell, Param_Cell, Param_Cell);
 	g_hfwdOnPlayerSpecialSkill = CreateGlobalForward("OnPlayerSpecialSkillUse", ET_Ignore, Param_Cell, Param_Cell, Param_Cell);
-	MarkNativeAsOptional("OnSpecialSkillSuccess");
-	MarkNativeAsOptional("OnSpecialSkillFail");
 	// Offsets
 	g_iNPA = FindSendPropInfo("CBaseCombatWeapon", "m_flNextPrimaryAttack");
 	g_oAW = FindSendPropInfo("CTerrorPlayer", "m_hActiveWeapon");
@@ -618,7 +616,10 @@ any Native_OnSpecialSkillSuccess(Handle plugin, int numParams)
 	char[] str = new char[len + 1];
 	GetNativeString(2, str, len + 1);
 	PrintToChat(client, "%s skillname was success!", skillName);
+	ClientData[client].SpecialsUsed++;
+	ClientData[client].LastDropTime = GetGameTime();	
 }
+
 
 any Native_OnSpecialSkillFail(Handle plugin, int numParams)
 {
