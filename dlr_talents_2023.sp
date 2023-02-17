@@ -67,11 +67,17 @@ static bool:DEBUG_MODE = false;
 new Handle:g_hfwdOnPlayerUsedSpecialSkill;
 new Handle:g_hfwdOnPlayerClassChange;
 
+new g_iSkillCounter = -1;
+new Handle:g_hSkillArray = INVALID_HANDLE;
+//Menu Handlers
+new Handle:g_hSkillMenu = INVALID_HANDLE;
+
+//Forward Handlers
+new Handle:g_hOnSkillSelected = INVALID_HANDLE;
+//Player Related Variables
+new g_iPlayerSkill[MAXPLAYERS+1];
 
 //Class variables
-new Handle:g_hClassArray = INVALID_HANDLE;
-new g_iClassCounter = -1;
-
 // What formatting string to use when printing to the chatbox
 #define PRINT_PREFIX 	"\x05[DLR] \x01" 
 
@@ -383,11 +389,21 @@ native void DLR_Multiturret(int client, int type);
 public OnPluginStart( )
 {
 	// Api
-	
+
 	g_hfwdOnPlayerClassChange = CreateGlobalForward("OnPlayerClassChange", ET_Ignore, Param_Cell, Param_Cell, Param_Cell);
 	g_hfwdOnPlayerUsedSpecialSkill = CreateGlobalForward("OnPlayerSpecialSkillUse", ET_Ignore, Param_Cell, Param_Cell);
+
+    //Create menu and set properties
+    g_hSkillMenu = CreateDLRSkillMenu(DLRSkillMenuHandler);
+    SetMenuTitle(g_hSkillMenu, "Registered classes");
+    SetMenuExitButton(g_hSkillMenu, true);
+	g_hSkillArray = CreateArray(16);
+    
+    //Create a Class Selection forward
+    g_hOnSkillSelected = CreateGlobalForward("DLROnSkillSelected", ET_Event, Param_Cell, Param_Cell);
+
 	// Offsets
-	g_iNPA = FindSendPropInfo("CBaseCombatWeapon", "m_flNextPrimaryAttack");
+	g_iNPA = FindSendPropInfo("CBaseCombatqWeapon", "m_flNextPrimaryAttack");
 	g_oAW = FindSendPropInfo("CTerrorPlayer", "m_hActiveWeapon");
 	g_ioLMV = FindSendPropInfo("CTerrorPlayer", "m_flLaggedMovementValue");
 	g_ioPR = FindSendPropInfo("CBaseCombatWeapon", "m_flPlaybackRate");
@@ -536,6 +552,8 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	CreateNative("RegisterDLRClass", Native_RegisterClass);
 	CreateNative("OnSpecialSkillSuccess", Native_OnSpecialSkillSuccess);
 	CreateNative("OnSpecialSkillFail", Native_OnSpecialSkillFail);
+    CreateNative("GetPlayerSkillID", Native_GetPlayerSkillID);
+    CreateNative("GetPlayerSkillName", Native_GetPlayerSkillName);
 
 	MarkNativeAsOptional("DLR_Airstrike");
 	MarkNativeAsOptional("DLR_Multiturret");
@@ -549,16 +567,16 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 // NATIVES
 public Native_RegisterClass(Handle:plugin, numParams)
 {
-	new String:ClassName[32], String:ItemInfo[3];
+	new String:SkillName[32], String:ItemInfo[3];
 
 	if(GetNativeString(1, ClassName, sizeof(ClassName)) == SP_ERROR_NONE)
 	{
-		if(++g_iClassCounter <= MAX_CLASSES)
+		if(++g_iSkillCounter <= MAX_CLASSES)
 		{
-			IntToString(g_iClassCounter, ItemInfo, sizeof(ItemInfo));
-			PushArrayString(g_hClassArray, ClassName);
-			AddMenuItem(g_hClassMenu, ItemInfo, ClassName);
-			return g_iClassCounter;
+			IntToString(g_iSkillCounter, ItemInfo, sizeof(ItemInfo));
+			PushArrayString(g_hSkillArray, SkillName);
+			AddMenuItem(g_hSkillMenu, ItemInfo, SkillName);
+			return g_iSkillCounter;
 		}
 	}
 }
@@ -1461,6 +1479,7 @@ public CreateDlrMenu(client) {
 	SetPanelTitle(hPanel, "Functions:");
 	DrawPanelItem(hPanel, "Toggle Debug Messages");
 	DrawPanelItem(hPanel, "Toggle infected");
+	DrawPanelItem(hPanel, "List registered skills");
 	DrawPanelText(hPanel, " ");
 	DrawPanelItem(hPanel, "Exit");
 	SendPanelToClient(hPanel, client, PanelHandler_DlrMenu, MENU_OPEN_TIME);
@@ -1507,8 +1526,62 @@ public PanelHandler_DlrMenu(Handle:menu, MenuAction:action, client, param)
 				}
 				PrintHintText(client,"Infected are now %s", disableInfected ? "DISABLED" : "ENABLED");
 			}
+			if( param == 3)
+			{
+		        DisplayMenu(g_hSkillMenu, client, MENU_TIME_FOREVER);
+			}
 		}
 	}
+}
+
+////////////////////
+/// Skill register / debug menu
+////////////////////
+public Native_GetPlayerSkillID(Handle:plugin, numParams)
+{
+    new iClient = GetNativeCell(1);
+    
+    return g_iPlayerSkill[iClient];
+}
+
+public Native_GetPlayerSkillName(Handle:plugin, numParams)
+{
+    new iClient = GetNativeCell(1);
+    new iSize = GetNativeCell(3);
+    new String:szSkillName[32];
+    GetArrayString(g_hSkillArray, g_iPlayerSkill[iClient], szSkillName, sizeof(szSkillName));
+    
+    if(SetNativeString(2, szSkillName, iSize))
+        return true;
+    
+    return false;
+} 
+
+public CreateDLRSkillMenu() {
+
+    //Create menu and set properties
+    g_hSkillMenu = CreateMenu(DLRClassMenuHandler);
+    SetMenuTitle(g_hSkillMenu, "Choose class");
+    SetMenuExitButton(g_hSkillMenu, true);
+    
+    //Create a Class Selection forward
+    g_hOnSkillSelected = CreateGlobalForward("OnSkillSelected", ET_Event, Param_Cell, Param_Cell);
+
+}
+public DLRSkillMenuHandler(Handle:hMenu, MenuAction:action, iClient, iSkillSelection)
+{
+    if(action == MenuAction_Select)
+    {
+        /* Start Function Call */
+        Call_StartForward(g_hOnSkillSelected);
+        
+        /* Add details to Function Call */
+        Call_PushCell(iClient);
+        Call_PushCell(iSkillSelection);
+        
+        /* End Function Call */
+        Call_Finish();
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////
