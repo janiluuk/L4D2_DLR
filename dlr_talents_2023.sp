@@ -552,12 +552,14 @@ public Native_RegisterClass(Handle:plugin, numParams)
 
 	if(GetNativeString(1, ClassName, sizeof(ClassName)) == SP_ERROR_NONE)
 	{
-	if(++g_iClassCounter <= MAX_CLASSES)
-	{
-		IntToString(g_iClassCounter, ItemInfo, sizeof(ItemInfo));
-		PushArrayString(g_hClassArray, szClassName);
-		AddMenuItem(g_hClassMenu, ItemInfo, ClassName);
-	return g_iClassCounter;
+		if(++g_iClassCounter <= MAX_CLASSES)
+		{
+			IntToString(g_iClassCounter, ItemInfo, sizeof(ItemInfo));
+			PushArrayString(g_hClassArray, ClassName);
+			AddMenuItem(g_hClassMenu, ItemInfo, ClassName);
+			return g_iClassCounter;
+		}
+	}
 }
 
 // ====================================================================================================
@@ -631,24 +633,21 @@ any Native_OnSpecialSkillFail(Handle plugin, int numParams)
 
 	int len;
 	GetNativeStringLength(2, len);
-
 	if (len <= 0)
 	{
-		return;
+		return ThrowNativeError(SP_ERROR_NATIVE, "Empty plugin name!");
 	} 
 	char[] name = new char[len + 1];
 	GetNativeString(2, name, len + 1);
 	GetNativeStringLength(3, len);
 	if (len <= 0)
 	{
-		return;
+		return ThrowNativeError(SP_ERROR_NATIVE, "Empty reason!");
 	}
-
 	char[] reason = new char[len + 1];
 	GetNativeString(3, reason, len + 1);
-	PrintToChat(client, "%s skillname was fail!", name, reason);
+	PrintToChat(client, "%s failed due to: %s", name, reason);
 }
-
 
 public void Multiturret_OnPluginState(int pluginstate)
 {
