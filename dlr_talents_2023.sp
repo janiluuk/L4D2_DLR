@@ -149,7 +149,6 @@ new g_iSRS = -1;
 new g_iShovePenalty = 0;
 
 // Effects
-
 new String:g_ColorNames[12][32] = {"Red", "Green", "Blue", "Yellow", "Purple", "Cyan", "Orange", "Pink", "Olive", "Lime", "Violet", "Lightblue"};
 new g_Colors[12][3] = {{255,0,0},{0,255,0},{0,0,255},{255,255,0},{255,0,255},{0,255,255},{255,128,0},{255,0,128},{128,255,0},{0,255,128},{128,0,255},{0,128,255}};
 
@@ -344,7 +343,7 @@ new bool:RoundStarted =false;
 new bool:ClassHint =false;
 new bool:InvisibilityHint = false;
 new bool:MedicHint = false;
-new float:mineWarning[16];
+new Float:mineWarning[16];
 
 new BombHintTimestamp = 0;
 new InvisibilityTimestamp = 0;
@@ -395,6 +394,7 @@ public OnPluginStart( )
 	g_iVMStartTimeO = FindSendPropInfo("CTerrorViewModel","m_flLayerStartTime");
 	g_iViewModelO = FindSendPropInfo("CTerrorPlayer","m_hViewModel");
 	g_iVelocity = FindSendPropInfo("CBasePlayer", "m_vecVelocity[0]");
+
 	// Hooks
 	HookEvent("player_spawn", Event_PlayerSpawn);
 	HookEvent("player_hurt", Event_PlayerHurt);
@@ -420,7 +420,6 @@ public OnPluginStart( )
 	RegConsoleCmd("sm_hide", HideCommand, "Hide player");
 	
 	// Convars
-
 	new Handle:hVersion = CreateConVar("talents_version", PLUGIN_VERSION, "Version of this release", FCVAR_NOTIFY|FCVAR_REPLICATED|FCVAR_DONTRECORD);
 	if(hVersion != INVALID_HANDLE)
 		SetConVarString(hVersion, PLUGIN_VERSION);
@@ -507,11 +506,10 @@ public ResetClientVariables(client)
 	ClientData[client].LastButtons = 0;
 	ClientData[client].SpecialDropInterval = 0;
 	ClientData[client].ChosenClass = NONE;
-	ClientData[client].SpecialSkill = No_Skill;
+	ClientData[client].SpecialSkill = SpecialSkill:No_Skill;
 	ClientData[client].LastDropTime = 0.0;
 	g_bInSaferoom[client] = false;
 }
-
 
 // ====================================================================================================
 //					Register plugins
@@ -568,6 +566,7 @@ public void F18_OnRoundState(int roundstate)
 		g_bAirstrikeValid = false;
 	}
 }
+
 public void F18_OnPluginState(int pluginstate)
 {
 	static int mystate;
@@ -585,6 +584,7 @@ public void F18_OnPluginState(int pluginstate)
 // ====================================================================================================
 //					DLR - Multiturret
 // ====================================================================================================
+
 public void Multiturret_OnPluginState(int pluginstate)
 {
 	static int mystate;
@@ -903,10 +903,8 @@ public Action:TimerThink(Handle:hTimer, any:client)
 				if (canUseSpecialSkill(client, pendingMessage)) {
 					g_bAirstrikeValid = false;
 					CreateAirStrike(client);
-					char skillName[128] = "F18_Airstrike";
-					useSpecialSkill(client, ClientData[client].SpecialSkill);
+					useSpecialSkill(client, SpecialSkill:F18_airstrike);
 					ClientData[client].LastDropTime = GetGameTime();
-
 				}
 			}
 		}
@@ -915,12 +913,13 @@ public Action:TimerThink(Handle:hTimer, any:client)
 	ClientData[client].LastButtons = buttons;
 	return Plugin_Continue;
 }
+
 // Inform other plugins.
-public void useSpecialSkill(client,skillName)
+public void useSpecialSkill(client,SpecialSkill:skillName)
 {
 	Call_StartForward(g_hfwdOnPlayerUsedSpecialSkill);
 	Call_PushCell(client);
-	Call_PushCell(ClientData[client].SpecialSkill);
+	Call_PushCell(skillName);
 	Call_PushCell(ClientData[client].ChosenClass);
 	Call_Finish();
 }
@@ -1272,7 +1271,6 @@ public void SetupClasses(client, class)
 	ClientData[client].SpecialLimit = 5;
 
 	new MaxPossibleHP = GetConVarInt(NONE_HEALTH);
-	
 
 	switch (class)
 	{
@@ -1819,7 +1817,7 @@ public Action:TimerDetectHealthChanges(Handle:hTimer, any:client)
 					new newHp = GetClientHealth(i);
 
 					new totalHp = newHp + TempHealth;
-					GlowPlayer(i, "Orange", Fx:FxGlowShell);
+					GlowPlayer(i, "Orange", FX:FxGlowShell);
 					new Handle:hPack = CreateDataPack();
 					WritePackCell(hPack, i);
 					WritePackCell(hPack, totalHp);
@@ -1958,7 +1956,6 @@ public Event_RelCommandoClass(Handle:event, String:name[], bool:dontBroadcast)
 		CloseHandle(hPack);
 	}
 }
-
 
 public Action:CommandoRelFireEnd(Handle:timer, any:weapon)
 {
@@ -2292,8 +2289,6 @@ public void DropBomb(client)
 	CreateParticleInPos(pos, BOMB_GLOW, index);
 
 	EmitSoundToAll(SOUND_DROP_BOMB);
-
-	
 	PrintHintTextToAll("%N planted a mine! (%i/%i)", client, ClientData[client].SpecialsUsed, GetConVarInt(SABOTEUR_MAX_BOMBS));
 }
 
@@ -2403,13 +2398,12 @@ public Action:TimerCheckBombSensors(Handle:hTimer, Handle:hPack)
 					BombActive = false;
 					BombIndex[index] = false;
 					CloseHandle(hPack);
-
 					return Plugin_Stop;
 				}
 				else if (GetClientTeam(client) == 2) {
-					if (!mineWarning[client] || mineWarning[client] < (RoundToFloor(GetGameTime()) + 5)) {
+					if (!mineWarning[client] || mineWarning[client] < GetGameTime() + 5) {
 						PrintHintText(client, "Warning! You are nearby armed mine.");
-						mineWarning[client] = RoundToFloor(GetGameTime());
+						mineWarning[client] = GetGameTime();
 					}
 				}
 			}
@@ -2906,13 +2900,13 @@ public Action:DeleteParticles(Handle:timer, any:particle)
 stock GlowPlayer(int client, char[] sColor, FX:fx=FxGlowShell)
 {
 
-	if (!IsClientInGame(client) || !IsPlayerAlive(client)) return Plugin_Handled;
+	if (!IsClientInGame(client) || !IsPlayerAlive(client)) return false;
 	
 	new color = FindColor(sColor);
 	
 	if (color == -1 && strcmp(sColor, "none", false) != 0)
 	{
-		return Plugin_Handled;
+		return;
 	}
 
 	if (color == -1)
@@ -2921,10 +2915,10 @@ stock GlowPlayer(int client, char[] sColor, FX:fx=FxGlowShell)
 	}
 	else
 	{
-		set_rendering(client, _:fx, g_Colors[color][0], g_Colors[color][1], g_Colors[color][2], g_Render, 250);
+		set_rendering(client, fx, g_Colors[color][0], g_Colors[color][1], g_Colors[color][2], g_Render, 250);
 	}
 
-	return Plugin_Handled;	
+	return;	
 }
 
 public Action:RemoveGlowFromAll() {
@@ -2934,6 +2928,7 @@ public Action:RemoveGlowFromAll() {
 		if(IsClientConnected(i) && IsClientInGame(i))
 			set_rendering(i);		
 	}
+	return Plugin_Handled;
 }
 
 public Action:GlowTimer(Handle:timer, Handle:pack)
