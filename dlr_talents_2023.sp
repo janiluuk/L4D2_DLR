@@ -383,8 +383,9 @@ native void DLR_Multiturret(int client, int type);
 public OnPluginStart( )
 {
 	// Api
+	
 	g_hfwdOnPlayerClassChange = CreateGlobalForward("OnPlayerClassChange", ET_Ignore, Param_Cell, Param_Cell, Param_Cell);
-	g_hfwdOnPlayerSpecialSkill = CreateGlobalForward("OnPlayerSpecialSkillUse", ET_Ignore, Param_Cell, Param_Cell, Param_Cell);
+	g_hfwdOnPlayerUsedSpecialSkill = CreateGlobalForward("OnPlayerSpecialSkillUse", ET_Ignore, Param_Cell, Param_Cell);
 	// Offsets
 	g_iNPA = FindSendPropInfo("CBaseCombatWeapon", "m_flNextPrimaryAttack");
 	g_oAW = FindSendPropInfo("CTerrorPlayer", "m_hActiveWeapon");
@@ -987,7 +988,6 @@ public void useSpecialSkill(client,SpecialSkill:skillName)
 	Call_StartForward(g_hfwdOnPlayerUsedSpecialSkill);
 	Call_PushCell(client);
 	Call_PushCell(skillName);
-	Call_PushCell(ClientData[client].ChosenClass);
 	Call_Finish();
 }
 

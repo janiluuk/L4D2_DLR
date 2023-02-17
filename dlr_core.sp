@@ -30,7 +30,7 @@ forward OnPlayerClassChange(client, className, previousClass);
  * @param className      Skill that user just used
  * @noreturn
  */
-native void OnSpecialSkillUse(client, skillName, className);  
+forward OnSpecialSkillUse(client, skillName);  
 
 /**
  * Called when player has successfully used special skill
