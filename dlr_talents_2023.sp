@@ -1836,7 +1836,7 @@ public Action:TimerDetectHealthChanges(Handle:hTimer, any:client)
 					new newHp = GetClientHealth(i);
 
 					new totalHp = newHp + TempHealth;
-					GlowPlayer(i, "Lightblue");
+					GlowPlayer(i, "Pink");
 					new Handle:hPack = CreateDataPack();
 					WritePackCell(hPack, i);
 					WritePackCell(hPack, totalHp);
@@ -2922,7 +2922,7 @@ public Action:DeleteParticles(Handle:timer, any:particle)
 	}
 }
 
-stock GlowPlayer(int client, char[] sColor, FX:fx=FxNone)
+stock GlowPlayer(int client, char[] sColor, FX:fx=FxGlowShell)
 {
 
 	if (!IsClientInGame(client) || !IsPlayerAlive(client)) return Plugin_Handled;
