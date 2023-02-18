@@ -392,6 +392,8 @@ public OnPluginStart( )
 
 	g_hfwdOnPlayerClassChange = CreateGlobalForward("OnPlayerClassChange", ET_Ignore, Param_Cell, Param_Cell, Param_Cell);
 	g_hfwdOnPlayerUsedSpecialSkill = CreateGlobalForward("OnPlayerSpecialSkillUse", ET_Ignore, Param_Cell, Param_Cell);
+	 //Create a Class Selection forward
+    g_hOnSkillSelected = CreateGlobalForward("OnSkillSelected", ET_Event, Param_Cell, Param_Cell);
 
     //Create menu and set properties
     g_hSkillMenu = CreateDLRSkillMenu(DLRSkillMenuHandler);
@@ -399,8 +401,6 @@ public OnPluginStart( )
     SetMenuExitButton(g_hSkillMenu, true);
 	g_hSkillArray = CreateArray(16);
     
-    //Create a Class Selection forward
-    g_hOnSkillSelected = CreateGlobalForward("OnSkillSelected", ET_Event, Param_Cell, Param_Cell);
 
 	// Offsets
 	g_iNPA = FindSendPropInfo("CBaseCombatqWeapon", "m_flNextPrimaryAttack");
@@ -2249,7 +2249,7 @@ public OnGameFrame()
 		if(GetConVarBool(SOLDIER_SHOVE_PENALTY) == false)
 		{
 			//If the player is pressing the right click of the mouse, proceed
-			if(GetClientButtons(i) & IN_ATTACK2)
+			if(GetClientButtons(client) & IN_ATTACK2)
 			{
 				//This will reset the penalty, so it doesnt even get applied.
 				SetEntData(i, g_iShovePenalty, 0, 4);
