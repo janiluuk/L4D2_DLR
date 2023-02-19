@@ -17,7 +17,7 @@
 #if !defined _DLRCore_included
 native int GetCurrentClass(int player);
 #endif
-
+#define PLUGIN_NAME "Talents Plugin 2023 anniversary edition"
 #define PLUGIN_VERSION "1.3"
 #pragma semicolon 1
 #define DEBUG 1
@@ -408,7 +408,7 @@ ConVar parachuteEnabled;
 
 public Plugin:myinfo =
 {
-	name = "Talents Plugin 2023 anniversary edition",
+	name = PLUGIN_NAME,
 	author = "DLR / Ken / Neil / Spirit / panxiaohai / Yani",
 	description = "Incorporates Survivor Classes",
 	version = PLUGIN_VERSION,
@@ -677,7 +677,7 @@ any Native_OnSpecialSkillSuccess(Handle plugin, int numParams)
 	}
 
 	int len;
-	GetNativeStringLength(3, len);
+	GetNativeStringLength(2, len);
  
 	if (len <= 0)
 	{
@@ -686,7 +686,6 @@ any Native_OnSpecialSkillSuccess(Handle plugin, int numParams)
  
 	char[] str = new char[len + 1];
 	GetNativeString(2, str, len + 1);
-	PrintToChat(client, "%s skillname was success!", str);
 	ClientData[client].SpecialsUsed++;
 	ClientData[client].LastDropTime = GetGameTime();	
 }
@@ -1037,9 +1036,8 @@ public Action:TimerThink(Handle:hTimer, any:client)
 				if (CanDrop == true) {
 					if(ClientData[client].SpecialsUsed < GetConVarInt(ENGINEER_MAX_BUILDS))
 					{
-						CreatePlayerEngineerMenu(client);	
+						CreatePlayerEngineerMenu(client);
 						ClientData[client].LastDropTime = GetGameTime();
-						useSpecialSkill(client, SpecialSkill:Multiturret);		
 					}
 					else
 					{
@@ -1076,11 +1074,11 @@ public Action:TimerThink(Handle:hTimer, any:client)
 }
 
 // Inform other plugins.
-public void useSpecialSkill(client,SpecialSkill:skillName)
+public void useSpecialSkill(int client,int skill)
 {
 	Call_StartForward(g_hfwdOnSpecialSkillUsed);
 	Call_PushCell(client);
-	Call_PushCell(skillName);
+	Call_PushCell(skill);
 	Call_Finish();
 }	
 
@@ -1735,8 +1733,8 @@ public void CalculateEngineerPlacePos(client, type)
 				{
 					if (GetConVarInt(ENGINEER_TURRET_EXTERNAL_PLUGIN) > 0) 
 					{
-						ClientCommand(client, Engineer_Turret_Spawn_Cmd);
-
+//						ClientCommand(client, Engineer_Turret_Spawn_Cmd);
+						useSpecialSkill(client,SpecialSkill:Multiturret);
 						ClientData[client].LastDropTime = GetGameTime();
 						ClientData[client].SpecialsUsed++;
 					}
@@ -2051,7 +2049,7 @@ public Action:TimerDetectHealthChanges(Handle:hTimer, any:client)
 					// post-heal set values
 					new newHp = GetClientHealth(i);
 					new totalHp = newHp + TempHealth;
-					GlowPlayer(i, "Orange", FX:FxGlowShell);
+					GlowPlayer(i, "Green", FX:FxEnvRain);
 					new Handle:hPack = CreateDataPack();
 					WritePackCell(hPack, i);
 					WritePackCell(hPack, totalHp);
@@ -2387,13 +2385,15 @@ public void ToggleSilencer(client)
 
 public void ToggleNightVision(client)
 {
-	new cl_upgrades = GetEntProp(client, Prop_Send, "m_upgradeBitVec");
-	if (ClientData[client].ChosenClass == SABOTEUR && GetConVarBool(SABOTEUR_ENABLE_NIGHT_VISION) && IsClientInGame(client) && !IsFakeClient(client) && GetClientTeam(client) == 2 && IsPlayerAlive(client))
+	
+	if (GetConVarBool(SABOTEUR_ENABLE_NIGHT_VISION) && IsClientInGame(client) && !IsFakeClient(client) && GetClientTeam(client) == 2 && IsPlayerAlive(client))
 	{
+			new cl_upgrades = GetEntProp(client, Prop_Send, "m_upgradeBitVec");
 			SetEntProp(client, Prop_Send, "m_upgradeBitVec", cl_upgrades + 4194304, 4);
 			SetEntProp(client, Prop_Send, "m_bNightVisionOn", 1, 4);
 			SetEntProp(client, Prop_Send, "m_bHasNightVision", 1, 4);
 	} else if (ClientData[client].ChosenClass != SABOTEUR &&  IsClientInGame(client) && GetClientTeam(client) == 2) {
+			new cl_upgrades = GetEntProp(client, Prop_Send, "m_upgradeBitVec");		
 			SetEntProp(client, Prop_Send, "m_upgradeBitVec", cl_upgrades - 4194304, 4);
 			SetEntProp(client, Prop_Send, "m_bNightVisionOn", 0, 4);
 			SetEntProp(client, Prop_Send, "m_bHasNightVision", 0, 4);
@@ -2401,9 +2401,11 @@ public void ToggleNightVision(client)
 }
 stock DisableAllUpgrades(client)
 {
-	SetEntProp(client, Prop_Send, "m_upgradeBitVec", 0, 4);
-	SetEntProp(client, Prop_Send, "m_bNightVisionOn", 0, 4);
-	SetEntProp(client, Prop_Send, "m_bHasNightVision", 0, 4);
+	if ( IsClientInGame(client) && GetClientTeam(client) == 2 && !IsFakeClient(client) && ClientData[client].ChosenClass == SABOTEUR) {
+		SetEntProp(client, Prop_Send, "m_upgradeBitVec", 0, 4);
+		SetEntProp(client, Prop_Send, "m_bNightVisionOn", 0, 4);
+		SetEntProp(client, Prop_Send, "m_bHasNightVision", 0, 4);
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////////
@@ -2625,7 +2627,10 @@ public Action:TimerAirstrike(Handle timer, Handle:hPack)
 		CreateTimer(1.0, TimerAirstrike, pack, TIMER_FLAG_NO_MAPCHANGE ); 									
 
 	} else {
+
 		g_bAirstrikeValid = true;
+		PrintHintTextToAll("Airstrike completed!");
+
 		if(IsValidEntity(entity))
 		{
 			AcceptEntityInput(entity, "Kill");
@@ -2666,7 +2671,7 @@ public Action:TimerCheckBombSensors(Handle:hTimer, Handle:hPack)
 	for (new client = 1; client <= MaxClients; client++)
 	{
 
-		if (!IsValidEntity(client) || !IsClientInGame(client) || IsGhost(client)) 
+		if (!IsValidEntity(client) || !IsClientInGame(client))
 		continue;
 		if(GetClientTeam(client) == 3 || GetClientTeam(client) == 2 || IsWitch(client))
 		{
@@ -2696,7 +2701,12 @@ public Action:TimerCheckBombSensors(Handle:hTimer, Handle:hPack)
 	}
 	return Plugin_Continue;
 }
-
+bool:IsPlayerGhost (client)
+{
+    if (GetEntData(client, FindSendPropInfo("CTerrorPlayer", "m_isGhost"), 1))
+        return true;
+    return false;
+}
 public Action:timerHurtEntity(Handle:timer, Handle:pack)
 {
 	ResetPack(pack);
@@ -3183,10 +3193,12 @@ public Action:DeleteParticles(Handle:timer, any:particle)
 
 stock GlowPlayer(int client, char[] sColor, FX:fx=FxGlowShell)
 {
+	decl String:colorString[32];
+	Format(colorString, sizeof(colorString), "%s", sColor);
 
 	if (!IsClientInGame(client) || !IsPlayerAlive(client)) return false;
 	
-	new color = FindColor(sColor);
+	new color = FindColor(colorString);
 	
 	if (color == -1 && strcmp(sColor, "none", false) != 0)
 	{
@@ -3631,7 +3643,7 @@ stock bool:IsWitch(client)
 
 stock IsGhost(client)
 {
-	return GetEntProp(client, Prop_Send, "m_isGhost");
+	return GetEntProp(client, Prop_Send, "m_isGhost",1);
 }
 
 stock bool:IsIncapacitated(client)

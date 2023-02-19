@@ -190,20 +190,24 @@ stock void CPrintCenterTextAll(const char[] format, any ...)
     }
 }
 
-public SharedPlugin:__pl_dlr_talents_2023 = 
+public SharedPlugin __pl DLRCore = 
 {
-	name = "dlr_talents_2023",
-	file = "dlr_talents_2023.smx",
+    name = "DLR Talents Plugin",
+    file = "dlr_talents_2023.smx",
 #if defined REQUIRE_PLUGIN
-	required = 1
+    required = 1,
 #else
-	required = 0
+    required = 0,
 #endif
 };
 
 #if !defined REQUIRE_PLUGIN
-public __pl_dlr_talents_2023_SetNTVOptional()
+public __pl_DLRCore_SetNTVOptional()
 {
 	MarkNativeAsOptional("GetPlayerClassName");
+    MarkNativeAsOptional("OnSpecialSkillFail");
+    MarkNativeAsOptional("OnSpecialSkillSuccess");
+    MarkNativeAsOptional("RegisterDLRSkill");
+
 }
 #endif
