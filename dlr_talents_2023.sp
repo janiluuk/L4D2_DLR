@@ -18,7 +18,7 @@
 native int GetCurrentClass(int player);
 #endif
 #define PLUGIN_NAME "Talents Plugin 2023 anniversary edition"
-#define PLUGIN_VERSION "1.3"
+#define PLUGIN_VERSION "1.4"
 #pragma semicolon 1
 #define DEBUG 1
 #include <sourcemod>
