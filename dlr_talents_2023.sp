@@ -109,11 +109,11 @@ const BRAWLER=view_as<int>(7);
 const MAXCLASSES=view_as<int>(8);
 
 enum SpecialSkill {
-	No_Skill = "No_skill",
-	F18_airstrike = "F18_Airstrike",
-	Berzerk = "Berzerk",
-	Grenade = "Grenade",
-	Multiturret = "Multiturret"
+	No_Skill = 0,
+	F18_airstrike, 
+	Berzerk,
+	Grenade,
+	Multiturret
 }
 
 enum struct PlayerInfo 
@@ -157,7 +157,9 @@ new g_iSID = -1;
 new g_iSED = -1;
 new g_iSRS = -1;
 new g_iShovePenalty = 0;
-int g_iClassTank, m_maxHealth, g_hDecayDecay;
+int g_iClassTank, m_maxHealth;
+
+ConVar g_hDecayDecay;
 // Effects
 new String:g_ColorNames[12][32] = {"Red", "Green", "Blue", "Yellow", "Purple", "Cyan", "Orange", "Pink", "Olive", "Lime", "Violet", "Lightblue"};
 new g_Colors[12][3] = {{255,0,0},{0,255,0},{0,0,255},{255,255,0},{255,0,255},{0,255,255},{255,128,0},{255,0,128},{128,255,0},{0,255,128},{128,0,255},{0,128,255}};
@@ -429,15 +431,16 @@ public OnPluginStart( )
 
 	g_hfwdOnPlayerClassChange = CreateGlobalForward("OnPlayerClassChange", ET_Ignore, Param_Cell, Param_Cell, Param_Cell);
 	g_hfwdOnSpecialSkillUsed= CreateGlobalForward("OnSpecialSkillUsed", ET_Ignore, Param_Cell, Param_Cell);
-	 //Create a Class Selection forward
-    g_hOnSkillSelected = CreateGlobalForward("OnSkillSelected", ET_Event, Param_Cell, Param_Cell);
+	//Create a Class Selection forward
+	g_hOnSkillSelected = CreateGlobalForward("OnSkillSelected", ET_Event, Param_Cell, Param_Cell);
 
-    //Create menu and set properties
-    g_hSkillMenu = CreateDLRSkillMenu(DLRSkillMenuHandler);
-    SetMenuTitle(g_hSkillMenu, "Registered classes");
-    SetMenuExitButton(g_hSkillMenu, true);
+	//Create menu and set properties
+	g_hSkillMenu = CreateMenu(DLRSkillMenuHandler);
+
+	//Create a Class Selection forward
+	SetMenuTitle(g_hSkillMenu, "Registered classes");
+	SetMenuExitButton(g_hSkillMenu, true);
 	g_hSkillArray = CreateArray(16);
-    
 
 	// Offsets
 	g_iNPA = FindSendPropInfo("CBaseCombatqWeapon", "m_flNextPrimaryAttack");
@@ -526,8 +529,8 @@ public OnPluginStart( )
 	SABOTEUR_BOMB_DAMAGE_INF = CreateConVar("talents_saboteur_bomb_dmg_inf", "1500", "How much damage a bomb does to infected");
 	SABOTEUR_BOMB_POWER = CreateConVar("talents_saboteur_bomb_power", "2.0", "How much blast power a bomb has. Higher values will throw survivors farther away");
 	SABOTEUR_ACTIVE_BOMB_COLOR = CreateConVar("talents_bomb_active_glow_color","255 0 0", "Glow color for active bombs (Default Red)");
-	SABOTEUR_ENABLE_NIGHT_VISION = CreateConVar( "talents_saboteur_enable_nightvision", "1", "1 - Enable Night Vision for Saboteur; 0 - Disable", FCVAR_PLUGIN);
-	SABOTEUR_ENABLE_SILENCER = CreateConVar( "talents_saboteur_enable_silencer", "1", "1 - Enable silencer for Saboteur; 0 - Disable", FCVAR_PLUGIN);
+	SABOTEUR_ENABLE_NIGHT_VISION = CreateConVar( "talents_saboteur_enable_nightvision", "1", "1 - Enable Night Vision for Saboteur; 0 - Disable");
+	SABOTEUR_ENABLE_SILENCER = CreateConVar( "talents_saboteur_enable_silencer", "1", "1 - Enable silencer for Saboteur; 0 - Disable");
 
 	COMMANDO_DAMAGE = CreateConVar("talents_commando_dmg", "5.0", "How much bonus damage a Commando does by default");
 	COMMANDO_DAMAGE_RIFLE = CreateConVar("talents_commando_dmg_rifle", "10.0", "How much bonus damage a Commando does with rifle");
@@ -601,9 +604,8 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	CreateNative("RegisterDLRSkill", Native_RegisterSkill);
 	CreateNative("OnSpecialSkillSuccess", Native_OnSpecialSkillSuccess);
 	CreateNative("OnSpecialSkillFail", Native_OnSpecialSkillFail);
-    CreateNative("GetPlayerSkillID", Native_GetPlayerSkillID);
-    CreateNative("GetPlayerSkillName", Native_GetPlayerSkillName);
-
+	CreateNative("GetPlayerSkillID", Native_GetPlayerSkillID);
+	CreateNative("GetPlayerSkillName", Native_GetPlayerSkillName);
 	//MarkNativeAsOptional("DLR_Berzerk");
 	//MarkNativeAsOptional("DLR_Infected2023");
 
@@ -618,7 +620,7 @@ public Native_RegisterSkill(Handle:plugin, numParams)
 
 	if(GetNativeString(1, SkillName, sizeof(SkillName)) == SP_ERROR_NONE)
 	{
-		if(++g_iSkillCounter <= MAX_CLASSES)
+		if(++g_iSkillCounter <= MAXCLASSES)
 		{
 			IntToString(g_iSkillCounter, ItemInfo, sizeof(ItemInfo));
 			PushArrayString(g_hSkillArray, SkillName);
@@ -675,7 +677,7 @@ any Native_OnSpecialSkillSuccess(Handle plugin, int numParams)
 	}
 
 	int len;
-	GetNativeStringLength(2, len);
+	GetNativeStringLength(3, len);
  
 	if (len <= 0)
 	{
@@ -684,7 +686,7 @@ any Native_OnSpecialSkillSuccess(Handle plugin, int numParams)
  
 	char[] str = new char[len + 1];
 	GetNativeString(2, str, len + 1);
-	PrintToChat(client, "%s skillname was success!", skillName);
+	PrintToChat(client, "%s skillname was success!", str);
 	ClientData[client].SpecialsUsed++;
 	ClientData[client].LastDropTime = GetGameTime();	
 }
@@ -1037,7 +1039,7 @@ public Action:TimerThink(Handle:hTimer, any:client)
 					{
 						CreatePlayerEngineerMenu(client);	
 						ClientData[client].LastDropTime = GetGameTime();
-						useSpecialSkill(client, SpecialSkill:Multiturret)			
+						useSpecialSkill(client, SpecialSkill:Multiturret);		
 					}
 					else
 					{
@@ -1439,7 +1441,7 @@ public void SetupClasses(client, class)
 			text = "";
 			if (GetConVarBool(COMMANDO_ENABLE_STUMBLE_BLOCK)) {
 				SDKHook(client, SDKHook_OnTakeDamagePost, OnTakeDamage);
-				text = ", You're immune to knockdowns"
+				text = ", You're immune to knockdowns";
 			} 
 
 			PrintHintText(client,"You have faster reload and cause more damage%s!", text);
@@ -1643,17 +1645,6 @@ public Native_GetPlayerSkillName(Handle:plugin, numParams)
     return false;
 } 
 
-public CreateDLRSkillMenu() {
-
-    //Create menu and set properties
-    g_hSkillMenu = CreateMenu(DLRSkillMenuHandler);
-    SetMenuTitle(g_hSkillMenu, "Choose skill");
-    SetMenuExitButton(g_hSkillMenu, true);
-    
-    //Create a Class Selection forward
-    g_hOnSkillSelected = CreateGlobalForward("OnSkillSelected", ET_Event, Param_Cell, Param_Cell);
-
-}
 public DLRSkillMenuHandler(Handle:hMenu, MenuAction:action, iClient, iSkillSelection)
 {
     if(action == MenuAction_Select)
@@ -1788,156 +1779,6 @@ public void CalculateEngineerPlacePos(client, type)
 ///////////////////////////////////////////////////////////////////////////////////
 // Health modifiers & medic
 ///////////////////////////////////////////////////////////////////////////////////
-
-// ====================================================================================================
-//					EXPLOSION FX - MEDIC
-// ====================================================================================================
-void Explode_Medic(int entity, int index)
-{
-	// Grenade Pos
-	static float vPos[3];
-	GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", vPos);
-
-	// Shake
-	CreateShake(g_GrenadeData[index - 1][CONFIG_SHAKE], g_GrenadeData[index - 1][CONFIG_RANGE] + SHAKE_RANGE, vPos);
-
-	// Sound
-	PlaySound(entity, SOUND_BUTTON2);
-
-	// Beam Ring
-	float range = g_GrenadeData[index - 1][CONFIG_RANGE] * 2 + BEAM_OFFSET;
-	CreateBeamRing(entity, { 0, 150, 0, 255 }, 0.1, range - (range / BEAM_RINGS));
-
-	// Heal targets
-	int targ = g_GrenadeTarg[INDEX_MEDIC];
-	int team;
-	bool pass;
-
-	int iHeal = RoundFloat(g_GrenadeData[index - 1][CONFIG_DAMAGE]);
-	int iHealth;
-	int iMax;
-	float fHealth;
-	float fRange = g_GrenadeData[index - 1][CONFIG_RANGE];
-	float vEnd[3];
-
-
-
-	// Survivors and Special Infected
-	for( int i = 1; i <= MaxClients; i++ )
-	{
-		if( IsClientInGame(i) && IsPlayerAlive(i) )
-		{
-			team = GetClientTeam(i);
-			if( team == 2 && targ & (1<<TARGET_SURVIVOR) )
-				pass = true;
-			else if( team == 3 && targ & (1<<TARGET_SPECIAL) && GetEntProp(i, Prop_Send, "m_zombieClass") != g_iClassTank )
-				pass = true;
-			else if( team == 3 && targ & (1<<TARGET_TANK) && GetEntProp(i, Prop_Send, "m_zombieClass") == g_iClassTank )
-				pass = true;
-
-			if( pass )
-			{
-				GetClientAbsOrigin(i, vEnd);
-				if( GetVectorDistance(vPos, vEnd) <= fRange )
-				{
-					// Check for Black and White health:
-					bool bBlackAndWhite;
-					if( team == 2 )
-					{
-						if( g_bLeft4Dead2 )
-							bBlackAndWhite = view_as<bool>(GetEntProp(i, Prop_Send, "m_bIsOnThirdStrike", 1));
-						else
-							bBlackAndWhite = GetEntProp(i, Prop_Send, "m_currentReviveCount") >= GetMaxReviveCount();
-					}
-
-					if( bBlackAndWhite )
-					{
-						fHealth = GetTempHealth(i);
-						if( fHealth < 100 )
-						{
-							fHealth += g_GrenadeData[index - 1][CONFIG_DAMAGE];
-
-							if( fHealth > 100.0 )
-								fHealth = 100.0;
-
-							SetTempHealth(i, fHealth);
-						}
-					} else {
-						iHealth = GetClientHealth(i);
-						iMax = GetClientMaxHealth(i);
-	
-						if( iHealth < iMax )
-						{
-							iHealth += iHeal;
-							if( iHealth > iMax )
-								iHealth = iMax;
-
-							if( team == 2 )
-							{
-								fHealth = GetTempHealth(i);
-								if( iHealth + fHealth > 100 )
-								{
-									fHealth = 100.0 - iHealth;
-									SetTempHealth(i, fHealth);
-								}
-							}
-
-							SetEntityHealth(i, iHealth);
-						}
-					}
-				}
-			}
-		}
-	}
-
-
-
-	// Common
-	if( targ & (1<<TARGET_COMMON) )
-	{
-		int target = -1;
-
-		while( (target = FindEntityByClassname(target, "infected")) != INVALID_ENT_REFERENCE )
-		{
-			GetEntPropVector(target, Prop_Data, "m_vecAbsOrigin", vEnd);
-			if( GetVectorDistance(vPos, vEnd) <= fRange )
-			{
-				iMax = GetEntProp(target, Prop_Data, "m_iMaxHealth");
-				iHealth = GetEntProp(target, Prop_Data, "m_iHealth");
-				iHealth += iHeal;
-
-				if( iHealth > iMax )
-					iHealth = iMax;
-
-				SetEntProp(target, Prop_Data, "m_iHealth", iHealth);
-			}
-		}
-	}
-
-
-
-	// Witch
-	if( targ & (1<<TARGET_WITCH) )
-	{
-		int target = -1;
-
-		while( (target = FindEntityByClassname(target, "witch")) != INVALID_ENT_REFERENCE )
-		{
-			GetEntPropVector(target, Prop_Data, "m_vecAbsOrigin", vEnd);
-			if( GetVectorDistance(vPos, vEnd) <= fRange )
-			{
-				iMax = GetEntProp(target, Prop_Data, "m_iMaxHealth");
-				iHealth = GetEntProp(target, Prop_Data, "m_iHealth");
-				iHealth += iHeal;
-
-				if( iHealth > iMax )
-					iHealth = iMax;
-
-				SetEntProp(target, Prop_Data, "m_iHealth", iHealth);
-			}
-		}
-	}
-}
 
 
 float GetTempHealth(int client)
@@ -2269,7 +2110,7 @@ public InitHealthModifiers()
 
 public Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, int &damagetype, int &weapon, float damageForce[3], float damagePosition[3], int damagecustom)
 {
-	if(GetConVarBool(COMMANDO_ENABLE_STUMBLE_BLOCK) && damagetype == DMG_CLUB && victim > 0 && victim <= MaxClients && attacker > 0 && attacker <= MaxClients && GetClientTeam(victim) == 2 && ClientData[client].ChosenClass == COMMANDO && GetClientTeam(attacker) == 3 )
+	if(GetConVarBool(COMMANDO_ENABLE_STUMBLE_BLOCK) && damagetype == DMG_CLUB && victim > 0 && victim <= MaxClients && attacker > 0 && attacker <= MaxClients && GetClientTeam(victim) == 2 && ClientData[victim].ChosenClass == COMMANDO && GetClientTeam(attacker) == 3 )
 	{
 		int class = GetEntProp(attacker, Prop_Send, "m_zombieClass");
 		if( class == (g_bLeft4Dead2 ? 8 : 5) && GetEntProp(victim, Prop_Send, "m_isIncapacitated") == 0)
@@ -2536,29 +2377,27 @@ public getCommandoDamageBonus(client)
 public void ToggleSilencer(client)
 {
 	new cl_upgrades = GetEntProp(client, Prop_Send, "m_upgradeBitVec");
-	if (ClientData[i].ChosenClass == SABOTEUR && GetConVarBool(SABOTEUR_ENABLE_SILENCER) && IsClientInGame(client) && !IsFakeClient(client) && GetClientTeam(client) == 2 && IsPlayerAlive(client))
+	if (ClientData[client].ChosenClass == SABOTEUR && GetConVarBool(SABOTEUR_ENABLE_SILENCER) && IsClientInGame(client) && !IsFakeClient(client) && GetClientTeam(client) == 2 && IsPlayerAlive(client))
 	{
 		SetEntProp(client, Prop_Send, "m_upgradeBitVec", cl_upgrades + 262144, 4);
-	} else if (ClientData[i].ChosenClass != SABOTEUR && GetClientTeam(client) == 2) {
+	} else if (ClientData[client].ChosenClass != SABOTEUR && GetClientTeam(client) == 2) {
 		SetEntProp(client, Prop_Send, "m_upgradeBitVec", cl_upgrades - 262144, 4);
 	}
-	return true;
 }
 
 public void ToggleNightVision(client)
 {
 	new cl_upgrades = GetEntProp(client, Prop_Send, "m_upgradeBitVec");
-	if (ClientData[i].ChosenClass == SABOTEUR && GetConVarBool(SABOTEUR_ENABLE_NIGHT_VISION) && IsClientInGame(client) && !IsFakeClient(client) && GetClientTeam(client) == 2 && IsPlayerAlive(client))
+	if (ClientData[client].ChosenClass == SABOTEUR && GetConVarBool(SABOTEUR_ENABLE_NIGHT_VISION) && IsClientInGame(client) && !IsFakeClient(client) && GetClientTeam(client) == 2 && IsPlayerAlive(client))
 	{
 			SetEntProp(client, Prop_Send, "m_upgradeBitVec", cl_upgrades + 4194304, 4);
 			SetEntProp(client, Prop_Send, "m_bNightVisionOn", 1, 4);
 			SetEntProp(client, Prop_Send, "m_bHasNightVision", 1, 4);
-	} else if (ClientData[i].ChosenClass != SABOTEUR &&  IsClientInGame(client) && GetClientTeam(client) == 2) {
+	} else if (ClientData[client].ChosenClass != SABOTEUR &&  IsClientInGame(client) && GetClientTeam(client) == 2) {
 			SetEntProp(client, Prop_Send, "m_upgradeBitVec", cl_upgrades - 4194304, 4);
 			SetEntProp(client, Prop_Send, "m_bNightVisionOn", 0, 4);
 			SetEntProp(client, Prop_Send, "m_bHasNightVision", 0, 4);
 	}
-	return true;
 }
 stock DisableAllUpgrades(client)
 {
@@ -3490,6 +3329,10 @@ void PrjEffects_Medic(int entity)
 	PlaySound(entity, SOUND_SQUEAK);
 }
 
+void PlaySound(int entity, const char[] sound, int level = SNDLEVEL_NORMAL)
+{
+	EmitSoundToAll(sound, entity, level == SNDLEVEL_RAIDSIREN ? SNDCHAN_ITEM : SNDCHAN_AUTO, level);
+}
 void SetupPrjEffects(int entity, float vPos[3], const char[] color)
 {
 	// Grenade Pos
