@@ -84,6 +84,7 @@ new g_iPlayerSkill[MAXPLAYERS+1];
 
 #define SOUND_CLASS_SELECTED "ui/pickup_misc42.wav" /**< What sound to play when a class is selected. Do not include "sounds/" prefix. */
 #define SOUND_DROP_BOMB "ui/beep22.wav"
+#define SOUND_BUTTON2	"ui/menu_countdown.wav"
 #define AMMO_PILE "models/props/terror/ammo_stack.mdl"
 #define MODEL_INCEN	"models/props/terror/incendiary_ammo.mdl"
 #define MODEL_EXPLO	"models/props/terror/exploding_ammo.mdl"
@@ -156,7 +157,7 @@ new g_iSID = -1;
 new g_iSED = -1;
 new g_iSRS = -1;
 new g_iShovePenalty = 0;
-
+int g_iClassTank, m_maxHealth, g_hDecayDecay;
 // Effects
 new String:g_ColorNames[12][32] = {"Red", "Green", "Blue", "Yellow", "Purple", "Cyan", "Orange", "Pink", "Olive", "Lime", "Violet", "Lightblue"};
 new g_Colors[12][3] = {{255,0,0},{0,255,0},{0,0,255},{255,255,0},{255,0,255},{0,255,255},{255,128,0},{255,0,128},{128,255,0},{0,255,128},{128,0,255},{0,128,255}};
@@ -204,6 +205,39 @@ enum Render
 	None,				// Don't render.
 };
 
+enum
+{
+	CONFIG_ELASTICITY = 0,
+	CONFIG_GRAVITY,
+	CONFIG_DMG_PHYSICS,
+	CONFIG_DMG_SPECIAL,
+	CONFIG_DMG_SURVIVORS,
+	CONFIG_DMG_TANK,
+	CONFIG_DMG_WITCH,
+	CONFIG_DAMAGE,
+	CONFIG_DMG_TICK,
+	CONFIG_FUSE,
+	CONFIG_SHAKE,
+	CONFIG_STICK,
+	CONFIG_STUMBLE,
+	CONFIG_RANGE,
+	CONFIG_TICK,
+	CONFIG_TIME
+}
+#define BEAM_OFFSET			100.0									// Increase beam diameter by this value to correct visual size.
+#define BEAM_RINGS			5										// Number of beam rings.
+#define SHAKE_RANGE			150.0									// How far to increase the shake from the effect range.
+enum
+{
+	TARGET_COMMON = 0,
+	TARGET_SURVIVOR,
+	TARGET_SPECIAL,
+	TARGET_TANK,
+	TARGET_WITCH,
+	TARGET_PHYSICS
+}
+
+
 new FX:g_Effect = FX:FxGlowShell;
 new Render:g_Render = Render:Glow;
 
@@ -240,6 +274,9 @@ new RndSession;
 
 #define SOUND_HELICOPTER "vehicles/airboat/fan_blade_fullthrottle_loop1.wav"
 #define PUNCH_SOUND "melee_tonfa_02.wav"
+#define SOUND_TUNNEL "ambient/atmosphere/tunnel1.wav"
+#define SOUND_SQUEAK "ambient/random_amb_sfx/randommetalsqueak01.wav"
+#define SOUND_NOISE	"ambient/atmosphere/noise2.wav"
 #define EXPLOSION_SOUND "weapons/hegrenade/explode5.wav"
 #define EXPLOSION_SOUND2 "weapons/grenade_launcher/grenadefire/grenade_launcher_explode_1.wav"
 #define EXPLOSION_SOUND3 "ambient/explosions/explode_3.wav"
@@ -519,6 +556,12 @@ public OnPluginStart( )
 	ADRENALINE_DURATION =  CreateConVar("talents_adrenaline_duration", "30.0", "Default adrenaline duration");
 	ADRENALINE_HEALTH_BUFFER =  CreateConVar("talents_adrenaline_health_buffer", "75.0", "Default health given on adrenaline");
 
+	// Max char health
+	m_maxHealth = FindSendPropInfo("CTerrorPlayerResource", "m_maxHealth");
+
+	g_iClassTank = g_bLeft4Dead2 ? 8 : 5;
+	g_hDecayDecay = FindConVar("pain_pills_decay_rate");
+
 	AutoExecConfig(true, "talents");
 	ApplyHealthModifiers();	
 }
@@ -561,7 +604,6 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
     CreateNative("GetPlayerSkillID", Native_GetPlayerSkillID);
     CreateNative("GetPlayerSkillName", Native_GetPlayerSkillName);
 
-	MarkNativeAsOptional("DLR_Airstrike");
 	//MarkNativeAsOptional("DLR_Berzerk");
 	//MarkNativeAsOptional("DLR_Infected2023");
 
@@ -727,6 +769,11 @@ public OnMapStart()
 	PrecacheModel(MODEL_SPRITE, true);
 	PrecacheModel(SPRITE_GLOW, true);
 	PrecacheModel(MODEL_MINE, true);
+	PrecacheSound(SOUND_SQUEAK, true);
+	PrecacheSound(SOUND_TUNNEL, true);
+	PrecacheSound(SOUND_NOISE, true);
+	PrecacheSound(SOUND_BUTTON2, true);
+
 
 	// Sprites
 	g_BeamSprite = PrecacheModel("materials/sprites/laserbeam.vmt");
@@ -746,6 +793,24 @@ public OnMapStart()
 	ClearCache();
 	RoundStarted = false;
 	ClassHint = false;
+	// Shake
+
+	// Pre-cache env_shake -_- WTF
+	int shake = CreateEntityByName("env_shake");
+	if( shake != -1 )
+	{
+		DispatchKeyValue(shake, "spawnflags", "8");
+		DispatchKeyValue(shake, "amplitude", "16.0");
+		DispatchKeyValue(shake, "frequency", "1.5");
+		DispatchKeyValue(shake, "duration", "0.9");
+		DispatchKeyValue(shake, "radius", "50");
+		TeleportEntity(shake, view_as<float>({ 0.0, 0.0, -1000.0 }), NULL_VECTOR, NULL_VECTOR);
+		DispatchSpawn(shake);
+		ActivateEntity(shake);
+		AcceptEntityInput(shake, "Enable");
+		AcceptEntityInput(shake, "StartShake");
+		RemoveEdict(shake);
+	}
 
 	for (int i = 0; i < 2; i++)
 		PrecacheModel(g_sModels[i]);
@@ -1723,6 +1788,209 @@ public void CalculateEngineerPlacePos(client, type)
 ///////////////////////////////////////////////////////////////////////////////////
 // Health modifiers & medic
 ///////////////////////////////////////////////////////////////////////////////////
+
+// ====================================================================================================
+//					EXPLOSION FX - MEDIC
+// ====================================================================================================
+void Explode_Medic(int entity, int index)
+{
+	// Grenade Pos
+	static float vPos[3];
+	GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", vPos);
+
+	// Shake
+	CreateShake(g_GrenadeData[index - 1][CONFIG_SHAKE], g_GrenadeData[index - 1][CONFIG_RANGE] + SHAKE_RANGE, vPos);
+
+	// Sound
+	PlaySound(entity, SOUND_BUTTON2);
+
+	// Beam Ring
+	float range = g_GrenadeData[index - 1][CONFIG_RANGE] * 2 + BEAM_OFFSET;
+	CreateBeamRing(entity, { 0, 150, 0, 255 }, 0.1, range - (range / BEAM_RINGS));
+
+	// Heal targets
+	int targ = g_GrenadeTarg[INDEX_MEDIC];
+	int team;
+	bool pass;
+
+	int iHeal = RoundFloat(g_GrenadeData[index - 1][CONFIG_DAMAGE]);
+	int iHealth;
+	int iMax;
+	float fHealth;
+	float fRange = g_GrenadeData[index - 1][CONFIG_RANGE];
+	float vEnd[3];
+
+
+
+	// Survivors and Special Infected
+	for( int i = 1; i <= MaxClients; i++ )
+	{
+		if( IsClientInGame(i) && IsPlayerAlive(i) )
+		{
+			team = GetClientTeam(i);
+			if( team == 2 && targ & (1<<TARGET_SURVIVOR) )
+				pass = true;
+			else if( team == 3 && targ & (1<<TARGET_SPECIAL) && GetEntProp(i, Prop_Send, "m_zombieClass") != g_iClassTank )
+				pass = true;
+			else if( team == 3 && targ & (1<<TARGET_TANK) && GetEntProp(i, Prop_Send, "m_zombieClass") == g_iClassTank )
+				pass = true;
+
+			if( pass )
+			{
+				GetClientAbsOrigin(i, vEnd);
+				if( GetVectorDistance(vPos, vEnd) <= fRange )
+				{
+					// Check for Black and White health:
+					bool bBlackAndWhite;
+					if( team == 2 )
+					{
+						if( g_bLeft4Dead2 )
+							bBlackAndWhite = view_as<bool>(GetEntProp(i, Prop_Send, "m_bIsOnThirdStrike", 1));
+						else
+							bBlackAndWhite = GetEntProp(i, Prop_Send, "m_currentReviveCount") >= GetMaxReviveCount();
+					}
+
+					if( bBlackAndWhite )
+					{
+						fHealth = GetTempHealth(i);
+						if( fHealth < 100 )
+						{
+							fHealth += g_GrenadeData[index - 1][CONFIG_DAMAGE];
+
+							if( fHealth > 100.0 )
+								fHealth = 100.0;
+
+							SetTempHealth(i, fHealth);
+						}
+					} else {
+						iHealth = GetClientHealth(i);
+						iMax = GetClientMaxHealth(i);
+	
+						if( iHealth < iMax )
+						{
+							iHealth += iHeal;
+							if( iHealth > iMax )
+								iHealth = iMax;
+
+							if( team == 2 )
+							{
+								fHealth = GetTempHealth(i);
+								if( iHealth + fHealth > 100 )
+								{
+									fHealth = 100.0 - iHealth;
+									SetTempHealth(i, fHealth);
+								}
+							}
+
+							SetEntityHealth(i, iHealth);
+						}
+					}
+				}
+			}
+		}
+	}
+
+
+
+	// Common
+	if( targ & (1<<TARGET_COMMON) )
+	{
+		int target = -1;
+
+		while( (target = FindEntityByClassname(target, "infected")) != INVALID_ENT_REFERENCE )
+		{
+			GetEntPropVector(target, Prop_Data, "m_vecAbsOrigin", vEnd);
+			if( GetVectorDistance(vPos, vEnd) <= fRange )
+			{
+				iMax = GetEntProp(target, Prop_Data, "m_iMaxHealth");
+				iHealth = GetEntProp(target, Prop_Data, "m_iHealth");
+				iHealth += iHeal;
+
+				if( iHealth > iMax )
+					iHealth = iMax;
+
+				SetEntProp(target, Prop_Data, "m_iHealth", iHealth);
+			}
+		}
+	}
+
+
+
+	// Witch
+	if( targ & (1<<TARGET_WITCH) )
+	{
+		int target = -1;
+
+		while( (target = FindEntityByClassname(target, "witch")) != INVALID_ENT_REFERENCE )
+		{
+			GetEntPropVector(target, Prop_Data, "m_vecAbsOrigin", vEnd);
+			if( GetVectorDistance(vPos, vEnd) <= fRange )
+			{
+				iMax = GetEntProp(target, Prop_Data, "m_iMaxHealth");
+				iHealth = GetEntProp(target, Prop_Data, "m_iHealth");
+				iHealth += iHeal;
+
+				if( iHealth > iMax )
+					iHealth = iMax;
+
+				SetEntProp(target, Prop_Data, "m_iHealth", iHealth);
+			}
+		}
+	}
+}
+
+
+float GetTempHealth(int client)
+{
+	float fGameTime = GetGameTime();
+	float fHealthTime = GetEntPropFloat(client, Prop_Send, "m_healthBufferTime");
+	float fHealth = GetEntPropFloat(client, Prop_Send, "m_healthBuffer");
+	fHealth -= (fGameTime - fHealthTime) * g_hDecayDecay.FloatValue;
+	return fHealth < 0.0 ? 0.0 : fHealth;
+}
+
+void SetTempHealth(int client, float fHealth)
+{
+	SetEntPropFloat(client, Prop_Send, "m_healthBuffer", fHealth < 0.0 ? 0.0 : fHealth );
+	SetEntPropFloat(client, Prop_Send, "m_healthBufferTime", GetGameTime());
+}
+int GetClientMaxHealth(int client)
+{
+	int entity = GetPlayerManager();
+
+	if( entity != INVALID_ENT_REFERENCE )
+	{
+		return GetEntData(entity, m_maxHealth + (client * 4));
+	}
+
+	return 0;
+}
+
+int GetMaxReviveCount()
+{
+	static Handle hMaxReviveCount = INVALID_HANDLE;
+	if (hMaxReviveCount == INVALID_HANDLE)
+	{
+		hMaxReviveCount = FindConVar("survivor_max_incapacitated_count");
+		if (hMaxReviveCount == INVALID_HANDLE)
+		{
+			return -1;
+		}
+	}
+	
+	return GetConVarInt(hMaxReviveCount);
+}
+int GetPlayerManager()
+{
+	static int entity = INVALID_ENT_REFERENCE;
+	if( entity == INVALID_ENT_REFERENCE || EntRefToEntIndex(entity) == INVALID_ENT_REFERENCE )
+	{
+		entity = FindEntityByClassname(-1, "terror_player_manager");
+		if( entity != INVALID_ENT_REFERENCE ) entity = EntIndexToEntRef(entity);
+	}
+
+	return entity;
+}
 
 public bool:CreatePlayerMedicMenu(client)
 {
@@ -3177,6 +3445,49 @@ int GetColor(char[] sTemp)
 	iColor += 65536 * StringToInt(sColors[2]);
 
 	return iColor;
+}
+
+// ====================================================================================================
+//					STOCKS - SHAKE
+// ====================================================================================================
+void CreateShake(float intensity, float range, float vPos[3])
+{
+	if( intensity == 0.0 ) return;
+
+	int entity = CreateEntityByName("env_shake");
+	if( entity == -1 )
+	{
+		LogError("Failed to create 'env_shake'");
+		return;
+	}
+
+	static char sTemp[8];
+	FloatToString(intensity, sTemp, sizeof(sTemp));
+	DispatchKeyValue(entity, "amplitude", sTemp);
+	DispatchKeyValue(entity, "frequency", "1.5");
+	DispatchKeyValue(entity, "duration", "0.9");
+	FloatToString(range, sTemp, sizeof(sTemp));
+	DispatchKeyValue(entity, "radius", sTemp);
+	DispatchKeyValue(entity, "spawnflags", "8");
+	DispatchSpawn(entity);
+	ActivateEntity(entity);
+	AcceptEntityInput(entity, "Enable");
+
+	TeleportEntity(entity, vPos, NULL_VECTOR, NULL_VECTOR);
+	AcceptEntityInput(entity, "StartShake");
+	RemoveEdict(entity);
+}
+
+void PrjEffects_Medic(int entity)
+{
+	// Grenade Pos + Effects
+	static float vPos[3];
+	SetupPrjEffects(entity, vPos, "0 150 0"); // Green
+
+	// Sound
+	PlaySound(entity, SOUND_TUNNEL);
+	PlaySound(entity, SOUND_NOISE);
+	PlaySound(entity, SOUND_SQUEAK);
 }
 
 void SetupPrjEffects(int entity, float vPos[3], const char[] color)

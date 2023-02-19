@@ -11,6 +11,8 @@ Changes:
 - Athlete has faster moving speed and a parachute. configurable.
 - Commando reload rate actually works now
 - Commando damage modifiers are configurable per weapon, default one is used for rest.
+- Commando is immune to knockdowns
+- Commando can stomp downed infected
 - Medic has more options to spawn. Has faster healing and revival times.
 - Includes modifiers for adrenaline/pills/revive/heal durations in the config. disable with "talents_health_modifiers_enabled" 
 - Announcement to other players when healing spot is active.
@@ -24,6 +26,7 @@ Changes:
 - Turrets don't block anymore, so you cannot abuse it by boxing in opponents.
 - Saboteur moves faster when crouched and shows visibility status.
 - Saboteur has visual effect on turning invisible and specific glow.
+- Saboteur has silencer and nightvision
 - Redefine visual effect for mines, and actually leave a visible mine. 
 - Mines do less damage to survivors. Standing really close to the mine can still incap.
 - Mines do more damage to infected, 1500hp. Some edge over tank
