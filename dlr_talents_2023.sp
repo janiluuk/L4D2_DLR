@@ -13,14 +13,11 @@
 *		- The right to modify this plugin
 *		- The right to claim ownership of this plugin
 *		- The right to re-distribute this plugin as they see fit
-*/	
-#undef REQUIRE_PLUGIN
-#tryinclude <MultiTurrets>
-#define REQUIRE_PLUGIN
+*/
 #if !defined _DLRCore_included
 native int GetCurrentClass(int player);
 #endif
-
+#define PLUGIN_NAME "Talents Plugin 2023 anniversary edition"
 #define PLUGIN_VERSION "1.3"
 #pragma semicolon 1
 #define DEBUG 1
@@ -64,9 +61,21 @@ static const MENU_OPEN_TIME = view_as<int>(9999);
 static bool:DEBUG_MODE = false;
 
 // API
-new Handle:g_hfwdOnPlayerUsedSpecialSkill;
+new Handle:g_hfwdOnSpecialSkillUsed;
 new Handle:g_hfwdOnPlayerClassChange;
 
+new g_iSkillCounter = -1;
+new Handle:g_hSkillArray = INVALID_HANDLE;
+//Menu Handlers
+new Handle:g_hSkillMenu = INVALID_HANDLE;
+
+//Forward Handlers
+new Handle:g_hOnSkillSelected = INVALID_HANDLE;
+
+//Player Related Variables
+new g_iPlayerSkill[MAXPLAYERS+1];
+
+//Class variables
 // What formatting string to use when printing to the chatbox
 #define PRINT_PREFIX 	"\x05[DLR] \x01" 
 
@@ -75,6 +84,7 @@ new Handle:g_hfwdOnPlayerClassChange;
 
 #define SOUND_CLASS_SELECTED "ui/pickup_misc42.wav" /**< What sound to play when a class is selected. Do not include "sounds/" prefix. */
 #define SOUND_DROP_BOMB "ui/beep22.wav"
+#define SOUND_BUTTON2	"ui/menu_countdown.wav"
 #define AMMO_PILE "models/props/terror/ammo_stack.mdl"
 #define MODEL_INCEN	"models/props/terror/incendiary_ammo.mdl"
 #define MODEL_EXPLO	"models/props/terror/exploding_ammo.mdl"
@@ -100,7 +110,7 @@ const MAXCLASSES=view_as<int>(8);
 
 enum SpecialSkill {
 	No_Skill = 0,
-	F18_airstrike,
+	F18_airstrike, 
 	Berzerk,
 	Grenade,
 	Multiturret
@@ -121,7 +131,6 @@ enum struct PlayerInfo
 }
 
 PlayerInfo ClientData[MAXPLAYERS+1];
-
 
 // API
 bool g_bLeft4Dead2, g_bLateLoad;
@@ -148,7 +157,9 @@ new g_iSID = -1;
 new g_iSED = -1;
 new g_iSRS = -1;
 new g_iShovePenalty = 0;
+int g_iClassTank, m_maxHealth;
 
+ConVar g_hDecayDecay;
 // Effects
 new String:g_ColorNames[12][32] = {"Red", "Green", "Blue", "Yellow", "Purple", "Cyan", "Orange", "Pink", "Olive", "Lime", "Violet", "Lightblue"};
 new g_Colors[12][3] = {{255,0,0},{0,255,0},{0,0,255},{255,255,0},{255,0,255},{0,255,255},{255,128,0},{255,0,128},{128,255,0},{0,255,128},{128,0,255},{0,128,255}};
@@ -196,6 +207,39 @@ enum Render
 	None,				// Don't render.
 };
 
+enum
+{
+	CONFIG_ELASTICITY = 0,
+	CONFIG_GRAVITY,
+	CONFIG_DMG_PHYSICS,
+	CONFIG_DMG_SPECIAL,
+	CONFIG_DMG_SURVIVORS,
+	CONFIG_DMG_TANK,
+	CONFIG_DMG_WITCH,
+	CONFIG_DAMAGE,
+	CONFIG_DMG_TICK,
+	CONFIG_FUSE,
+	CONFIG_SHAKE,
+	CONFIG_STICK,
+	CONFIG_STUMBLE,
+	CONFIG_RANGE,
+	CONFIG_TICK,
+	CONFIG_TIME
+}
+#define BEAM_OFFSET			100.0									// Increase beam diameter by this value to correct visual size.
+#define BEAM_RINGS			5										// Number of beam rings.
+#define SHAKE_RANGE			150.0									// How far to increase the shake from the effect range.
+enum
+{
+	TARGET_COMMON = 0,
+	TARGET_SURVIVOR,
+	TARGET_SPECIAL,
+	TARGET_TANK,
+	TARGET_WITCH,
+	TARGET_PHYSICS
+}
+
+
 new FX:g_Effect = FX:FxGlowShell;
 new Render:g_Render = Render:Glow;
 
@@ -204,6 +248,8 @@ new Render:g_Render = Render:Glow;
 const Float:g_fl_SpasS = 0.5;
 const Float:g_fl_SpasI = 0.375;
 const Float:g_fl_SpasE = 0.699999;
+
+// Parachute
 
 bool g_bParachute[MAXPLAYERS+1];
 int g_iVelocity = -1, g_iParaEntRef[MAXPLAYERS+1] = {INVALID_ENT_REFERENCE, ...};
@@ -214,7 +260,6 @@ static char g_sModels[2][] =
 	"models/props/de_inferno/ceiling_fan_blade.mdl"
 };
 
-// Enums (doc'd by SMLib)
 enum Water_Level
 {
 	WATER_LEVEL_NOT_IN_WATER = 0,
@@ -231,6 +276,9 @@ new RndSession;
 
 #define SOUND_HELICOPTER "vehicles/airboat/fan_blade_fullthrottle_loop1.wav"
 #define PUNCH_SOUND "melee_tonfa_02.wav"
+#define SOUND_TUNNEL "ambient/atmosphere/tunnel1.wav"
+#define SOUND_SQUEAK "ambient/random_amb_sfx/randommetalsqueak01.wav"
+#define SOUND_NOISE	"ambient/atmosphere/noise2.wav"
 #define EXPLOSION_SOUND "weapons/hegrenade/explode5.wav"
 #define EXPLOSION_SOUND2 "weapons/grenade_launcher/grenadefire/grenade_launcher_explode_1.wav"
 #define EXPLOSION_SOUND3 "ambient/explosions/explode_3.wav"
@@ -302,6 +350,8 @@ new Handle:SABOTEUR_MAX_BOMBS;
 new Handle:SABOTEUR_BOMB_DAMAGE_SURV;
 new Handle:SABOTEUR_BOMB_DAMAGE_INF;
 new Handle:SABOTEUR_BOMB_POWER;
+new Handle:SABOTEUR_ENABLE_NIGHT_VISION;
+new Handle:SABOTEUR_ENABLE_SILENCER;
 
 // Commando
 new Handle:COMMANDO_DAMAGE;
@@ -313,6 +363,7 @@ new Handle:COMMANDO_DAMAGE_SNIPER;
 new Handle:COMMANDO_DAMAGE_HUNTING;
 new Handle:COMMANDO_DAMAGE_PISTOL;
 new Handle:COMMANDO_DAMAGE_SMG;
+new Handle:COMMANDO_ENABLE_STUMBLE_BLOCK;
 
 // Engineer
 new Handle:ENGINEER_MAX_BUILDS;
@@ -357,7 +408,7 @@ ConVar parachuteEnabled;
 
 public Plugin:myinfo =
 {
-	name = "Talents Plugin 2023 anniversary edition",
+	name = PLUGIN_NAME,
 	author = "DLR / Ken / Neil / Spirit / panxiaohai / Yani",
 	description = "Incorporates Survivor Classes",
 	version = PLUGIN_VERSION,
@@ -369,7 +420,6 @@ public Plugin:myinfo =
 // ====================================================================================================
 
 native void F18_ShowAirstrike(float origin[3], float direction);
-native void DLR_Multiturret(int client, int type);
 
 /**
 * PLUGIN LOGIC
@@ -378,11 +428,22 @@ native void DLR_Multiturret(int client, int type);
 public OnPluginStart( )
 {
 	// Api
+
 	g_hfwdOnPlayerClassChange = CreateGlobalForward("OnPlayerClassChange", ET_Ignore, Param_Cell, Param_Cell, Param_Cell);
-	g_hfwdOnPlayerUsedSpecialSkill = CreateGlobalForward("OnPlayerUsedSpecialSkill", ET_Ignore, Param_Cell, Param_Cell, Param_Cell);
+	g_hfwdOnSpecialSkillUsed= CreateGlobalForward("OnSpecialSkillUsed", ET_Ignore, Param_Cell, Param_Cell);
+	//Create a Class Selection forward
+	g_hOnSkillSelected = CreateGlobalForward("OnSkillSelected", ET_Event, Param_Cell, Param_Cell);
+
+	//Create menu and set properties
+	g_hSkillMenu = CreateMenu(DLRSkillMenuHandler);
+
+	//Create a Class Selection forward
+	SetMenuTitle(g_hSkillMenu, "Registered classes");
+	SetMenuExitButton(g_hSkillMenu, true);
+	g_hSkillArray = CreateArray(16);
 
 	// Offsets
-	g_iNPA = FindSendPropInfo("CBaseCombatWeapon", "m_flNextPrimaryAttack");
+	g_iNPA = FindSendPropInfo("CBaseCombatqWeapon", "m_flNextPrimaryAttack");
 	g_oAW = FindSendPropInfo("CTerrorPlayer", "m_hActiveWeapon");
 	g_ioLMV = FindSendPropInfo("CTerrorPlayer", "m_flLaggedMovementValue");
 	g_ioPR = FindSendPropInfo("CBaseCombatWeapon", "m_flPlaybackRate");
@@ -468,6 +529,8 @@ public OnPluginStart( )
 	SABOTEUR_BOMB_DAMAGE_INF = CreateConVar("talents_saboteur_bomb_dmg_inf", "1500", "How much damage a bomb does to infected");
 	SABOTEUR_BOMB_POWER = CreateConVar("talents_saboteur_bomb_power", "2.0", "How much blast power a bomb has. Higher values will throw survivors farther away");
 	SABOTEUR_ACTIVE_BOMB_COLOR = CreateConVar("talents_bomb_active_glow_color","255 0 0", "Glow color for active bombs (Default Red)");
+	SABOTEUR_ENABLE_NIGHT_VISION = CreateConVar( "talents_saboteur_enable_nightvision", "1", "1 - Enable Night Vision for Saboteur; 0 - Disable");
+	SABOTEUR_ENABLE_SILENCER = CreateConVar( "talents_saboteur_enable_silencer", "1", "1 - Enable silencer for Saboteur; 0 - Disable");
 
 	COMMANDO_DAMAGE = CreateConVar("talents_commando_dmg", "5.0", "How much bonus damage a Commando does by default");
 	COMMANDO_DAMAGE_RIFLE = CreateConVar("talents_commando_dmg_rifle", "10.0", "How much bonus damage a Commando does with rifle");
@@ -478,6 +541,7 @@ public OnPluginStart( )
 	COMMANDO_DAMAGE_PISTOL = CreateConVar("talents_commando_dmg_pistol", "25.0", "How much bonus damage a Commando does with pistol");
 	COMMANDO_DAMAGE_SMG = CreateConVar("talents_commando_dmg_smg", "7.0", "How much bonus damage a Commando does with smg");
 	COMMANDO_RELOAD_RATIO = CreateConVar("talents_commando_reload_ratio", "0.44", "Ratio for how fast a Commando should be able to reload");
+	COMMANDO_ENABLE_STUMBLE_BLOCK = CreateConVar("talents_commando_enable_stumble_block", "1", "Enable stumble blocking for Commando. 0 = Disable, 1 = Enable");
 	
 	ENGINEER_MAX_BUILDS = CreateConVar("talents_engineer_max_builds", "5", "How many times an engineer can build per round");
 	ENGINEER_MAX_BUILD_RANGE = CreateConVar("talents_engineer_build_range", "120.0", "Maximum distance away an object can be built by the engineer");
@@ -495,6 +559,12 @@ public OnPluginStart( )
 	ADRENALINE_DURATION =  CreateConVar("talents_adrenaline_duration", "30.0", "Default adrenaline duration");
 	ADRENALINE_HEALTH_BUFFER =  CreateConVar("talents_adrenaline_health_buffer", "75.0", "Default health given on adrenaline");
 
+	// Max char health
+	m_maxHealth = FindSendPropInfo("CTerrorPlayerResource", "m_maxHealth");
+
+	g_iClassTank = g_bLeft4Dead2 ? 8 : 5;
+	g_hDecayDecay = FindConVar("pain_pills_decay_rate");
+
 	AutoExecConfig(true, "talents");
 	ApplyHealthModifiers();	
 }
@@ -510,6 +580,9 @@ public ResetClientVariables(client)
 	ClientData[client].SpecialSkill = SpecialSkill:No_Skill;
 	ClientData[client].LastDropTime = 0.0;
 	g_bInSaferoom[client] = false;
+
+	SDKUnhook(client, SDKHook_OnTakeDamagePost, OnTakeDamage);
+
 }
 
 // ====================================================================================================
@@ -528,14 +601,34 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	}
 	RegPluginLibrary("dlr_talents_2023");
 	CreateNative("GetPlayerClassName", Native_GetPlayerClassName);
-
-	MarkNativeAsOptional("DLR_Airstrike");
-	MarkNativeAsOptional("DLR_Multiturret");
+	CreateNative("RegisterDLRSkill", Native_RegisterSkill);
+	CreateNative("OnSpecialSkillSuccess", Native_OnSpecialSkillSuccess);
+	CreateNative("OnSpecialSkillFail", Native_OnSpecialSkillFail);
+	CreateNative("GetPlayerSkillID", Native_GetPlayerSkillID);
+	CreateNative("GetPlayerSkillName", Native_GetPlayerSkillName);
 	//MarkNativeAsOptional("DLR_Berzerk");
 	//MarkNativeAsOptional("DLR_Infected2023");
 
 	g_bLateLoad = late;
 	return APLRes_Success;
+}
+
+// NATIVES
+public Native_RegisterSkill(Handle:plugin, numParams)
+{
+	new String:SkillName[32], String:ItemInfo[3];
+
+	if(GetNativeString(1, SkillName, sizeof(SkillName)) == SP_ERROR_NONE)
+	{
+		if(++g_iSkillCounter <= MAXCLASSES)
+		{
+			IntToString(g_iSkillCounter, ItemInfo, sizeof(ItemInfo));
+			PushArrayString(g_hSkillArray, SkillName);
+			AddMenuItem(g_hSkillMenu, ItemInfo, SkillName);
+			return g_iSkillCounter;
+		}
+	}
+	return -1;
 }
 
 // ====================================================================================================
@@ -574,6 +667,55 @@ public void F18_OnPluginState(int pluginstate)
 // ====================================================================================================
 //					DLR - Multiturret
 // ====================================================================================================
+
+any Native_OnSpecialSkillSuccess(Handle plugin, int numParams)
+{
+	int client = GetNativeCell(1);
+	if (client < 1 || client > MaxClients)
+	{
+		return ThrowNativeError(SP_ERROR_NATIVE, "Invalid client index (%d)", client);
+	}
+
+	int len;
+	GetNativeStringLength(2, len);
+ 
+	if (len <= 0)
+	{
+		return;
+	}
+ 
+	char[] str = new char[len + 1];
+	GetNativeString(2, str, len + 1);
+	ClientData[client].SpecialsUsed++;
+	ClientData[client].LastDropTime = GetGameTime();	
+}
+
+
+any Native_OnSpecialSkillFail(Handle plugin, int numParams)
+{
+	int client = GetNativeCell(1);
+	if (client < 1 || client > MaxClients)
+	{
+		return ThrowNativeError(SP_ERROR_NATIVE, "Invalid client index (%d)", client);
+	}
+
+	int len;
+	GetNativeStringLength(2, len);
+	if (len <= 0)
+	{
+		return ThrowNativeError(SP_ERROR_NATIVE, "Empty plugin name!");
+	} 
+	char[] name = new char[len + 1];
+	GetNativeString(2, name, len + 1);
+	GetNativeStringLength(3, len);
+	if (len <= 0)
+	{
+		return ThrowNativeError(SP_ERROR_NATIVE, "Empty reason!");
+	}
+	char[] reason = new char[len + 1];
+	GetNativeString(3, reason, len + 1);
+	PrintToChat(client, "%s failed due to: %s", name, reason);
+}
 
 public void Multiturret_OnPluginState(int pluginstate)
 {
@@ -628,6 +770,11 @@ public OnMapStart()
 	PrecacheModel(MODEL_SPRITE, true);
 	PrecacheModel(SPRITE_GLOW, true);
 	PrecacheModel(MODEL_MINE, true);
+	PrecacheSound(SOUND_SQUEAK, true);
+	PrecacheSound(SOUND_TUNNEL, true);
+	PrecacheSound(SOUND_NOISE, true);
+	PrecacheSound(SOUND_BUTTON2, true);
+
 
 	// Sprites
 	g_BeamSprite = PrecacheModel("materials/sprites/laserbeam.vmt");
@@ -647,6 +794,24 @@ public OnMapStart()
 	ClearCache();
 	RoundStarted = false;
 	ClassHint = false;
+	// Shake
+
+	// Pre-cache env_shake -_- WTF
+	int shake = CreateEntityByName("env_shake");
+	if( shake != -1 )
+	{
+		DispatchKeyValue(shake, "spawnflags", "8");
+		DispatchKeyValue(shake, "amplitude", "16.0");
+		DispatchKeyValue(shake, "frequency", "1.5");
+		DispatchKeyValue(shake, "duration", "0.9");
+		DispatchKeyValue(shake, "radius", "50");
+		TeleportEntity(shake, view_as<float>({ 0.0, 0.0, -1000.0 }), NULL_VECTOR, NULL_VECTOR);
+		DispatchSpawn(shake);
+		ActivateEntity(shake);
+		AcceptEntityInput(shake, "Enable");
+		AcceptEntityInput(shake, "StartShake");
+		RemoveEdict(shake);
+	}
 
 	for (int i = 0; i < 2; i++)
 		PrecacheModel(g_sModels[i]);
@@ -669,9 +834,9 @@ public OnClientPutInServer(client)
 {
 	if (!client || !IsValidEntity(client) || !IsClientInGame(client))
 	return;
-	
-	g_bHide[client] = false; 
 
+	g_bHide[client] = false; 
+	DisableAllUpgrades(client);
 	ResetClientVariables(client);
 	RebuildCache();
 }
@@ -682,6 +847,7 @@ public Action:TimerLoadGlobal(Handle:hTimer, any:client)
 	return;
 	
 	SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamagePre);
+
 }
 
 public Action:TimerLoadClient(Handle:hTimer, any:client)
@@ -870,7 +1036,7 @@ public Action:TimerThink(Handle:hTimer, any:client)
 				if (CanDrop == true) {
 					if(ClientData[client].SpecialsUsed < GetConVarInt(ENGINEER_MAX_BUILDS))
 					{
-						CreatePlayerEngineerMenu(client);	
+						CreatePlayerEngineerMenu(client);
 						ClientData[client].LastDropTime = GetGameTime();
 					}
 					else
@@ -908,14 +1074,13 @@ public Action:TimerThink(Handle:hTimer, any:client)
 }
 
 // Inform other plugins.
-public void useSpecialSkill(client,SpecialSkill:skillName)
+public void useSpecialSkill(int client,int skill)
 {
-	Call_StartForward(g_hfwdOnPlayerUsedSpecialSkill);
+	Call_StartForward(g_hfwdOnSpecialSkillUsed);
 	Call_PushCell(client);
-	Call_PushCell(skillName);
-	Call_PushCell(ClientData[client].ChosenClass);
+	Call_PushCell(skill);
 	Call_Finish();
-}
+}	
 
 public bool canUseSpecialSkill(client, char[] pendingMessage)
 {	
@@ -1054,6 +1219,8 @@ public Event_PlayerDeath(Handle:hEvent, String:sName[], bool:bDontBroadcast)
 	RebuildCache();
 	
 	new client = GetClientOfUserId(GetEventInt(hEvent, "userid"));
+	if(client > 0 && IsClientInGame(client) && GetClientTeam(client) == 2) DisableAllUpgrades(client);
+
 	ResetClientVariables(client);
 }
 
@@ -1268,7 +1435,14 @@ public void SetupClasses(client, class)
 		
 		case COMMANDO:
 		{
-			PrintHintText(client,"You have faster reload and cause more damage!");
+			decl String:text[64];
+			text = "";
+			if (GetConVarBool(COMMANDO_ENABLE_STUMBLE_BLOCK)) {
+				SDKHook(client, SDKHook_OnTakeDamagePost, OnTakeDamage);
+				text = ", You're immune to knockdowns";
+			} 
+
+			PrintHintText(client,"You have faster reload and cause more damage%s!", text);
 			MaxPossibleHP = GetConVarInt(COMMANDO_HEALTH);
 		}
 		
@@ -1281,6 +1455,7 @@ public void SetupClasses(client, class)
 		
 		case SABOTEUR:
 		{
+
 			PrintHintText(client,"Press SHIFT to drop mines! Hold CROUCH over 5 sec to go invisible");
 			MaxPossibleHP = GetConVarInt(SABOTEUR_HEALTH);
 			ClientData[client].SpecialLimit = GetConVarInt(SABOTEUR_MAX_BOMBS);			
@@ -1292,7 +1467,10 @@ public void SetupClasses(client, class)
 			MaxPossibleHP = GetConVarInt(BRAWLER_HEALTH);
 		}
 	}
-	
+
+	ToggleNightVision(client);
+	ToggleSilencer(client);
+
 	setPlayerHealth(client, MaxPossibleHP);
 }
 
@@ -1387,6 +1565,7 @@ public CreateDlrMenu(client) {
 	SetPanelTitle(hPanel, "Functions:");
 	DrawPanelItem(hPanel, "Toggle Debug Messages");
 	DrawPanelItem(hPanel, "Toggle infected");
+	DrawPanelItem(hPanel, "List registered skills");
 	DrawPanelText(hPanel, " ");
 	DrawPanelItem(hPanel, "Exit");
 	SendPanelToClient(hPanel, client, PanelHandler_DlrMenu, MENU_OPEN_TIME);
@@ -1433,8 +1612,51 @@ public PanelHandler_DlrMenu(Handle:menu, MenuAction:action, client, param)
 				}
 				PrintHintText(client,"Infected are now %s", disableInfected ? "DISABLED" : "ENABLED");
 			}
+			if( param == 3)
+			{
+		        DisplayMenu(g_hSkillMenu, client, MENU_TIME_FOREVER);
+			}
 		}
 	}
+}
+
+////////////////////
+/// Skill register / debug menu
+////////////////////
+public Native_GetPlayerSkillID(Handle:plugin, numParams)
+{
+    new iClient = GetNativeCell(1);
+    
+    return g_iPlayerSkill[iClient];
+}
+
+public Native_GetPlayerSkillName(Handle:plugin, numParams)
+{
+    new iClient = GetNativeCell(1);
+    new iSize = GetNativeCell(3);
+    new String:szSkillName[32];
+    GetArrayString(g_hSkillArray, g_iPlayerSkill[iClient], szSkillName, sizeof(szSkillName));
+    
+    if(SetNativeString(2, szSkillName, iSize))
+        return true;
+    
+    return false;
+} 
+
+public DLRSkillMenuHandler(Handle:hMenu, MenuAction:action, iClient, iSkillSelection)
+{
+    if(action == MenuAction_Select)
+    {
+        /* Start Function Call */
+        Call_StartForward(g_hOnSkillSelected);
+        
+        /* Add details to Function Call */
+        Call_PushCell(iClient);
+        Call_PushCell(iSkillSelection);
+        
+        /* End Function Call */
+        Call_Finish();
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////
@@ -1511,7 +1733,8 @@ public void CalculateEngineerPlacePos(client, type)
 				{
 					if (GetConVarInt(ENGINEER_TURRET_EXTERNAL_PLUGIN) > 0) 
 					{
-						ClientCommand(client, Engineer_Turret_Spawn_Cmd);
+//						ClientCommand(client, Engineer_Turret_Spawn_Cmd);
+						useSpecialSkill(client,SpecialSkill:Multiturret);
 						ClientData[client].LastDropTime = GetGameTime();
 						ClientData[client].SpecialsUsed++;
 					}
@@ -1554,6 +1777,59 @@ public void CalculateEngineerPlacePos(client, type)
 ///////////////////////////////////////////////////////////////////////////////////
 // Health modifiers & medic
 ///////////////////////////////////////////////////////////////////////////////////
+
+
+float GetTempHealth(int client)
+{
+	float fGameTime = GetGameTime();
+	float fHealthTime = GetEntPropFloat(client, Prop_Send, "m_healthBufferTime");
+	float fHealth = GetEntPropFloat(client, Prop_Send, "m_healthBuffer");
+	fHealth -= (fGameTime - fHealthTime) * g_hDecayDecay.FloatValue;
+	return fHealth < 0.0 ? 0.0 : fHealth;
+}
+
+void SetTempHealth(int client, float fHealth)
+{
+	SetEntPropFloat(client, Prop_Send, "m_healthBuffer", fHealth < 0.0 ? 0.0 : fHealth );
+	SetEntPropFloat(client, Prop_Send, "m_healthBufferTime", GetGameTime());
+}
+int GetClientMaxHealth(int client)
+{
+	int entity = GetPlayerManager();
+
+	if( entity != INVALID_ENT_REFERENCE )
+	{
+		return GetEntData(entity, m_maxHealth + (client * 4));
+	}
+
+	return 0;
+}
+
+int GetMaxReviveCount()
+{
+	static Handle hMaxReviveCount = INVALID_HANDLE;
+	if (hMaxReviveCount == INVALID_HANDLE)
+	{
+		hMaxReviveCount = FindConVar("survivor_max_incapacitated_count");
+		if (hMaxReviveCount == INVALID_HANDLE)
+		{
+			return -1;
+		}
+	}
+	
+	return GetConVarInt(hMaxReviveCount);
+}
+int GetPlayerManager()
+{
+	static int entity = INVALID_ENT_REFERENCE;
+	if( entity == INVALID_ENT_REFERENCE || EntRefToEntIndex(entity) == INVALID_ENT_REFERENCE )
+	{
+		entity = FindEntityByClassname(-1, "terror_player_manager");
+		if( entity != INVALID_ENT_REFERENCE ) entity = EntIndexToEntRef(entity);
+	}
+
+	return entity;
+}
 
 public bool:CreatePlayerMedicMenu(client)
 {
@@ -1773,7 +2049,7 @@ public Action:TimerDetectHealthChanges(Handle:hTimer, any:client)
 					// post-heal set values
 					new newHp = GetClientHealth(i);
 					new totalHp = newHp + TempHealth;
-					GlowPlayer(i, "Orange", FX:FxGlowShell);
+					GlowPlayer(i, "Green", FX:FxEnvRain);
 					new Handle:hPack = CreateDataPack();
 					WritePackCell(hPack, i);
 					WritePackCell(hPack, totalHp);
@@ -1829,6 +2105,27 @@ public InitHealthModifiers()
 ///////////////////////////////////////////////////////////////////////////////////
 // Commando
 ///////////////////////////////////////////////////////////////////////////////////
+
+public Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, int &damagetype, int &weapon, float damageForce[3], float damagePosition[3], int damagecustom)
+{
+	if(GetConVarBool(COMMANDO_ENABLE_STUMBLE_BLOCK) && damagetype == DMG_CLUB && victim > 0 && victim <= MaxClients && attacker > 0 && attacker <= MaxClients && GetClientTeam(victim) == 2 && ClientData[victim].ChosenClass == COMMANDO && GetClientTeam(attacker) == 3 )
+	{
+		int class = GetEntProp(attacker, Prop_Send, "m_zombieClass");
+		if( class == (g_bLeft4Dead2 ? 8 : 5) && GetEntProp(victim, Prop_Send, "m_isIncapacitated") == 0)
+		{
+			SDKHook(victim, SDKHook_PostThink, OnThink);
+			SetEntProp(victim, Prop_Send, "m_isIncapacitated", 1);
+		}
+		
+	}
+	return Plugin_Continue;
+}
+
+public void OnThink(int victim)
+{
+	SetEntProp(victim, Prop_Send, "m_isIncapacitated", 0);
+	SDKUnhook(victim, SDKHook_PostThink, OnThink);
+}
 
 public Event_RelCommandoClass(Handle:event, String:name[], bool:dontBroadcast)
 {
@@ -2072,6 +2369,46 @@ public getCommandoDamageBonus(client)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////
+// Saboteur
+///////////////////////////////////////////////////////////////////////////////////
+
+public void ToggleSilencer(client)
+{
+	new cl_upgrades = GetEntProp(client, Prop_Send, "m_upgradeBitVec");
+	if (ClientData[client].ChosenClass == SABOTEUR && GetConVarBool(SABOTEUR_ENABLE_SILENCER) && IsClientInGame(client) && !IsFakeClient(client) && GetClientTeam(client) == 2 && IsPlayerAlive(client))
+	{
+		SetEntProp(client, Prop_Send, "m_upgradeBitVec", cl_upgrades + 262144, 4);
+	} else if (ClientData[client].ChosenClass != SABOTEUR && GetClientTeam(client) == 2) {
+		SetEntProp(client, Prop_Send, "m_upgradeBitVec", cl_upgrades - 262144, 4);
+	}
+}
+
+public void ToggleNightVision(client)
+{
+	
+	if (GetConVarBool(SABOTEUR_ENABLE_NIGHT_VISION) && IsClientInGame(client) && !IsFakeClient(client) && GetClientTeam(client) == 2 && IsPlayerAlive(client))
+	{
+			new cl_upgrades = GetEntProp(client, Prop_Send, "m_upgradeBitVec");
+			SetEntProp(client, Prop_Send, "m_upgradeBitVec", cl_upgrades + 4194304, 4);
+			SetEntProp(client, Prop_Send, "m_bNightVisionOn", 1, 4);
+			SetEntProp(client, Prop_Send, "m_bHasNightVision", 1, 4);
+	} else if (ClientData[client].ChosenClass != SABOTEUR &&  IsClientInGame(client) && GetClientTeam(client) == 2) {
+			new cl_upgrades = GetEntProp(client, Prop_Send, "m_upgradeBitVec");		
+			SetEntProp(client, Prop_Send, "m_upgradeBitVec", cl_upgrades - 4194304, 4);
+			SetEntProp(client, Prop_Send, "m_bNightVisionOn", 0, 4);
+			SetEntProp(client, Prop_Send, "m_bHasNightVision", 0, 4);
+	}
+}
+stock DisableAllUpgrades(client)
+{
+	if ( IsClientInGame(client) && GetClientTeam(client) == 2 && !IsFakeClient(client) && ClientData[client].ChosenClass == SABOTEUR) {
+		SetEntProp(client, Prop_Send, "m_upgradeBitVec", 0, 4);
+		SetEntProp(client, Prop_Send, "m_bNightVisionOn", 0, 4);
+		SetEntProp(client, Prop_Send, "m_bHasNightVision", 0, 4);
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////////
 // Soldier
 ///////////////////////////////////////////////////////////////////////////////////
 
@@ -2102,7 +2439,7 @@ public OnGameFrame()
 		if(GetConVarBool(SOLDIER_SHOVE_PENALTY) == false)
 		{
 			//If the player is pressing the right click of the mouse, proceed
-			if(GetClientButtons(i) & IN_ATTACK2)
+			if(GetClientButtons(client) & IN_ATTACK2)
 			{
 				//This will reset the penalty, so it doesnt even get applied.
 				SetEntData(i, g_iShovePenalty, 0, 4);
@@ -2134,10 +2471,6 @@ public OnGameFrame()
 			continue;
 		}
 	}
-}
-public Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, int &damagetype, int &weapon, float damageForce[3], float damagePosition[3], int damagecustom)
-{
-	return Plugin_Continue;
 }
 
 public Action:OnTakeDamagePre(victim, &attacker, &inflictor, &Float:damage, &damagetype)
@@ -2294,7 +2627,10 @@ public Action:TimerAirstrike(Handle timer, Handle:hPack)
 		CreateTimer(1.0, TimerAirstrike, pack, TIMER_FLAG_NO_MAPCHANGE ); 									
 
 	} else {
+
 		g_bAirstrikeValid = true;
+		PrintHintTextToAll("Airstrike completed!");
+
 		if(IsValidEntity(entity))
 		{
 			AcceptEntityInput(entity, "Kill");
@@ -2335,7 +2671,7 @@ public Action:TimerCheckBombSensors(Handle:hTimer, Handle:hPack)
 	for (new client = 1; client <= MaxClients; client++)
 	{
 
-		if (!IsValidEntity(client) || !IsClientInGame(client) || IsGhost(client)) 
+		if (!IsValidEntity(client) || !IsClientInGame(client))
 		continue;
 		if(GetClientTeam(client) == 3 || GetClientTeam(client) == 2 || IsWitch(client))
 		{
@@ -2365,7 +2701,12 @@ public Action:TimerCheckBombSensors(Handle:hTimer, Handle:hPack)
 	}
 	return Plugin_Continue;
 }
-
+bool:IsPlayerGhost (client)
+{
+    if (GetEntData(client, FindSendPropInfo("CTerrorPlayer", "m_isGhost"), 1))
+        return true;
+    return false;
+}
 public Action:timerHurtEntity(Handle:timer, Handle:pack)
 {
 	ResetPack(pack);
@@ -2852,10 +3193,12 @@ public Action:DeleteParticles(Handle:timer, any:particle)
 
 stock GlowPlayer(int client, char[] sColor, FX:fx=FxGlowShell)
 {
+	decl String:colorString[32];
+	Format(colorString, sizeof(colorString), "%s", sColor);
 
 	if (!IsClientInGame(client) || !IsPlayerAlive(client)) return false;
 	
-	new color = FindColor(sColor);
+	new color = FindColor(colorString);
 	
 	if (color == -1 && strcmp(sColor, "none", false) != 0)
 	{
@@ -2955,6 +3298,53 @@ int GetColor(char[] sTemp)
 	return iColor;
 }
 
+// ====================================================================================================
+//					STOCKS - SHAKE
+// ====================================================================================================
+void CreateShake(float intensity, float range, float vPos[3])
+{
+	if( intensity == 0.0 ) return;
+
+	int entity = CreateEntityByName("env_shake");
+	if( entity == -1 )
+	{
+		LogError("Failed to create 'env_shake'");
+		return;
+	}
+
+	static char sTemp[8];
+	FloatToString(intensity, sTemp, sizeof(sTemp));
+	DispatchKeyValue(entity, "amplitude", sTemp);
+	DispatchKeyValue(entity, "frequency", "1.5");
+	DispatchKeyValue(entity, "duration", "0.9");
+	FloatToString(range, sTemp, sizeof(sTemp));
+	DispatchKeyValue(entity, "radius", sTemp);
+	DispatchKeyValue(entity, "spawnflags", "8");
+	DispatchSpawn(entity);
+	ActivateEntity(entity);
+	AcceptEntityInput(entity, "Enable");
+
+	TeleportEntity(entity, vPos, NULL_VECTOR, NULL_VECTOR);
+	AcceptEntityInput(entity, "StartShake");
+	RemoveEdict(entity);
+}
+
+void PrjEffects_Medic(int entity)
+{
+	// Grenade Pos + Effects
+	static float vPos[3];
+	SetupPrjEffects(entity, vPos, "0 150 0"); // Green
+
+	// Sound
+	PlaySound(entity, SOUND_TUNNEL);
+	PlaySound(entity, SOUND_NOISE);
+	PlaySound(entity, SOUND_SQUEAK);
+}
+
+void PlaySound(int entity, const char[] sound, int level = SNDLEVEL_NORMAL)
+{
+	EmitSoundToAll(sound, entity, level == SNDLEVEL_RAIDSIREN ? SNDCHAN_ITEM : SNDCHAN_AUTO, level);
+}
 void SetupPrjEffects(int entity, float vPos[3], const char[] color)
 {
 	// Grenade Pos
@@ -3253,7 +3643,7 @@ stock bool:IsWitch(client)
 
 stock IsGhost(client)
 {
-	return GetEntProp(client, Prop_Send, "m_isGhost");
+	return GetEntProp(client, Prop_Send, "m_isGhost",1);
 }
 
 stock bool:IsIncapacitated(client)
