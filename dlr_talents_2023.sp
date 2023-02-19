@@ -13,10 +13,7 @@
 *		- The right to modify this plugin
 *		- The right to claim ownership of this plugin
 *		- The right to re-distribute this plugin as they see fit
-*/	
-#undef REQUIRE_PLUGIN
-#tryinclude <MultiTurrets>
-#define REQUIRE_PLUGIN
+*/
 #if !defined _DLRCore_included
 native int GetCurrentClass(int player);
 #endif
@@ -64,7 +61,7 @@ static const MENU_OPEN_TIME = view_as<int>(9999);
 static bool:DEBUG_MODE = false;
 
 // API
-new Handle:g_hfwdOnPlayerUsedSpecialSkill;
+new Handle:g_hfwdOnSpecialSkillUsed;
 new Handle:g_hfwdOnPlayerClassChange;
 
 new g_iSkillCounter = -1;
@@ -111,11 +108,11 @@ const BRAWLER=view_as<int>(7);
 const MAXCLASSES=view_as<int>(8);
 
 enum SpecialSkill {
-	No_Skill = 0,
-	F18_airstrike,
-	Berzerk,
-	Grenade,
-	Multiturret
+	No_Skill = "No_skill",
+	F18_airstrike = "F18_Airstrike",
+	Berzerk = "Berzerk",
+	Grenade = "Grenade",
+	Multiturret = "Multiturret"
 }
 
 enum struct PlayerInfo 
@@ -216,6 +213,8 @@ const Float:g_fl_SpasS = 0.5;
 const Float:g_fl_SpasI = 0.375;
 const Float:g_fl_SpasE = 0.699999;
 
+// Parachute
+
 bool g_bParachute[MAXPLAYERS+1];
 int g_iVelocity = -1, g_iParaEntRef[MAXPLAYERS+1] = {INVALID_ENT_REFERENCE, ...};
 
@@ -225,7 +224,6 @@ static char g_sModels[2][] =
 	"models/props/de_inferno/ceiling_fan_blade.mdl"
 };
 
-// Enums (doc'd by SMLib)
 enum Water_Level
 {
 	WATER_LEVEL_NOT_IN_WATER = 0,
@@ -313,6 +311,8 @@ new Handle:SABOTEUR_MAX_BOMBS;
 new Handle:SABOTEUR_BOMB_DAMAGE_SURV;
 new Handle:SABOTEUR_BOMB_DAMAGE_INF;
 new Handle:SABOTEUR_BOMB_POWER;
+new Handle:SABOTEUR_ENABLE_NIGHT_VISION;
+new Handle:SABOTEUR_ENABLE_SILENCER;
 
 // Commando
 new Handle:COMMANDO_DAMAGE;
@@ -324,6 +324,7 @@ new Handle:COMMANDO_DAMAGE_SNIPER;
 new Handle:COMMANDO_DAMAGE_HUNTING;
 new Handle:COMMANDO_DAMAGE_PISTOL;
 new Handle:COMMANDO_DAMAGE_SMG;
+new Handle:COMMANDO_ENABLE_STUMBLE_BLOCK;
 
 // Engineer
 new Handle:ENGINEER_MAX_BUILDS;
@@ -380,7 +381,6 @@ public Plugin:myinfo =
 // ====================================================================================================
 
 native void F18_ShowAirstrike(float origin[3], float direction);
-native void DLR_Multiturret(int client, int type);
 
 /**
 * PLUGIN LOGIC
@@ -391,7 +391,7 @@ public OnPluginStart( )
 	// Api
 
 	g_hfwdOnPlayerClassChange = CreateGlobalForward("OnPlayerClassChange", ET_Ignore, Param_Cell, Param_Cell, Param_Cell);
-	g_hfwdOnPlayerUsedSpecialSkill = CreateGlobalForward("OnPlayerSpecialSkillUse", ET_Ignore, Param_Cell, Param_Cell);
+	g_hfwdOnSpecialSkillUsed= CreateGlobalForward("OnSpecialSkillUsed", ET_Ignore, Param_Cell, Param_Cell);
 	 //Create a Class Selection forward
     g_hOnSkillSelected = CreateGlobalForward("OnSkillSelected", ET_Event, Param_Cell, Param_Cell);
 
@@ -489,6 +489,8 @@ public OnPluginStart( )
 	SABOTEUR_BOMB_DAMAGE_INF = CreateConVar("talents_saboteur_bomb_dmg_inf", "1500", "How much damage a bomb does to infected");
 	SABOTEUR_BOMB_POWER = CreateConVar("talents_saboteur_bomb_power", "2.0", "How much blast power a bomb has. Higher values will throw survivors farther away");
 	SABOTEUR_ACTIVE_BOMB_COLOR = CreateConVar("talents_bomb_active_glow_color","255 0 0", "Glow color for active bombs (Default Red)");
+	SABOTEUR_ENABLE_NIGHT_VISION = CreateConVar( "talents_saboteur_enable_nightvision", "1", "1 - Enable Night Vision for Saboteur; 0 - Disable", FCVAR_PLUGIN);
+	SABOTEUR_ENABLE_SILENCER = CreateConVar( "talents_saboteur_enable_silencer", "1", "1 - Enable silencer for Saboteur; 0 - Disable", FCVAR_PLUGIN);
 
 	COMMANDO_DAMAGE = CreateConVar("talents_commando_dmg", "5.0", "How much bonus damage a Commando does by default");
 	COMMANDO_DAMAGE_RIFLE = CreateConVar("talents_commando_dmg_rifle", "10.0", "How much bonus damage a Commando does with rifle");
@@ -499,6 +501,7 @@ public OnPluginStart( )
 	COMMANDO_DAMAGE_PISTOL = CreateConVar("talents_commando_dmg_pistol", "25.0", "How much bonus damage a Commando does with pistol");
 	COMMANDO_DAMAGE_SMG = CreateConVar("talents_commando_dmg_smg", "7.0", "How much bonus damage a Commando does with smg");
 	COMMANDO_RELOAD_RATIO = CreateConVar("talents_commando_reload_ratio", "0.44", "Ratio for how fast a Commando should be able to reload");
+	COMMANDO_ENABLE_STUMBLE_BLOCK = CreateConVar("talents_commando_enable_stumble_block", "1", "Enable stumble blocking for Commando. 0 = Disable, 1 = Enable");
 	
 	ENGINEER_MAX_BUILDS = CreateConVar("talents_engineer_max_builds", "5", "How many times an engineer can build per round");
 	ENGINEER_MAX_BUILD_RANGE = CreateConVar("talents_engineer_build_range", "120.0", "Maximum distance away an object can be built by the engineer");
@@ -531,6 +534,9 @@ public ResetClientVariables(client)
 	ClientData[client].SpecialSkill = SpecialSkill:No_Skill;
 	ClientData[client].LastDropTime = 0.0;
 	g_bInSaferoom[client] = false;
+
+	SDKUnhook(client, SDKHook_OnTakeDamagePost, OnTakeDamage);
+
 }
 
 // ====================================================================================================
@@ -556,7 +562,6 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
     CreateNative("GetPlayerSkillName", Native_GetPlayerSkillName);
 
 	MarkNativeAsOptional("DLR_Airstrike");
-	MarkNativeAsOptional("DLR_Multiturret");
 	//MarkNativeAsOptional("DLR_Berzerk");
 	//MarkNativeAsOptional("DLR_Infected2023");
 
@@ -579,6 +584,7 @@ public Native_RegisterSkill(Handle:plugin, numParams)
 			return g_iSkillCounter;
 		}
 	}
+	return -1;
 }
 
 // ====================================================================================================
@@ -762,9 +768,9 @@ public OnClientPutInServer(client)
 {
 	if (!client || !IsValidEntity(client) || !IsClientInGame(client))
 	return;
-	
-	g_bHide[client] = false; 
 
+	g_bHide[client] = false; 
+	DisableAllUpgrades(client);
 	ResetClientVariables(client);
 	RebuildCache();
 }
@@ -775,6 +781,7 @@ public Action:TimerLoadGlobal(Handle:hTimer, any:client)
 	return;
 	
 	SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamagePre);
+
 }
 
 public Action:TimerLoadClient(Handle:hTimer, any:client)
@@ -965,6 +972,7 @@ public Action:TimerThink(Handle:hTimer, any:client)
 					{
 						CreatePlayerEngineerMenu(client);	
 						ClientData[client].LastDropTime = GetGameTime();
+						useSpecialSkill(client, SpecialSkill:Multiturret)			
 					}
 					else
 					{
@@ -1003,11 +1011,11 @@ public Action:TimerThink(Handle:hTimer, any:client)
 // Inform other plugins.
 public void useSpecialSkill(client,SpecialSkill:skillName)
 {
-	Call_StartForward(g_hfwdOnPlayerUsedSpecialSkill);
+	Call_StartForward(g_hfwdOnSpecialSkillUsed);
 	Call_PushCell(client);
 	Call_PushCell(skillName);
 	Call_Finish();
-}
+}	
 
 public bool canUseSpecialSkill(client, char[] pendingMessage)
 {	
@@ -1146,6 +1154,8 @@ public Event_PlayerDeath(Handle:hEvent, String:sName[], bool:bDontBroadcast)
 	RebuildCache();
 	
 	new client = GetClientOfUserId(GetEventInt(hEvent, "userid"));
+	if(client > 0 && IsClientInGame(client) && GetClientTeam(client) == 2) DisableAllUpgrades(client);
+
 	ResetClientVariables(client);
 }
 
@@ -1360,7 +1370,14 @@ public void SetupClasses(client, class)
 		
 		case COMMANDO:
 		{
-			PrintHintText(client,"You have faster reload and cause more damage!");
+			decl String:text[64];
+			text = "";
+			if (GetConVarBool(COMMANDO_ENABLE_STUMBLE_BLOCK)) {
+				SDKHook(client, SDKHook_OnTakeDamagePost, OnTakeDamage);
+				text = ", You're immune to knockdowns"
+			} 
+
+			PrintHintText(client,"You have faster reload and cause more damage%s!", text);
 			MaxPossibleHP = GetConVarInt(COMMANDO_HEALTH);
 		}
 		
@@ -1373,6 +1390,7 @@ public void SetupClasses(client, class)
 		
 		case SABOTEUR:
 		{
+
 			PrintHintText(client,"Press SHIFT to drop mines! Hold CROUCH over 5 sec to go invisible");
 			MaxPossibleHP = GetConVarInt(SABOTEUR_HEALTH);
 			ClientData[client].SpecialLimit = GetConVarInt(SABOTEUR_MAX_BOMBS);			
@@ -1384,7 +1402,10 @@ public void SetupClasses(client, class)
 			MaxPossibleHP = GetConVarInt(BRAWLER_HEALTH);
 		}
 	}
-	
+
+	ToggleNightVision(client);
+	ToggleSilencer(client);
+
 	setPlayerHealth(client, MaxPossibleHP);
 }
 
@@ -1659,6 +1680,7 @@ public void CalculateEngineerPlacePos(client, type)
 					if (GetConVarInt(ENGINEER_TURRET_EXTERNAL_PLUGIN) > 0) 
 					{
 						ClientCommand(client, Engineer_Turret_Spawn_Cmd);
+
 						ClientData[client].LastDropTime = GetGameTime();
 						ClientData[client].SpecialsUsed++;
 					}
@@ -1977,6 +1999,27 @@ public InitHealthModifiers()
 // Commando
 ///////////////////////////////////////////////////////////////////////////////////
 
+public Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, int &damagetype, int &weapon, float damageForce[3], float damagePosition[3], int damagecustom)
+{
+	if(GetConVarBool(COMMANDO_ENABLE_STUMBLE_BLOCK) && damagetype == DMG_CLUB && victim > 0 && victim <= MaxClients && attacker > 0 && attacker <= MaxClients && GetClientTeam(victim) == 2 && ClientData[client].ChosenClass == COMMANDO && GetClientTeam(attacker) == 3 )
+	{
+		int class = GetEntProp(attacker, Prop_Send, "m_zombieClass");
+		if( class == (g_bLeft4Dead2 ? 8 : 5) && GetEntProp(victim, Prop_Send, "m_isIncapacitated") == 0)
+		{
+			SDKHook(victim, SDKHook_PostThink, OnThink);
+			SetEntProp(victim, Prop_Send, "m_isIncapacitated", 1);
+		}
+		
+	}
+	return Plugin_Continue;
+}
+
+public void OnThink(int victim)
+{
+	SetEntProp(victim, Prop_Send, "m_isIncapacitated", 0);
+	SDKUnhook(victim, SDKHook_PostThink, OnThink);
+}
+
 public Event_RelCommandoClass(Handle:event, String:name[], bool:dontBroadcast)
 {
 	new client = GetClientOfUserId(GetEventInt(event,"userid"));
@@ -2219,6 +2262,44 @@ public getCommandoDamageBonus(client)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////
+// Saboteur
+///////////////////////////////////////////////////////////////////////////////////
+
+public void ToggleSilencer(client)
+{
+	new cl_upgrades = GetEntProp(client, Prop_Send, "m_upgradeBitVec");
+	if (ClientData[i].ChosenClass == SABOTEUR && GetConVarBool(SABOTEUR_ENABLE_SILENCER) && IsClientInGame(client) && !IsFakeClient(client) && GetClientTeam(client) == 2 && IsPlayerAlive(client))
+	{
+		SetEntProp(client, Prop_Send, "m_upgradeBitVec", cl_upgrades + 262144, 4);
+	} else if (ClientData[i].ChosenClass != SABOTEUR && GetClientTeam(client) == 2) {
+		SetEntProp(client, Prop_Send, "m_upgradeBitVec", cl_upgrades - 262144, 4);
+	}
+	return true;
+}
+
+public void ToggleNightVision(client)
+{
+	new cl_upgrades = GetEntProp(client, Prop_Send, "m_upgradeBitVec");
+	if (ClientData[i].ChosenClass == SABOTEUR && GetConVarBool(SABOTEUR_ENABLE_NIGHT_VISION) && IsClientInGame(client) && !IsFakeClient(client) && GetClientTeam(client) == 2 && IsPlayerAlive(client))
+	{
+			SetEntProp(client, Prop_Send, "m_upgradeBitVec", cl_upgrades + 4194304, 4);
+			SetEntProp(client, Prop_Send, "m_bNightVisionOn", 1, 4);
+			SetEntProp(client, Prop_Send, "m_bHasNightVision", 1, 4);
+	} else if (ClientData[i].ChosenClass != SABOTEUR &&  IsClientInGame(client) && GetClientTeam(client) == 2) {
+			SetEntProp(client, Prop_Send, "m_upgradeBitVec", cl_upgrades - 4194304, 4);
+			SetEntProp(client, Prop_Send, "m_bNightVisionOn", 0, 4);
+			SetEntProp(client, Prop_Send, "m_bHasNightVision", 0, 4);
+	}
+	return true;
+}
+stock DisableAllUpgrades(client)
+{
+	SetEntProp(client, Prop_Send, "m_upgradeBitVec", 0, 4);
+	SetEntProp(client, Prop_Send, "m_bNightVisionOn", 0, 4);
+	SetEntProp(client, Prop_Send, "m_bHasNightVision", 0, 4);
+}
+
+///////////////////////////////////////////////////////////////////////////////////
 // Soldier
 ///////////////////////////////////////////////////////////////////////////////////
 
@@ -2281,10 +2362,6 @@ public OnGameFrame()
 			continue;
 		}
 	}
-}
-public Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, int &damagetype, int &weapon, float damageForce[3], float damagePosition[3], int damagecustom)
-{
-	return Plugin_Continue;
 }
 
 public Action:OnTakeDamagePre(victim, &attacker, &inflictor, &Float:damage, &damagetype)

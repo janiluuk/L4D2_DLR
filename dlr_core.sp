@@ -27,10 +27,11 @@ forward OnPlayerClassChange(client, className, previousClass);
  * Called when player uses special skill
  *
  * @param client         The client index of the player playing tetris.
- * @param className      Skill that user just used
+ * @param skillName      Skill that user just used
+ * @param iSize          Size of skillname
  * @noreturn
  */
-forward OnSpecialSkillUse(client, skillName);  
+forward OnSpecialSkillUsed(client, skillName, iSize);  
 
 /**
  * Called when player has successfully used special skill
@@ -51,7 +52,7 @@ native void OnSpecialSkillSuccess(int client, char[] skillName);
  */
 native void OnSpecialSkillFail(int client, char[] skillName, char[] reason);  
 
-native void RegisterDLRSkill(char[] skillName);  
+native int RegisterDLRSkill(char[] skillName);  
 
 stock char[] Translate(int iClient, const char[] format, any ...)
 {
