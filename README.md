@@ -67,7 +67,7 @@ Roadmap
 See https://forums.alliedmods.net/showthread.php?t=273312 for more info
 
 ## Adding a plugin
-Adding new plugin requires including dlr_core.sp file, and implementing following methods:
+Adding new plugin requires including DLRCore.sp file, and implementing following methods:
 ```
 /**
  * Called when player changed class
@@ -80,13 +80,13 @@ Adding new plugin requires including dlr_core.sp file, and implementing followin
 forward OnPlayerClassChange(client, className, previousClass);  
 
 /**
- * Called when player uses special skill
- *
+ * Called when player uses special skill. 
+ * Plugin should react to this to initiate the skill, then call either or OnSpecialSkillFail / OnSpecialSkillSuccess
  * @param client         The client index of the player playing tetris.
- * @param className      Skill that user just used
+ * @param skillName      Skill that user just used
  * @noreturn
  */
-forward OnPlayerUsedSpecialSkill(client, skillName, className);  
+forward OnSpecialSkillUsed(client, skillName);  
 ``` 
 
 Native methods that are available:
@@ -99,6 +99,36 @@ Native methods that are available:
  * @return        Classname
  */
 native int:GetPlayerClassName(client);
+
+/**
+ * Called when player has successfully used special skill. 
+ * This is required for plugin to implement
+ *
+ * @param client         The client index of the player playing tetris.
+ * @param className      Skill that user just used
+ * @noreturn
+ */
+native void OnSpecialSkillSuccess(int client, char[] skillName);  
+
+/**
+ * Called when player has failed using special skill. This prevents from affecting the inventory.
+ *
+ * @param client         The client index of the player playing tetris.
+ * @param className      Skill that user just used
+ * @param reason         Reason for failure
+ * @noreturn
+ */
+native void OnSpecialSkillFail(int client, char[] skillName, char[] reason);  
+
+/**
+ * Register skill from plugin
+ *
+ * @param client         The client index of the player playing tetris.
+ * @param className      Skill that user just used
+ * @param reason         Reason for failure
+ * @noreturn
+ */
+native int RegisterDLRSkill(char[] skillName);  
 ``` 
 
-See F18 implementation in the code as an example.
+See Multiturret implementation in the code as an example.
