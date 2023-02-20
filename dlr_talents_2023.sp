@@ -14,9 +14,7 @@
 *		- The right to claim ownership of this plugin
 *		- The right to re-distribute this plugin as they see fit
 */
-#if !defined _DLRCore_included
-native int GetCurrentClass(int player);
-#endif
+
 #define PLUGIN_NAME "Talents Plugin 2023 anniversary edition"
 #define PLUGIN_VERSION "1.4"
 #pragma semicolon 1
@@ -68,6 +66,8 @@ new Handle:g_hfwdOnPlayerClassChange;
 
 new g_iSkillCounter = -1;
 new Handle:g_hSkillArray = INVALID_HANDLE;
+new Handle:g_hSkillTypeArray = INVALID_HANDLE;
+
 //Menu Handlers
 new Handle:g_hSkillMenu = INVALID_HANDLE;
 
@@ -129,6 +129,11 @@ enum SpecialSkill {
 	Berzerk,
 	Grenade,
 	Multiturret
+}
+
+enum SkillType {
+	On_Demand = 0,
+	Perk
 }
 
 enum struct PlayerInfo 
@@ -458,6 +463,7 @@ public OnPluginStart( )
 	SetMenuTitle(g_hSkillMenu, "Registered classes");
 	SetMenuExitButton(g_hSkillMenu, true);
 	g_hSkillArray = CreateArray(16);
+	g_hSkillTypeArray = CreateArray(16);
 
 	// Offsets
 	g_iNPA = FindSendPropInfo("CBaseCombatWeapon", "m_flNextPrimaryAttack");
@@ -601,6 +607,32 @@ public ResetClientVariables(client)
 
 }
 
+/* Temporarily hardcoded until get config right */
+
+public AssignSkills(client)
+{	
+	if (client < 1 || client > MaxClients) return;
+	
+	switch (ClientData[client].ChosenClass) {
+		case ENGINEER:
+		{
+			int skillId = FindSkillByName("Multiturret");
+			if (skillId > -1) {
+				PrintDebugAll("Registered skill ID %d ", skillId);
+				g_iPlayerSkill[client] = skillId;
+			}
+		}
+
+		case SOLDIER:
+		{
+			int skillId = FindSkillByName("F18_airstrike");
+			if (skillId > -1) {
+				g_iPlayerSkill[client] = skillId;
+			}
+		}
+	}
+
+}
 // ====================================================================================================
 //					Register plugins
 // ====================================================================================================
@@ -621,6 +653,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	CreateNative("OnSpecialSkillSuccess", Native_OnSpecialSkillSuccess);
 	CreateNative("OnSpecialSkillFail", Native_OnSpecialSkillFail);
 	CreateNative("GetPlayerSkillID", Native_GetPlayerSkillID);
+	CreateNative("FindSkillIdByName", Native_FindSkillIdByName);
 	CreateNative("GetPlayerSkillName", Native_GetPlayerSkillName);
 	//MarkNativeAsOptional("DLR_Berzerk");
 	//MarkNativeAsOptional("DLR_Infected2023");
@@ -632,7 +665,8 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 // NATIVES
 public Native_RegisterSkill(Handle:plugin, numParams)
 {
-	new String:SkillName[32], String:ItemInfo[3];
+	new String:SkillName[32], String:ItemInfo[3], String:SkillTypeString[3]; 
+	int SkillType;
 
 	if(GetNativeString(1, SkillName, sizeof(SkillName)) == SP_ERROR_NONE)
 	{
@@ -640,6 +674,10 @@ public Native_RegisterSkill(Handle:plugin, numParams)
 		{
 			IntToString(g_iSkillCounter, ItemInfo, sizeof(ItemInfo));
 			PushArrayString(g_hSkillArray, SkillName);
+			if(SkillType = GetNativeCell(2) == SP_ERROR_NONE) {
+				SetArrayCell(g_hSkillTypeArray,g_iSkillCounter, SkillType);
+			}
+
 			AddMenuItem(g_hSkillMenu, ItemInfo, SkillName);
 			return g_iSkillCounter;
 		}
@@ -854,8 +892,6 @@ public OnClientPutInServer(client)
 	g_bHide[client] = false; 
 	DisableAllUpgrades(client);
 	ResetClientVariables(client);
-	SDKHook(client, SDKHook_WeaponEquipPost, OnClientWeaponEquip);
-	SDKHook(client, SDKHook_WeaponDropPost, OnClientWeaponEquip);
 	RebuildCache();
 }
 
@@ -880,6 +916,8 @@ public Action:TimerLoadClient(Handle:hTimer, any:client)
 	SDKHook(client, SDKHook_WeaponEquip, OnWeaponEquip);
 	SDKHook(client, SDKHook_SetTransmit, Hook_SetTransmit);
 	SDKHook(client, SDKHook_WeaponDrop, OnWeaponDrop);
+	SDKHook(client, SDKHook_WeaponEquipPost, OnClientWeaponEquip);
+	SDKHook(client, SDKHook_WeaponDropPost, OnClientWeaponEquip);
 
 	ResetClientVariables(client);
 	RebuildCache();		
@@ -1082,7 +1120,7 @@ public Action:TimerThink(Handle:hTimer, any:client)
 				if (canUseSpecialSkill(client, pendingMessage)) {
 					g_bAirstrikeValid = false;
 					CreateAirStrike(client);
-					useSpecialSkill(client, SpecialSkill:F18_airstrike);
+					useSpecialSkill(client, g_iPlayerSkill[client]);
 					ClientData[client].LastDropTime = GetGameTime();
 				}
 			}
@@ -1417,8 +1455,8 @@ public void SetupClasses(client, class)
 	ClientData[client].ChosenClass = class;
 	ClientData[client].SpecialDropInterval = GetConVarInt(MINIMUM_DROP_INTERVAL);	
 	ClientData[client].SpecialLimit = 5;
-
 	new MaxPossibleHP = GetConVarInt(NONE_HEALTH);
+	DisableAllUpgrades(client);
 
 	switch (class)
 	{
@@ -1478,7 +1516,8 @@ public void SetupClasses(client, class)
 
 			PrintHintText(client,"Press SHIFT to drop mines! Hold CROUCH over 5 sec to go invisible");
 			MaxPossibleHP = GetConVarInt(SABOTEUR_HEALTH);
-			ClientData[client].SpecialLimit = GetConVarInt(SABOTEUR_MAX_BOMBS);			
+			ClientData[client].SpecialLimit = GetConVarInt(SABOTEUR_MAX_BOMBS);
+			ToggleNightVision(client);
 		}
 		
 		case BRAWLER:
@@ -1488,8 +1527,7 @@ public void SetupClasses(client, class)
 		}
 	}
 
-	ToggleNightVision(client);
-
+	AssignSkills(client);
 	setPlayerHealth(client, MaxPossibleHP);
 }
 
@@ -1524,6 +1562,33 @@ public int GetMaxWithClass( class ) {
 	}
 }
 
+public int FindSkillByName(char[] name)
+{
+	new String:szSkillName[32];
+
+	for (new i = 0; i < sizeof(g_hSkillArray); i++) {
+	    GetArrayString(g_hSkillArray, i, szSkillName, sizeof(szSkillName));
+		if (StrEqual(szSkillName, name)) {
+	    	return i;
+	        break;
+	    }
+	}
+	return -1;
+}
+
+public Native_FindSkillIdByName(Handle:plugin, numParams)
+{
+	new String:skillName[32];
+
+	if(GetNativeString(1, skillName, sizeof(skillName)) == SP_ERROR_NONE)
+	{
+		return FindSkillByName(skillName);
+		
+	} else {
+		return ThrowNativeError(SP_ERROR_NATIVE, "Invalid skill name (%s)", skillName);
+	}	
+}
+
 public Native_GetPlayerClassName(Handle:plugin, numParams)
 {
 	new client = GetNativeCell(1);
@@ -1532,7 +1597,7 @@ public Native_GetPlayerClassName(Handle:plugin, numParams)
 	{
 		return ThrowNativeError(SP_ERROR_NATIVE, "Invalid client index (%d)", client);
 	}
-	return ClientData[client].ChosenClass;
+	return MENU_OPTIONS[ClientData[client].ChosenClass];
 }
 
 ///////////////////////////////////////////////////////////////////////////////////
@@ -1668,7 +1733,7 @@ public Native_GetPlayerSkillName(Handle:plugin, numParams)
     new iClient = GetNativeCell(1);
     new iSize = GetNativeCell(3);
     new String:szSkillName[32];
-    GetArrayString(g_hSkillArray, g_iPlayerSkill[iClient], szSkillName, sizeof(szSkillName));
+    GetArrayString(g_hSkillArray, g_iPlayerSkill[iClient], szSkillName, iSize);
     
     if(SetNativeString(2, szSkillName, iSize))
         return true;
@@ -1767,7 +1832,7 @@ public void CalculateEngineerPlacePos(client, type)
 					if (GetConVarInt(ENGINEER_TURRET_EXTERNAL_PLUGIN) > 0) 
 					{
 //						ClientCommand(client, Engineer_Turret_Spawn_Cmd);
-						useSpecialSkill(client,SpecialSkill:Multiturret);
+						useSpecialSkill(client,g_iPlayerSkill[client]);
 					}
 				}
 				case 3: 
@@ -2474,6 +2539,9 @@ public void ToggleNightVision(client)
 				return; // This weapon does not support laser upgrade
 
 				new cl_upgrades = GetEntProp(iWeapon, Prop_Send, "m_upgradeBitVec");
+				if (cl_upgrades > 4194304) {
+					return; // already has nightvision
+				}
 				SetEntProp(iWeapon, Prop_Send, "m_upgradeBitVec", cl_upgrades + 4194304, 4);
 
 				SetEntProp(client, Prop_Send, "m_bNightVisionOn", 1, 4);

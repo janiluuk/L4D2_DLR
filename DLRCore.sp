@@ -13,7 +13,25 @@
  */
 native int GetPlayerClassName(client);
 
+/**
+ * Get player skillname
+ *
+ * @param client  Client index.
+
+ * @param skillName String to assign the name to 
+ * @param size 		Size of the string
+ * @return        	int
+ */
+
 native int GetPlayerSkillName(int client, char[] skillName, int size);
+
+/**
+ * Get skill ID by name
+ *
+ * @param skillName Name of the skill
+ * @return        ID || -1
+ */
+native int FindSkillIdByName(char[] skillName);
 
 /**
  * Called when player changed class
@@ -53,7 +71,15 @@ native void OnSpecialSkillSuccess(int client, char[] skillName);
  */
 native void OnSpecialSkillFail(int client, char[] skillName, char[] reason);  
 
-native int RegisterDLRSkill(char[] skillName);  
+/**
+ * Register plugin 
+ *
+ * @param skillName      Unique identifier for plugin
+ * @param type       	 0 = On Demand skill (e.g. push button), 1 = Constant perk that is applied throughout the game
+ * @return int
+ */
+
+native int RegisterDLRSkill(char[] skillName, int type);  
 
 public SharedPlugin __pl_DLRCore = 
 {
@@ -73,6 +99,6 @@ public __pl_DLRCore_SetNTVOptional()
     MarkNativeAsOptional("OnSpecialSkillFail");
     MarkNativeAsOptional("OnSpecialSkillSuccess");
     MarkNativeAsOptional("RegisterDLRSkill");
-
+    MarkNativeAsOptional("FindSkillIdByName");
 }
 #endif
