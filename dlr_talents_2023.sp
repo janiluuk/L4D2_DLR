@@ -21,6 +21,8 @@ native int GetCurrentClass(int player);
 #define PLUGIN_VERSION "1.4"
 #pragma semicolon 1
 #define DEBUG 1
+#define DEBUG_LOG 1
+
 #include <sourcemod>
 #include <sdktools>
 #include <sdkhooks>
@@ -82,6 +84,7 @@ new g_iPlayerSkill[MAXPLAYERS+1];
 /// SOUNDS AND OTHER
 /// PRECACHE DATA
 
+#define STOMP_SOUND_PATH		"player/survivor/hit/rifle_swing_hit_infected9.wav"
 #define SOUND_CLASS_SELECTED "ui/pickup_misc42.wav" /**< What sound to play when a class is selected. Do not include "sounds/" prefix. */
 #define SOUND_DROP_BOMB "ui/beep22.wav"
 #define SOUND_BUTTON2	"ui/menu_countdown.wav"
@@ -92,6 +95,18 @@ new g_iPlayerSkill[MAXPLAYERS+1];
 #define PARTICLE_DEFIB "item_defibrillator_body"
 #define PARTICLE_ELMOS "st_elmos_fire_cp0"
 #define MODEL_MINE "models/props_buildables/mine_02.mdl"
+
+/** Stomping **/
+
+#define ANIM_SEQUENCES_DOWNED_BEGIN		128
+#define ANIM_SEQUENCES_DOWNED_END		132
+#define ANIM_SEQUENCE_WALLED			138
+#define DOWNED_ANIM_MIN_CYCLE			0.27
+#define DOWNED_ANIM_MAX_CYCLE			0.53
+#define STOMP_MOVE_PENALTY				0.25
+#define ENTPROP_ANIM_SEQUENCE	"m_nSequence"
+#define ENTPROP_ANIM_CYCLE		"m_flCycle"
+#define SPEED_MODIFY_ENTPROP	"m_flVelocityModifier"
 
 /**
 * OTHER GLOBAL VARIABLES
@@ -351,7 +366,6 @@ new Handle:SABOTEUR_BOMB_DAMAGE_SURV;
 new Handle:SABOTEUR_BOMB_DAMAGE_INF;
 new Handle:SABOTEUR_BOMB_POWER;
 new Handle:SABOTEUR_ENABLE_NIGHT_VISION;
-new Handle:SABOTEUR_ENABLE_SILENCER;
 
 // Commando
 new Handle:COMMANDO_DAMAGE;
@@ -364,6 +378,9 @@ new Handle:COMMANDO_DAMAGE_HUNTING;
 new Handle:COMMANDO_DAMAGE_PISTOL;
 new Handle:COMMANDO_DAMAGE_SMG;
 new Handle:COMMANDO_ENABLE_STUMBLE_BLOCK;
+new Handle:COMMANDO_ENABLE_STOMPING;
+new Handle:COMMANDO_STOMPING_SLOWDOWN;
+
 
 // Engineer
 new Handle:ENGINEER_MAX_BUILDS;
@@ -530,7 +547,6 @@ public OnPluginStart( )
 	SABOTEUR_BOMB_POWER = CreateConVar("talents_saboteur_bomb_power", "2.0", "How much blast power a bomb has. Higher values will throw survivors farther away");
 	SABOTEUR_ACTIVE_BOMB_COLOR = CreateConVar("talents_bomb_active_glow_color","255 0 0", "Glow color for active bombs (Default Red)");
 	SABOTEUR_ENABLE_NIGHT_VISION = CreateConVar( "talents_saboteur_enable_nightvision", "1", "1 - Enable Night Vision for Saboteur; 0 - Disable");
-	SABOTEUR_ENABLE_SILENCER = CreateConVar( "talents_saboteur_enable_silencer", "1", "1 - Enable silencer for Saboteur; 0 - Disable");
 
 	COMMANDO_DAMAGE = CreateConVar("talents_commando_dmg", "5.0", "How much bonus damage a Commando does by default");
 	COMMANDO_DAMAGE_RIFLE = CreateConVar("talents_commando_dmg_rifle", "10.0", "How much bonus damage a Commando does with rifle");
@@ -542,7 +558,9 @@ public OnPluginStart( )
 	COMMANDO_DAMAGE_SMG = CreateConVar("talents_commando_dmg_smg", "7.0", "How much bonus damage a Commando does with smg");
 	COMMANDO_RELOAD_RATIO = CreateConVar("talents_commando_reload_ratio", "0.44", "Ratio for how fast a Commando should be able to reload");
 	COMMANDO_ENABLE_STUMBLE_BLOCK = CreateConVar("talents_commando_enable_stumble_block", "1", "Enable stumble blocking for Commando. 0 = Disable, 1 = Enable");
-	
+	COMMANDO_ENABLE_STOMPING = CreateConVar("talents_commando_enable_stomping", "1", "Enable stomping of downed infected  0 = Disable, 1 = Enable");
+	COMMANDO_STOMPING_SLOWDOWN = CreateConVar("talents_commando_stomping_slowdown", "0", "Should movement slow down after stomping: 0 = Disable, 1 = Enable");
+
 	ENGINEER_MAX_BUILDS = CreateConVar("talents_engineer_max_builds", "5", "How many times an engineer can build per round");
 	ENGINEER_MAX_BUILD_RANGE = CreateConVar("talents_engineer_build_range", "120.0", "Maximum distance away an object can be built by the engineer");
 	ENGINEER_TURRET_EXTERNAL_PLUGIN = CreateConVar("talents_engineer_machinegun_plugin", "1", "Whether to use external plugin for turrets.");
@@ -838,6 +856,8 @@ public OnClientPutInServer(client)
 	g_bHide[client] = false; 
 	DisableAllUpgrades(client);
 	ResetClientVariables(client);
+	SDKHook(client, SDKHook_WeaponEquipPost, OnClientWeaponEquip);
+	SDKHook(client, SDKHook_WeaponDropPost, OnClientWeaponEquip);
 	RebuildCache();
 }
 
@@ -885,8 +905,11 @@ public Action:OnWeaponEquip(client, weapon)
 
 public OnClientDisconnect(client)
 {
+	SDKUnhook(client, SDKHook_WeaponEquipPost, OnClientWeaponEquip);
+	SDKUnhook(client, SDKHook_WeaponDropPost, OnClientWeaponEquip);
 	RebuildCache();
 	ResetClientVariables(client);
+
 }
 
 public Action:TimerThink(Handle:hTimer, any:client)
@@ -1178,6 +1201,7 @@ public Event_RoundChange(Handle:event, String:name[], bool:dontBroadcast)
 	{
 		ResetClientVariables(i);
 		LastClassConfirmed[i] = 0;
+		DisableAllUpgrades(i);
 	}
 	
 	RndSession++;
@@ -1469,7 +1493,6 @@ public void SetupClasses(client, class)
 	}
 
 	ToggleNightVision(client);
-	ToggleSilencer(client);
 
 	setPlayerHealth(client, MaxPossibleHP);
 }
@@ -1528,12 +1551,26 @@ stock void PrintDebug(int client, const char[] dbgMessage, any ...)
 	PrintToChat(client, message);
 }
 
-stock void PrintDebugAll(const char[] dbgMessage, any ...)
+void PrintDebugAll(const char[] format, any ...)
 {
-	char message[128];
-	Format(message, sizeof(message), dbgMessage);
-	if (DEBUG_MODE == true && isAdminUser == true)
-	PrintToChatAll("%s", message);
+	#if DEBUG || DEBUG_LOG
+	static char buffer[192];
+	
+	VFormat(buffer, sizeof(buffer), format, 2);
+	
+	#if DEBUG
+	PrintToChatAll("[Debug] %s", buffer);
+	PrintToConsole(0, "[Debug] %s", buffer);
+	#endif
+	
+	LogMessage("%s", buffer);
+	#else
+	//suppress "format" never used warning
+	if(format[0])
+		return;
+	else
+		return;
+	#endif
 }
 
 public bool:isAdmin(client)
@@ -1735,8 +1772,6 @@ public void CalculateEngineerPlacePos(client, type)
 					{
 //						ClientCommand(client, Engineer_Turret_Spawn_Cmd);
 						useSpecialSkill(client,SpecialSkill:Multiturret);
-						ClientData[client].LastDropTime = GetGameTime();
-						ClientData[client].SpecialsUsed++;
 					}
 				}
 				case 3: 
@@ -2316,7 +2351,7 @@ public Action:Event_WeaponFire(Handle:event, const String:name[], bool:dontBroad
 	
 	if (ClientData[client].ChosenClass == NONE && GetClientTeam(client) == 2)
 	{
-		if(client > 0 && client < MAXPLAYERS + 1 && ClassHint == false)
+		if(client > 0 && client <= MaxClients && IsClientInGame( client ) && ClassHint == false)
 		{
 			if (RoundStarted == true) {
 				ClassHint = true;
@@ -2368,43 +2403,102 @@ public getCommandoDamageBonus(client)
 	return GetConVarInt(COMMANDO_DAMAGE);
 }
 
+public void OnClientPostAdminCheck(int client)
+{
+	SDKHook(client, SDKHook_StartTouch, _MF_Touch);
+	SDKHook(client, SDKHook_Touch, 		_MF_Touch);
+}
+
+Action _MF_Touch(int entity, int other)
+{
+	if (!GetConVarBool(COMMANDO_ENABLE_STOMPING)) return Plugin_Continue;
+ 	if (ClientData[entity].ChosenClass != COMMANDO) return Plugin_Continue;
+
+	if (other < 32 || !IsValidEntity(other)) return Plugin_Continue;
+	
+	static char classname[12];
+	GetEntityClassname(other, classname, sizeof(classname));	
+	if (strcmp(classname, "infected") == 0)
+	{
+		int i = GetEntProp(other, Prop_Data, ENTPROP_ANIM_SEQUENCE);
+		float f = GetEntPropFloat(other, Prop_Data, ENTPROP_ANIM_CYCLE);
+		//PrintDebugAll("Touch fired on Infected, Sequence %i, Cycle %f", i, f);
+		
+		if ((i >= ANIM_SEQUENCES_DOWNED_BEGIN && i <= ANIM_SEQUENCES_DOWNED_END) || i == ANIM_SEQUENCE_WALLED)
+		{
+			if (f >= DOWNED_ANIM_MIN_CYCLE && f <= DOWNED_ANIM_MAX_CYCLE)
+			{
+				PrintDebugAll("Infected found downed. STOMPING HIM!!!");
+				SmashInfected(other, entity);
+				
+				if (GetConVarBool(COMMANDO_STOMPING_SLOWDOWN))
+				{
+					SetEntPropFloat(entity, Prop_Data, SPEED_MODIFY_ENTPROP, GetEntPropFloat(entity, Prop_Data, SPEED_MODIFY_ENTPROP) - STOMP_MOVE_PENALTY);
+				}
+			}
+		}
+	}
+	
+	return Plugin_Continue;
+}
+
+void SmashInfected(int zombie, int client)
+{
+	EmitSoundToAll(STOMP_SOUND_PATH, zombie, SNDCHAN_AUTO, SNDLEVEL_GUNFIRE);
+	AcceptEntityInput(zombie, "BecomeRagdoll");
+	SetEntProp(zombie, Prop_Send, "m_CollisionGroup", 0);
+	SetEntProp(zombie, Prop_Data, "m_iHealth", 1);
+	SDKHooks_TakeDamage(zombie, client, client, 10000.0, DMG_GENERIC);
+}
+
 ///////////////////////////////////////////////////////////////////////////////////
 // Saboteur
 ///////////////////////////////////////////////////////////////////////////////////
 
-public void ToggleSilencer(client)
+public void OnClientWeaponEquip(int client, int weapon)
 {
-	new cl_upgrades = GetEntProp(client, Prop_Send, "m_upgradeBitVec");
-	if (ClientData[client].ChosenClass == SABOTEUR && GetConVarBool(SABOTEUR_ENABLE_SILENCER) && IsClientInGame(client) && !IsFakeClient(client) && GetClientTeam(client) == 2 && IsPlayerAlive(client))
-	{
-		SetEntProp(client, Prop_Send, "m_upgradeBitVec", cl_upgrades + 262144, 4);
-	} else if (ClientData[client].ChosenClass != SABOTEUR && GetClientTeam(client) == 2) {
-		SetEntProp(client, Prop_Send, "m_upgradeBitVec", cl_upgrades - 262144, 4);
+	if (ClientData[client].ChosenClass == SABOTEUR && IsClientInGame(client) && !IsFakeClient(client) && GetClientTeam(client) == 2) {
+		ToggleNightVision(client);
 	}
 }
 
 public void ToggleNightVision(client)
 {
 	
-	if (GetConVarBool(SABOTEUR_ENABLE_NIGHT_VISION) && IsClientInGame(client) && !IsFakeClient(client) && GetClientTeam(client) == 2 && IsPlayerAlive(client))
+	if (GetConVarBool(SABOTEUR_ENABLE_NIGHT_VISION) && ClientData[client].ChosenClass == SABOTEUR && client < MaxClients && client > 0 && !IsFakeClient(client) && IsClientInGame(client) && GetClientTeam(client) == 2 && IsPlayerAlive(client))
 	{
-			new cl_upgrades = GetEntProp(client, Prop_Send, "m_upgradeBitVec");
-			SetEntProp(client, Prop_Send, "m_upgradeBitVec", cl_upgrades + 4194304, 4);
-			SetEntProp(client, Prop_Send, "m_bNightVisionOn", 1, 4);
-			SetEntProp(client, Prop_Send, "m_bHasNightVision", 1, 4);
-	} else if (ClientData[client].ChosenClass != SABOTEUR &&  IsClientInGame(client) && GetClientTeam(client) == 2) {
-			new cl_upgrades = GetEntProp(client, Prop_Send, "m_upgradeBitVec");		
-			SetEntProp(client, Prop_Send, "m_upgradeBitVec", cl_upgrades - 4194304, 4);
-			SetEntProp(client, Prop_Send, "m_bNightVisionOn", 0, 4);
-			SetEntProp(client, Prop_Send, "m_bHasNightVision", 0, 4);
+			int iWeapon = GetPlayerWeaponSlot(client, 0); // Get primary weapon
+			if(iWeapon > 0 && IsValidEdict(iWeapon) && IsValidEntity(iWeapon))
+			{					
+				char netclass[128];
+				GetEntityNetClass(iWeapon, netclass, sizeof(netclass));
+				if(FindSendPropInfo(netclass, "m_upgradeBitVec") < 1)
+				return; // This weapon does not support laser upgrade
+
+				new cl_upgrades = GetEntProp(iWeapon, Prop_Send, "m_upgradeBitVec");
+				SetEntProp(iWeapon, Prop_Send, "m_upgradeBitVec", cl_upgrades + 4194304, 4);
+
+				SetEntProp(client, Prop_Send, "m_bNightVisionOn", 1, 4);
+				SetEntProp(client, Prop_Send, "m_bHasNightVision", 1, 4);
+			}
 	}
 }
 stock DisableAllUpgrades(client)
 {
-	if ( IsClientInGame(client) && GetClientTeam(client) == 2 && !IsFakeClient(client) && ClientData[client].ChosenClass == SABOTEUR) {
-		SetEntProp(client, Prop_Send, "m_upgradeBitVec", 0, 4);
-		SetEntProp(client, Prop_Send, "m_bNightVisionOn", 0, 4);
-		SetEntProp(client, Prop_Send, "m_bHasNightVision", 0, 4);
+	if (client > 0 && client <= 16 && IsValidEntity(client) && !IsFakeClient(client) && IsClientInGame(client) && GetClientTeam(client) == 2) {
+		int iWeapon = GetPlayerWeaponSlot(client, 0); // Get primary weapon
+		if(iWeapon > 0 && IsValidEdict(iWeapon) && IsValidEntity(iWeapon))
+		{	
+			char netclass[128];
+			GetEntityNetClass(iWeapon, netclass, sizeof(netclass));
+			if(FindSendPropInfo(netclass, "m_upgradeBitVec") < 1)
+			return; // This weapon does not support laser upgrade
+			SetEntProp(iWeapon, Prop_Send, "m_upgradeBitVec", 0, 4);
+			SetEntProp(client, Prop_Send, "m_bNightVisionOn", 0, 4);
+			SetEntProp(client, Prop_Send, "m_bHasNightVision", 0, 4);
+		}
+		SDKUnhook(client, SDKHook_WeaponEquipPost, OnClientWeaponEquip);
+		SDKUnhook(client, SDKHook_WeaponDropPost, OnClientWeaponEquip);
 	}
 }
 
@@ -2432,11 +2526,11 @@ public OnGameFrame()
 			|| !IsValidEntity(client)
 			|| !IsClientInGame(client)
 			|| !IsPlayerAlive(client)
-			|| GetClientTeam(client) != 2
-			|| ClientData[client].ChosenClass != SOLDIER)
+			|| GetClientTeam(client) != 2)
 		continue;
 		
-		if(GetConVarBool(SOLDIER_SHOVE_PENALTY) == false)
+
+		if(ClientData[client].ChosenClass == SOLDIER && GetConVarBool(SOLDIER_SHOVE_PENALTY) == false)
 		{
 			//If the player is pressing the right click of the mouse, proceed
 			if(GetClientButtons(client) & IN_ATTACK2)
@@ -2451,25 +2545,33 @@ public OnGameFrame()
 		if(bweapon <= 0) 
 		continue;
 		
-		fNTR = GetEntDataFloat(bweapon, g_iNPA);
-		
+		fNTC = fNTR;
+
+		if (g_iNPA == -1) {
+			SetEntDataFloat(bweapon, g_iNPA, fNTC, true);
+
+		}
+
 		if (g_iEi[client] == bweapon && g_fNT[client] >= fNTR)
 		continue;
 		
-		if (g_iEi[client] == bweapon && g_fNT[client] < fNTR)
+		if (ClientData[client].ChosenClass == SOLDIER && g_iEi[client] == bweapon && g_fNT[client] < fNTR)
 		{
+
 			fNTC = ( fNTR - fGT ) * GetConVarFloat(SOLDIER_FIRE_RATE) + fGT;
 			g_fNT[client] = fNTC;
 			SetEntDataFloat(bweapon, g_iNPA, fNTC, true);
 			continue;
 		}
-		
+		g_fNT[client] = fNTC;
+
 		if (g_iEi[client] != bweapon)
 		{
-			g_iEi[client] = bweapon;
+			g_iEi[client] = bweapon;	
 			g_fNT[client] = fNTR;
 			continue;
 		}
+		
 	}
 }
 
