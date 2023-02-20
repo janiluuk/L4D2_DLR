@@ -87,6 +87,16 @@ forward OnPlayerClassChange(client, className, previousClass);
  * @noreturn
  */
 forward OnSpecialSkillUsed(client, skillName);  
+
+/**
+ * Called when player uses special skill. 
+ * Plugin should react to this to initiate the skill, then call either or OnSpecialSkillFail / OnSpecialSkillSuccess
+ * @param skillName         The client index of the player playing tetris.
+ * @param skillId     Assign ID to this var
+ * @noreturn
+ */
+forward FindSkillIdByName(skillName, skillId);  
+
 ``` 
 
 Native methods that are available:
@@ -130,5 +140,57 @@ native void OnSpecialSkillFail(int client, char[] skillName, char[] reason);
  */
 native int RegisterDLRSkill(char[] skillName);  
 ``` 
+# Plugin file changes
+Add DLRCore.sp in your include folder and make sure you have dlr_talents_2023.smx available.
+Include this in the plugin file header that you want to implement
 
-See Multiturret implementation in the code as an example.
+
+```
+/****************************************************/
+#tryinclude <DLRCore>
+#if !defined _DLRCore_included
+	// Optional native from DLR Talents
+	native void OnSpecialSkillSuccess(int client, char[] skillName);
+	native void OnSpecialSkillFail(int client, char[] skillName, char[] reason);
+	native void GetPlayerSkillName(int client, char[] skillName, int size);
+	native int RegisterDLRSkill(char[] skillName);  
+#endif
+static bool DLR_Available = false;
+#define PLUGIN_SKILL_NAME "Foobar"
+/****************************************************/
+``` 
+
+Include these functions;
+``` 
+public void OnAllPluginsLoaded()
+{
+	DLR_Available = LibraryExists("dlr_talents_2023");
+    ....
+}
+
+public void OnLibraryAdded(const char[] sName)
+{
+	if( StrEqual( sName, "dlr_talents_2023" ) )
+		DLR_Available = true;
+     ....
+}
+
+public void OnPluginStart()
+{
+....
+
+	if (DLR_Available) {
+		g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME);
+}
+
+public void OnSpecialSkillUsed(int iClient, int skill)
+{
+	if (skill == FindSkillIdByName(PLUGIN_SKILL_NAME) {
+
+		CMD_MainMenu(iClient, 0);
+	}
+}
+```
+
+See Multiturret implementation as example
+
