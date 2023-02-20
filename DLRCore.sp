@@ -11,7 +11,7 @@
  * @param client  Client index.
  * @return        Classname
  */
-native int GetPlayerClassName(client);
+native int GetPlayerClassName(int client, char[] skillName, int size);
 
 /**
  * Get player skillname
@@ -78,8 +78,9 @@ native void OnSpecialSkillFail(int client, char[] skillName, char[] reason);
  * @param type       	 0 = On Demand skill (e.g. push button), 1 = Constant perk that is applied throughout the game
  * @return int
  */
-
 native int RegisterDLRSkill(char[] skillName, int type);  
+
+forward OnCustomCommand(char[] name, int client, int entity, int type);  
 
 public SharedPlugin __pl_DLRCore = 
 {

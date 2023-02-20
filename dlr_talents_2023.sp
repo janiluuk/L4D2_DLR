@@ -62,6 +62,7 @@ static bool:DEBUG_MODE = false;
 
 // API
 new Handle:g_hfwdOnSpecialSkillUsed;
+new Handle:g_hfwdOnCustomCommand;
 new Handle:g_hfwdOnPlayerClassChange;
 
 new g_iSkillCounter = -1;
@@ -154,7 +155,7 @@ PlayerInfo ClientData[MAXPLAYERS+1];
 
 // API
 bool g_bLeft4Dead2, g_bLateLoad;
-bool g_bAirstrike, g_bAirstrikeValid, g_bMultiturret, g_bMultiturretValid;
+bool g_bAirstrike, g_bAirstrikeValid;
 
 // Rapid fire variables
 new g_iRI[MAXPLAYERS+1] = { -1 },
@@ -177,97 +178,12 @@ new g_iSID = -1;
 new g_iSED = -1;
 new g_iSRS = -1;
 new g_iShovePenalty = 0;
-int g_iClassTank, m_maxHealth;
 
-ConVar g_hDecayDecay;
-// Effects
-new String:g_ColorNames[12][32] = {"Red", "Green", "Blue", "Yellow", "Purple", "Cyan", "Orange", "Pink", "Olive", "Lime", "Violet", "Lightblue"};
-new g_Colors[12][3] = {{255,0,0},{0,255,0},{0,0,255},{255,255,0},{255,0,255},{0,255,255},{255,128,0},{255,0,128},{128,255,0},{0,255,128},{128,0,255},{0,128,255}};
+// Saboteur vars
+#define MAX_BOMBS 7
+Mine g_AvailableBombs[MAX_BOMBS];
+bool g_SingleBombMode = false;
 
-enum FX
-{
-	FxNone = 0,
-	FxPulseFast,
-	FxPulseSlowWide,
-	FxPulseFastWide,
-	FxFadeSlow,
-	FxFadeFast,
-	FxSolidSlow,
-	FxSolidFast,
-	FxStrobeSlow,
-	FxStrobeFast,
-	FxStrobeFaster,
-	FxFlickerSlow,
-	FxFlickerFast,
-	FxNoDissipation,
-	FxDistort,               // Distort/scale/translate flicker
-	FxHologram,              // kRenderFxDistort + distance fade
-	FxExplode,               // Scale up really big!
-	FxGlowShell,             // Glowing Shell
-	FxClampMinScale,         // Keep this sprite from getting very small (SPRITES only!)
-	FxEnvRain,               // for environmental rendermode, make rain
-	FxEnvSnow,               //  "        "            "    , make snow
-	FxSpotlight,     
-	FxRagdoll,
-	FxPulseFastWider,
-};
-
-enum Render
-{
-	Normal = 0, 		// src
-	TransColor, 		// c*a+dest*(1-a)
-	TransTexture,		// src*a+dest*(1-a)
-	Glow,				// src*a+dest -- No Z buffer checks -- Fixed size in screen space
-	TransAlpha,			// src*srca+dest*(1-srca)
-	TransAdd,			// src*a+dest
-	Environmental,		// not drawn, used for environmental effects
-	TransAddFrameBlend,	// use a fractional frame value to blend between animation frames
-	TransAlphaAdd,		// src + dest*(1-a)
-	WorldGlow,			// Same as kRenderGlow but not fixed size in screen space
-	None,				// Don't render.
-};
-
-enum
-{
-	CONFIG_ELASTICITY = 0,
-	CONFIG_GRAVITY,
-	CONFIG_DMG_PHYSICS,
-	CONFIG_DMG_SPECIAL,
-	CONFIG_DMG_SURVIVORS,
-	CONFIG_DMG_TANK,
-	CONFIG_DMG_WITCH,
-	CONFIG_DAMAGE,
-	CONFIG_DMG_TICK,
-	CONFIG_FUSE,
-	CONFIG_SHAKE,
-	CONFIG_STICK,
-	CONFIG_STUMBLE,
-	CONFIG_RANGE,
-	CONFIG_TICK,
-	CONFIG_TIME
-}
-#define BEAM_OFFSET			100.0									// Increase beam diameter by this value to correct visual size.
-#define BEAM_RINGS			5										// Number of beam rings.
-#define SHAKE_RANGE			150.0									// How far to increase the shake from the effect range.
-enum
-{
-	TARGET_COMMON = 0,
-	TARGET_SURVIVOR,
-	TARGET_SPECIAL,
-	TARGET_TANK,
-	TARGET_WITCH,
-	TARGET_PHYSICS
-}
-
-
-new FX:g_Effect = FX:FxGlowShell;
-new Render:g_Render = Render:Glow;
-
-// Weapon rates
-
-const Float:g_fl_SpasS = 0.5;
-const Float:g_fl_SpasI = 0.375;
-const Float:g_fl_SpasE = 0.699999;
 
 // Parachute
 
@@ -333,8 +249,8 @@ new Handle:SABOTEUR_HEALTH;
 new Handle:COMMANDO_HEALTH;
 new Handle:ENGINEER_HEALTH;
 new Handle:BRAWLER_HEALTH;
-// HEalth
 
+// Health
 new Handle:REVIVE_DURATION;
 new Handle:HEAL_DURATION;
 new Handle:REVIVE_HEALTH;
@@ -367,6 +283,7 @@ new Handle:SABOTEUR_INVISIBLE_TIME;
 new Handle:SABOTEUR_BOMB_ACTIVATE;
 new Handle:SABOTEUR_BOMB_RADIUS;
 new Handle:SABOTEUR_MAX_BOMBS;
+new Handle:SABOTEUR_BOMB_TYPES;
 new Handle:SABOTEUR_BOMB_DAMAGE_SURV;
 new Handle:SABOTEUR_BOMB_DAMAGE_INF;
 new Handle:SABOTEUR_BOMB_POWER;
@@ -386,7 +303,6 @@ new Handle:COMMANDO_ENABLE_STUMBLE_BLOCK;
 new Handle:COMMANDO_ENABLE_STOMPING;
 new Handle:COMMANDO_STOMPING_SLOWDOWN;
 
-
 // Engineer
 new Handle:ENGINEER_MAX_BUILDS;
 new Handle:ENGINEER_MAX_BUILD_RANGE;
@@ -394,7 +310,6 @@ new Handle:ENGINEER_MAX_BUILD_RANGE;
 // Saboteur, Engineer, Medic
 new Handle:MINIMUM_DROP_INTERVAL;
 new Handle:MINIMUM_AIRSTRIKE_INTERVAL;
-new Handle:ENGINEER_TURRET_EXTERNAL_PLUGIN;
 
 // Saferoom checks for saboteur
 new bool:g_bInSaferoom[MAXPLAYERS+1];
@@ -406,7 +321,6 @@ new Float:FirstAidDuration;
 new Float:ReviveDuration;
 new bool:BombActive = false;
 
-new String:Engineer_Turret_Spawn_Cmd[16] = "sm_machinemenu"; 
 new Handle:SABOTEUR_ACTIVE_BOMB_COLOR;
 
 // Last class taken
@@ -452,7 +366,8 @@ public OnPluginStart( )
 	// Api
 
 	g_hfwdOnPlayerClassChange = CreateGlobalForward("OnPlayerClassChange", ET_Ignore, Param_Cell, Param_Cell, Param_Cell);
-	g_hfwdOnSpecialSkillUsed= CreateGlobalForward("OnSpecialSkillUsed", ET_Ignore, Param_Cell, Param_Cell);
+	g_hfwdOnSpecialSkillUsed = CreateGlobalForward("OnSpecialSkillUsed", ET_Ignore, Param_Cell, Param_Cell);
+	g_hfwdOnCustomCommand = CreateGlobalForward("OnCustomCommand", ET_Ignore, Param_String, Param_Cell, Param_Cell, Param_Cell);
 	//Create a Class Selection forward
 	g_hOnSkillSelected = CreateGlobalForward("OnSkillSelected", ET_Event, Param_Cell, Param_Cell);
 
@@ -503,7 +418,8 @@ public OnPluginStart( )
 	RegConsoleCmd("sm_classes", CmdClasses, "Shows class descriptions");
 	RegConsoleCmd("sm_dlrdebug", CmdDlrMenu, "Debug & Manage");
 	RegConsoleCmd("sm_hide", HideCommand, "Hide player");
-	
+	RegConsoleCmd("sm_yay", GrenadeCommand, "Test grenade");
+
 	// Convars
 	new Handle:hVersion = CreateConVar("talents_version", PLUGIN_VERSION, "Version of this release", FCVAR_NOTIFY|FCVAR_REPLICATED|FCVAR_DONTRECORD);
 	if(hVersion != INVALID_HANDLE)
@@ -548,6 +464,7 @@ public OnPluginStart( )
 	SABOTEUR_BOMB_ACTIVATE = CreateConVar("talents_saboteur_bomb_activate", "5.0", "How long before the dropped bomb becomes sensitive to motion");
 	SABOTEUR_BOMB_RADIUS = CreateConVar("talents_saboteur_bomb_radius", "128.0", "Radius of bomb motion detection");
 	SABOTEUR_MAX_BOMBS = CreateConVar("talents_saboteur_max_bombs", "5", "How many bombs a saboteur can drop per round");
+	SABOTEUR_BOMB_TYPES = CreateConVar("talents_saboteur_bomb_types", "2,10,5,15,12,16,9", "Define max 7 mine types to use. 0=Use Classic, 1=Bomb, 2=Cluster, 3=Firework, 4=Smoke, 5=Black Hole, 6=Flashbang, 7=Shield, 8=Tesla, 9=Chemical, 10=Freeze, 11=Medic, 12=Vaporizer, 13=Extinguisher, 14=Glow, 15=Anti-Gravity, 16=Fire Cluster, 17=Bullets, 18=Flak, 19=Airstrike, 20=Weapon");
 	SABOTEUR_BOMB_DAMAGE_SURV = CreateConVar("talents_saboteur_bomb_dmg_surv", "0", "How much damage a bomb does to survivors");
 	SABOTEUR_BOMB_DAMAGE_INF = CreateConVar("talents_saboteur_bomb_dmg_inf", "1500", "How much damage a bomb does to infected");
 	SABOTEUR_BOMB_POWER = CreateConVar("talents_saboteur_bomb_power", "2.0", "How much blast power a bomb has. Higher values will throw survivors farther away");
@@ -569,7 +486,6 @@ public OnPluginStart( )
 
 	ENGINEER_MAX_BUILDS = CreateConVar("talents_engineer_max_builds", "5", "How many times an engineer can build per round");
 	ENGINEER_MAX_BUILD_RANGE = CreateConVar("talents_engineer_build_range", "120.0", "Maximum distance away an object can be built by the engineer");
-	ENGINEER_TURRET_EXTERNAL_PLUGIN = CreateConVar("talents_engineer_machinegun_plugin", "1", "Whether to use external plugin for turrets.");
 	
 	MINIMUM_DROP_INTERVAL = CreateConVar("talents_drop_interval", "30.0", "Time before an engineer, medic, or saboteur can drop another item");
 	MINIMUM_AIRSTRIKE_INTERVAL = CreateConVar("talents_airstrike_interval", "180.0", "Time before soldier can order airstrikes again.");
@@ -583,14 +499,10 @@ public OnPluginStart( )
 	ADRENALINE_DURATION =  CreateConVar("talents_adrenaline_duration", "30.0", "Default adrenaline duration");
 	ADRENALINE_HEALTH_BUFFER =  CreateConVar("talents_adrenaline_health_buffer", "75.0", "Default health given on adrenaline");
 
-	// Max char health
-	m_maxHealth = FindSendPropInfo("CTerrorPlayerResource", "m_maxHealth");
-
-	g_iClassTank = g_bLeft4Dead2 ? 8 : 5;
-	g_hDecayDecay = FindConVar("pain_pills_decay_rate");
-
 	AutoExecConfig(true, "talents");
-	ApplyHealthModifiers();	
+	ApplyHealthModifiers();
+	parseAvailableBombs();
+
 }
 
 public ResetClientVariables(client)
@@ -604,21 +516,42 @@ public ResetClientVariables(client)
 	ClientData[client].SpecialSkill = SpecialSkill:No_Skill;
 	ClientData[client].LastDropTime = 0.0;
 	g_bInSaferoom[client] = false;
-
 }
 
+public parseAvailableBombs()
+{
+	char buffers[MAX_BOMBS][3];
+
+	char bombs[128];
+	GetConVarString(SABOTEUR_BOMB_TYPES, bombs, sizeof(bombs));
+
+	if (StrEqual(bombs,"0")) {
+		g_SingleBombMode = true;
+	}
+
+	ExplodeString(bombs, ",", buffers, sizeof(buffers), sizeof(buffers[]));
+
+	for( int i = 0; i < MAX_BOMBS; i++ )
+	{	
+		int item = StringToInt(buffers[i]);
+		if (item < 1) {
+			continue;
+		}
+		g_AvailableBombs[i].setItem(i, StringToInt(buffers[i]));
+		PrintDebugAll("Added %s", g_AvailableBombs[i].getItem());
+	}
+}
 /* Temporarily hardcoded until get config right */
 
 public AssignSkills(client)
 {	
 	if (client < 1 || client > MaxClients) return;
-	
+
 	switch (ClientData[client].ChosenClass) {
 		case ENGINEER:
 		{
 			int skillId = FindSkillByName("Multiturret");
 			if (skillId > -1) {
-				PrintDebugAll("Registered skill ID %d ", skillId);
 				g_iPlayerSkill[client] = skillId;
 			}
 		}
@@ -631,7 +564,9 @@ public AssignSkills(client)
 			}
 		}
 	}
-
+	if (g_iPlayerSkill[client] > 0) {
+		PrintToChat(client, "Assigned skill %i to client", g_iPlayerSkill[client]);
+	}
 }
 // ====================================================================================================
 //					Register plugins
@@ -662,23 +597,23 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	return APLRes_Success;
 }
 
-// NATIVES
+// Register skill
 public Native_RegisterSkill(Handle:plugin, numParams)
 {
-	new String:SkillName[32], String:ItemInfo[3], String:SkillTypeString[3]; 
-	int SkillType;
+	new String:szSkillName[32], String:szItemInfo[3];
+	int type;
 
-	if(GetNativeString(1, SkillName, sizeof(SkillName)) == SP_ERROR_NONE)
+	if(GetNativeString(1, szSkillName, sizeof(szSkillName)) == SP_ERROR_NONE)
 	{
 		if(++g_iSkillCounter <= MAXCLASSES)
 		{
-			IntToString(g_iSkillCounter, ItemInfo, sizeof(ItemInfo));
-			PushArrayString(g_hSkillArray, SkillName);
-			if(SkillType = GetNativeCell(2) == SP_ERROR_NONE) {
-				SetArrayCell(g_hSkillTypeArray,g_iSkillCounter, SkillType);
+			IntToString(g_iSkillCounter, szItemInfo, sizeof(szItemInfo));
+			PushArrayString(g_hSkillArray, szSkillName);
+			AddMenuItem(g_hSkillMenu, szItemInfo, szSkillName);
+			type = GetNativeCell(2);
+			if (StringToInt(szItemInfo) > 0) {
+				SetArrayCell(g_hSkillTypeArray, StringToInt(szItemInfo), type);
 			}
-
-			AddMenuItem(g_hSkillMenu, ItemInfo, SkillName);
 			return g_iSkillCounter;
 		}
 	}
@@ -727,7 +662,7 @@ any Native_OnSpecialSkillSuccess(Handle plugin, int numParams)
 	int client = GetNativeCell(1);
 	if (client < 1 || client > MaxClients)
 	{
-		return ThrowNativeError(SP_ERROR_NATIVE, "Invalid client index (%d)", client);
+		ThrowNativeError(SP_ERROR_NATIVE, "Invalid client index (%d)", client);
 	}
 
 	int len;
@@ -735,13 +670,14 @@ any Native_OnSpecialSkillSuccess(Handle plugin, int numParams)
  
 	if (len <= 0)
 	{
-		return;
+		return 0;
 	}
  
 	char[] str = new char[len + 1];
 	GetNativeString(2, str, len + 1);
 	ClientData[client].SpecialsUsed++;
-	ClientData[client].LastDropTime = GetGameTime();	
+	ClientData[client].LastDropTime = GetGameTime();
+	return 1;
 }
 
 
@@ -769,31 +705,12 @@ any Native_OnSpecialSkillFail(Handle plugin, int numParams)
 	char[] reason = new char[len + 1];
 	GetNativeString(3, reason, len + 1);
 	PrintToChat(client, "%s failed due to: %s", name, reason);
-}
-
-public void Multiturret_OnPluginState(int pluginstate)
-{
-	static int mystate;
-	if( pluginstate == 1 && mystate == 0 )
-	{
-		mystate = 1;
-		g_bMultiturretValid = true;
-	}
-	else if( pluginstate == 0 && mystate == 1 )
-	{
-		mystate = 0;
-		g_bMultiturretValid = false;
-	}
+	return 0;
 }
 
 public void OnLibraryAdded(const char[] sName)
 {
-	if( strcmp(sName, "Multiturret") == 0 ) {
-		g_bMultiturret = true;
-		if( g_bLateLoad )
-		g_bMultiturretValid = true;
-	}
-	else if( g_bLeft4Dead2 && strcmp(sName, "l4d2_airstrike") == 0 )
+	if( g_bLeft4Dead2 && strcmp(sName, "l4d2_airstrike") == 0 )
 	{
 		g_bAirstrike = true;
 		// Assuming valid for late load
@@ -804,9 +721,7 @@ public void OnLibraryAdded(const char[] sName)
 
 public void OnLibraryRemoved(const char[] sName)
 {
-	if( strcmp(sName, "Multiturret") == 0 )
-	g_bMultiturret = false;
-	else if( g_bLeft4Dead2 && strcmp(sName, "l4d2_airstrike") == 0 )
+	if( g_bLeft4Dead2 && strcmp(sName, "l4d2_airstrike") == 0 )
 	g_bAirstrike = false;
 }
 
@@ -965,7 +880,6 @@ public Action:TimerThink(Handle:hTimer, any:client)
 	{
 		case ATHLETE:
 		{	
-			new flags = GetEntityFlags(client);
 			SetEntDataFloat(client, g_ioLMV, GetConVarFloat(ATHLETE_SPEED), true);
 		}
 		
@@ -1039,8 +953,11 @@ public Action:TimerThink(Handle:hTimer, any:client)
 						if (ClientData[client].SpecialsUsed >= GetConVarInt(SABOTEUR_MAX_BOMBS)) {
 							PrintHintText(client ,"You're out of mines");
 						} else {
-							ClientData[client].LastDropTime = GetGameTime();								
-							DropBomb(client);				
+							if (g_SingleBombMode == true) {
+								DropBomb(client);				
+							} else {
+								CreatePlayerSaboteurMenu(client);
+							}
 						}
 					}
 				}
@@ -1053,7 +970,6 @@ public Action:TimerThink(Handle:hTimer, any:client)
 			{
 				if (CanDrop) 
 				{	
-
 					if (ClientData[client].SpecialsUsed > GetConVarInt(MEDIC_MAX_ITEMS)) {
 						PrintHintText(client ,"You're out of items (Max %i)", GetConVarInt(MEDIC_MAX_ITEMS));
 					}
@@ -1095,7 +1011,6 @@ public Action:TimerThink(Handle:hTimer, any:client)
 					if(ClientData[client].SpecialsUsed < GetConVarInt(ENGINEER_MAX_BUILDS))
 					{
 						CreatePlayerEngineerMenu(client);
-						ClientData[client].LastDropTime = GetGameTime();
 					}
 					else
 					{
@@ -1120,7 +1035,7 @@ public Action:TimerThink(Handle:hTimer, any:client)
 				if (canUseSpecialSkill(client, pendingMessage)) {
 					g_bAirstrikeValid = false;
 					CreateAirStrike(client);
-					useSpecialSkill(client, g_iPlayerSkill[client]);
+					useSpecialSkill(client);
 					ClientData[client].LastDropTime = GetGameTime();
 				}
 			}
@@ -1132,11 +1047,29 @@ public Action:TimerThink(Handle:hTimer, any:client)
 }
 
 // Inform other plugins.
-public void useSpecialSkill(int client,int skill)
+public void useSpecialSkill(int client)
 {
-	Call_StartForward(g_hfwdOnSpecialSkillUsed);
+	int skill = g_iPlayerSkill[client];
+
+	if (g_iPlayerSkill[client] > 0) {
+		Call_StartForward(g_hfwdOnSpecialSkillUsed);
+		Call_PushCell(client);
+		Call_PushCell(skill);
+		Call_Finish();
+	}
+}	
+
+
+public void useCustomCommand(char[] pluginName, int client, int entity, int type )
+{
+	new String:szPluginName[32];
+	Format(szPluginName, sizeof(szPluginName), "%s", pluginName);
+	Call_StartForward(g_hfwdOnCustomCommand);
+
+	Call_PushString(szPluginName);
 	Call_PushCell(client);
-	Call_PushCell(skill);
+	Call_PushCell(entity);
+	Call_PushCell(type);	
 	Call_Finish();
 }	
 
@@ -1542,6 +1475,7 @@ public Action:CmdClassMenu(client, args)
 }
 
 public int GetMaxWithClass( class ) {
+
 	switch(class) {
 		case SOLDIER:
 		return GetConVarInt( MAX_SOLDIER );
@@ -1567,10 +1501,9 @@ public int FindSkillByName(char[] name)
 	new String:szSkillName[32];
 
 	for (new i = 0; i < sizeof(g_hSkillArray); i++) {
-	    GetArrayString(g_hSkillArray, i, szSkillName, sizeof(szSkillName));
+		GetArrayString(g_hSkillArray, i, szSkillName, sizeof(szSkillName));
 		if (StrEqual(szSkillName, name)) {
-	    	return i;
-	        break;
+			return i;
 	    }
 	}
 	return -1;
@@ -1595,9 +1528,17 @@ public Native_GetPlayerClassName(Handle:plugin, numParams)
 
 	if (client < 1 || client > MaxClients)
 	{
-		return ThrowNativeError(SP_ERROR_NATIVE, "Invalid client index (%d)", client);
+		ThrowNativeError(SP_ERROR_NATIVE, "Invalid client index (%d)", client);
 	}
-	return MENU_OPTIONS[ClientData[client].ChosenClass];
+
+	new iSize = GetNativeCell(3);
+	new String:szSkillName[32];
+	Format(szSkillName, iSize, "%s", MENU_OPTIONS[ClientData[client].ChosenClass]);
+
+	if(SetNativeString(2, szSkillName, iSize)) {
+		return 1;
+    }
+	return 0;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////
@@ -1612,7 +1553,7 @@ stock void PrintDebug(int client, const char[] dbgMessage, any ...)
 	PrintToChat(client, message);
 }
 
-void PrintDebugAll(const char[] format, any ...)
+stock void PrintDebugAll(const char[] format, any ...)
 {
 	#if DEBUG || DEBUG_LOG
 	static char buffer[192];
@@ -1782,7 +1723,7 @@ public CreatePlayerEngineerMenu(client)
 	DrawPanelText(hPanel, " ");
 	DrawPanelItem(hPanel, "Exit");
 	
-	SendPanelToClient(hPanel, client, PanelHandler_SelectEngineerItem, MENU_OPEN_TIME);
+	SendPanelToClient(hPanel, client, PanelHandler_SelectEngineerItem, MENU_TIME_FOREVER);
 	CloseHandle(hPanel);
 	
 	return true;
@@ -1826,14 +1767,11 @@ public void CalculateEngineerPlacePos(client, type)
 					DispatchSpawn(ammo);
 					TeleportEntity(ammo, endPos, NULL_VECTOR, NULL_VECTOR);
 					ClientData[client].SpecialsUsed++;
+					ClientData[client].LastDropTime = GetGameTime();
 				}
 				case 1:
 				{
-					if (GetConVarInt(ENGINEER_TURRET_EXTERNAL_PLUGIN) > 0) 
-					{
-//						ClientCommand(client, Engineer_Turret_Spawn_Cmd);
-						useSpecialSkill(client,g_iPlayerSkill[client]);
-					}
+					useSpecialSkill(client);
 				}
 				case 3: 
 				{
@@ -1874,57 +1812,33 @@ public void CalculateEngineerPlacePos(client, type)
 // Health modifiers & medic
 ///////////////////////////////////////////////////////////////////////////////////
 
-
-float GetTempHealth(int client)
+public bool:CreatePlayerSaboteurMenu(client)
 {
-	float fGameTime = GetGameTime();
-	float fHealthTime = GetEntPropFloat(client, Prop_Send, "m_healthBufferTime");
-	float fHealth = GetEntPropFloat(client, Prop_Send, "m_healthBuffer");
-	fHealth -= (fGameTime - fHealthTime) * g_hDecayDecay.FloatValue;
-	return fHealth < 0.0 ? 0.0 : fHealth;
-}
-
-void SetTempHealth(int client, float fHealth)
-{
-	SetEntPropFloat(client, Prop_Send, "m_healthBuffer", fHealth < 0.0 ? 0.0 : fHealth );
-	SetEntPropFloat(client, Prop_Send, "m_healthBufferTime", GetGameTime());
-}
-int GetClientMaxHealth(int client)
-{
-	int entity = GetPlayerManager();
-
-	if( entity != INVALID_ENT_REFERENCE )
+	if (!client)
+	return false;
+	
+	new Handle:hPanel;
+	
+	if((hPanel = CreatePanel()) == INVALID_HANDLE)
 	{
-		return GetEntData(entity, m_maxHealth + (client * 4));
+		LogError("Cannot create hPanel on CreatePlayerMedicMenu");
+		return false;
 	}
+	SetPanelTitle(hPanel, "Select mine type:");
+	for (new i = 0; i < MAX_BOMBS; i++ ) {
 
-	return 0;
-}
+		char bombInfo[32];
+		Format(bombInfo, sizeof(bombInfo), "%s", g_AvailableBombs[i].getItem());
 
-int GetMaxReviveCount()
-{
-	static Handle hMaxReviveCount = INVALID_HANDLE;
-	if (hMaxReviveCount == INVALID_HANDLE)
-	{
-		hMaxReviveCount = FindConVar("survivor_max_incapacitated_count");
-		if (hMaxReviveCount == INVALID_HANDLE)
-		{
-			return -1;
+		if (!StrEqual(bombInfo, "")) {
+			DrawPanelItem(hPanel, bombInfo);
 		}
 	}
+	DrawPanelItem(hPanel, "Exit");
+	SendPanelToClient(hPanel, client, PanelHandler_SelectSaboteurItem, MENU_OPEN_TIME);
+	CloseHandle(hPanel);
 	
-	return GetConVarInt(hMaxReviveCount);
-}
-int GetPlayerManager()
-{
-	static int entity = INVALID_ENT_REFERENCE;
-	if( entity == INVALID_ENT_REFERENCE || EntRefToEntIndex(entity) == INVALID_ENT_REFERENCE )
-	{
-		entity = FindEntityByClassname(-1, "terror_player_manager");
-		if( entity != INVALID_ENT_REFERENCE ) entity = EntIndexToEntRef(entity);
-	}
-
-	return entity;
+	return true;
 }
 
 public bool:CreatePlayerMedicMenu(client)
@@ -1951,7 +1865,17 @@ public bool:CreatePlayerMedicMenu(client)
 	
 	return true;
 }
-
+public PanelHandler_SelectSaboteurItem(Handle:menu, MenuAction:action, client, param)
+{
+	switch (action)
+	{
+		case MenuAction_Select:
+		{
+			if( param >= 1 && param <= 7 )
+			CalculateSaboteurPlacePos(client, param - 1);
+		}
+	}
+}
 public PanelHandler_SelectMedicItem(Handle:menu, MenuAction:action, client, param)
 {
 	switch (action)
@@ -1965,6 +1889,50 @@ public PanelHandler_SelectMedicItem(Handle:menu, MenuAction:action, client, para
 	}
 }
 
+public void CalculateSaboteurPlacePos(client, type)
+{
+	decl Float:vAng[3], Float:vPos[3], Float:endPos[3];
+	
+	GetClientEyeAngles(client, vAng);
+	GetClientEyePosition(client, vPos);
+
+	new Handle:trace = TR_TraceRayFilterEx(vPos, vAng, MASK_SHOT, RayType_Infinite, TraceFilter, client);
+	if (TR_DidHit(trace))
+	{
+		TR_GetEndPosition(endPos, trace);
+		CloseHandle(trace);
+		
+		if (GetVectorDistance(endPos, vPos) <= GetConVarFloat(MEDIC_MAX_BUILD_RANGE))
+		{
+			vAng[0] = 0.0;
+			vAng[2] = 0.0;
+			switch(type) {
+				case 0: {
+				}
+				case 1:{
+				}
+				case 2: {
+				}
+				case 3: {
+				}
+				case 4: {
+				}
+				case 5:{
+				}
+				case 6: {
+				}
+				default: {
+					CloseHandle( trace );
+					return;
+				}
+			}
+		}
+		else
+		PrintToChat(client, "%sCould not place the item because you were looking too far away.", PRINT_PREFIX);
+	}
+	else
+	CloseHandle(trace);
+}
 public void CalculateMedicPlacePos(client, type)
 {
 	decl Float:vAng[3], Float:vPos[3], Float:endPos[3];
@@ -2277,9 +2245,6 @@ public Event_RelCommandoClass(Handle:event, String:name[], bool:dontBroadcast)
 
 		if (StrContains(bNetCl, "shotgun_spas", false) != -1)
 		{
-			if (DEBUG_MODE) {
-				PrintToChatAll("\x03-spas ratio \x01%f\x03, startO \x01%f\x03, insertO \x01%f\x03, endO \x01%f", GetConVarFloat(COMMANDO_RELOAD_RATIO), g_fl_SpasS, g_fl_SpasI, 0.675000);
-			}
 			WritePackFloat(hPack, 0.293939);
 			WritePackFloat(hPack, 0.272999);
 			WritePackFloat(hPack, 0.675000);
@@ -2358,7 +2323,6 @@ public Action:CommandoPumpShotReload(Handle:timer, Handle:hOldPack)
 	CloseHandle(hOldPack);
 	if (DEBUG_MODE == true) {
 		PrintToChatAll("\x03-spas shotgun detected, ratio \x01%i\x03, startO \x01%i\x03, insertO \x01%i\x03, endO \x01%i", fRLRat, g_iSSD, g_iSID, g_iSED);
-		PrintToChatAll("\x03- pre mod, start \x01%f\x03, insert \x01%f\x03, end \x01%f",g_fl_SpasS, g_fl_SpasI, g_fl_SpasE);
 	}
 	
 	new Handle:hPack = CreateDataPack();
@@ -2518,6 +2482,88 @@ void SmashInfected(int zombie, int client)
 // Saboteur
 ///////////////////////////////////////////////////////////////////////////////////
 
+enum BombType {
+	Bomb = 0, 
+	Cluster, 
+	Firework,
+	Smoke, 
+	BlackHole,
+	Flashbang, 
+	Shield, 
+	Tesla, 
+	Chemical, 
+	Freeze, 
+	Medic, 
+	Vaporizer, 
+	Extinguisher, 
+	Glowing, 
+	AntiGravity, 
+	FireCluster, 
+	Bullets, 
+	Flak, 
+	Airstrike, 
+	Weapon
+}
+
+char[] formatBombName(char[] bombName) {
+	char temp[32];
+	Format(temp, sizeof(temp), "%s", bombName);
+	return temp;
+}
+
+char[] getBombName(int index) {
+
+	char bombName[32];
+
+	switch( index - 1 )
+	{
+		case 0: return formatBombName("Bomb");
+		case 1: return formatBombName("Cluster");
+		case 2: return formatBombName("Firework");
+		case 3: return formatBombName("Smoke");
+		case 4: return formatBombName("BlackHole");
+		case 5: return formatBombName("Flashbang");
+		case 6: return formatBombName("Shield");
+		case 7: return formatBombName("Tesla");
+		case 8: return formatBombName("Chemical");
+		case 9: return formatBombName("Freeze");
+		case 10: return formatBombName("Medic");
+		case 11: return formatBombName("Vaporizer");
+		case 12: return formatBombName("Extinguisher");
+		case 13: return formatBombName("Glow");
+		case 14: return formatBombName("Anti-Gravity");
+		case 15: return formatBombName("Fire Cluster");
+		case 16: return formatBombName("Bullets");
+		case 17: return formatBombName("Flak");
+		case 18: return formatBombName("Airstrike");
+		case 19: return formatBombName("Weapon");
+	}
+	return bombName;
+}
+
+enum struct Mine
+{
+    int index;
+    char bombName[32];
+    int bombIndex;
+	
+	void setItem(int number, int bombIndex) { 
+		this.index = number;
+		this.bombName = getBombName(bombIndex);
+		this.bombIndex = bombIndex;
+	}
+
+	char[] getItem() {
+		char temp[32];
+		temp = this.bombName;
+
+		if (this.index < 0 || StrEqual(temp, "")) return temp;
+		char text[32];
+		Format(text, sizeof(text), "%d - %s", this.index, this.bombName);
+		return text;
+	}
+}
+
 public void OnClientWeaponEquip(int client, int weapon)
 {
 	if (ClientData[client].ChosenClass == SABOTEUR && IsClientInGame(client) && !IsFakeClient(client) && GetClientTeam(client) == 2) {
@@ -2527,7 +2573,6 @@ public void OnClientWeaponEquip(int client, int weapon)
 
 public void ToggleNightVision(client)
 {
-	
 	if (GetConVarBool(SABOTEUR_ENABLE_NIGHT_VISION) && ClientData[client].ChosenClass == SABOTEUR && client < MaxClients && client > 0 && !IsFakeClient(client) && IsClientInGame(client) && GetClientTeam(client) == 2 && IsPlayerAlive(client))
 	{
 			int iWeapon = GetPlayerWeaponSlot(client, 0); // Get primary weapon
@@ -2549,6 +2594,7 @@ public void ToggleNightVision(client)
 			}
 	}
 }
+
 stock DisableAllUpgrades(client)
 {
 	if (client > 0 && client <= 16 && IsValidEntity(client) && !IsFakeClient(client) && IsClientInGame(client) && GetClientTeam(client) == 2) {
@@ -2592,7 +2638,9 @@ public OnGameFrame()
 			|| !IsValidEntity(client)
 			|| !IsClientInGame(client)
 			|| !IsPlayerAlive(client)
-			|| GetClientTeam(client) != 2)
+			|| GetClientTeam(client) != 2
+			|| (ClientData[client].ChosenClass != SOLDIER && ClientData[client].ChosenClass != COMMANDO) 
+			)
 		continue;
 		
 
@@ -2670,10 +2718,12 @@ public Action:OnTakeDamagePre(victim, &attacker, &inflictor, &Float:damage, &dam
 			return Plugin_Changed;
 		}
 	}
-
-	
 	return Plugin_Continue;
 }
+
+///////////////////////////////////////////////////////////////////////////////////
+// Mines & Airstrikes
+///////////////////////////////////////////////////////////////////////////////////
 
 public void CreateAirStrike(int client) {
 	
@@ -2709,10 +2759,6 @@ public void CreateAirStrike(int client) {
 	} 
 }
 
-///////////////////////////////////////////////////////////////////////////////////
-// Mines & Airstrikes
-///////////////////////////////////////////////////////////////////////////////////
-
 public void DropBomb(client)
 {
 	decl Float:pos[3];
@@ -2739,7 +2785,7 @@ public void DropBomb(client)
 
 	ClientData[client].SpecialsUsed++;
 
-	CreateParticleInPos(pos, BOMB_GLOW, index);
+	CreateBombParticleInPos(pos, BOMB_GLOW, index);
 
 	EmitSoundToAll(SOUND_DROP_BOMB);
 	PrintHintTextToAll("%N planted a mine! (%i/%i)", client, ClientData[client].SpecialsUsed, GetConVarInt(SABOTEUR_MAX_BOMBS));
@@ -2766,9 +2812,9 @@ public DropMineEntity(Float:pos[3], int index)
 
 	return entity;
 }
+
 public Action:TimerAirstrike(Handle timer, Handle:hPack)
 {
-
 	new Float:pos[3];
 	new Float:time;
 	int client;
@@ -2868,12 +2914,7 @@ public Action:TimerCheckBombSensors(Handle:hTimer, Handle:hPack)
 	}
 	return Plugin_Continue;
 }
-bool:IsPlayerGhost (client)
-{
-    if (GetEntData(client, FindSendPropInfo("CTerrorPlayer", "m_isGhost"), 1))
-        return true;
-    return false;
-}
+
 public Action:timerHurtEntity(Handle:timer, Handle:pack)
 {
 	ResetPack(pack);
@@ -3173,7 +3214,7 @@ public Action:TimerRemovePrecacheParticle(Handle:timer, any:Particle)
 	AcceptEntityInput(Particle, "Kill");
 }
 
-stock CreateParticleInPos(Float:pos[3], String:Particle_Name[], int index)
+stock CreateBombParticleInPos(Float:pos[3], String:Particle_Name[], int index)
 {
 	new Particle = CreateEntityByName("info_particle_system");
 	TeleportEntity(Particle, pos, NULL_VECTOR, NULL_VECTOR);
@@ -3234,12 +3275,13 @@ public Action:TimerActivateBombParticle(Handle:timer, any:entity)
 	}
 
 }
+
 public Action:TimerStopAndRemoveParticle(Handle:timer, any:entity)
 {
 	if (entity > 0 && IsValidEntity(entity))
 	{
 		if (BombActive == true) {
-			CreateTimer(5.0, TimerStopAndRemoveParticle, entity, TIMER_FLAG_NO_MAPCHANGE);			
+			CreateTimer(3.0, TimerStopAndRemoveParticle, entity, TIMER_FLAG_NO_MAPCHANGE);			
 		} else {
 			AcceptEntityInput(entity, "Kill");
 		}
@@ -3274,7 +3316,7 @@ public Action:TimerStopAndRemoveBombParticle(Handle:timer, Handle:pack)
 			WritePackCell(hPack, defibParticle);
 
 			if (defibParticle) InputKill(defibParticle, 2.0);
-			elmosParticle = DisplayParticle(defibParticle, PARTICLE_ELMOS, vPos, NULL_VECTOR);
+			elmosParticle = DisplayParticle(false, PARTICLE_ELMOS, vPos, NULL_VECTOR);
 			if (elmosParticle) InputKill(elmosParticle, 3.0);
 			WritePackCell(hPack, elmosParticle);
 			WritePackCell(hPack, mine);
@@ -3300,6 +3342,8 @@ public Action:TimerDeleteBombs(Handle:timer, Handle:pack)
 				removed = true;
 			}
 		}
+		CloseHandle(pack);
+
 	} else {
 		new Handle:hPack = CreateDataPack();
 		WritePackCell(hPack, index);
@@ -3326,6 +3370,58 @@ public Action:TimerDeleteBombs(Handle:timer, Handle:pack)
 ///////////////////////////////////////////////////////////////////////////////////	
 // Graphics & effects
 ///////////////////////////////////////////////////////////////////////////////////
+
+new String:g_ColorNames[12][32] = {"Red", "Green", "Blue", "Yellow", "Purple", "Cyan", "Orange", "Pink", "Olive", "Lime", "Violet", "Lightblue"};
+new g_Colors[12][3] = {{255,0,0},{0,255,0},{0,0,255},{255,255,0},{255,0,255},{0,255,255},{255,128,0},{255,0,128},{128,255,0},{0,255,128},{128,0,255},{0,128,255}};
+
+enum FX
+{
+	FxNone = 0,
+	FxPulseFast,
+	FxPulseSlowWide,
+	FxPulseFastWide,
+	FxFadeSlow,
+	FxFadeFast,
+	FxSolidSlow,
+	FxSolidFast,
+	FxStrobeSlow,
+	FxStrobeFast,
+	FxStrobeFaster,
+	FxFlickerSlow,
+	FxFlickerFast,
+	FxNoDissipation,
+	FxDistort,               // Distort/scale/translate flicker
+	FxHologram,              // kRenderFxDistort + distance fade
+	FxExplode,               // Scale up really big!
+	FxGlowShell,             // Glowing Shell
+	FxClampMinScale,         // Keep this sprite from getting very small (SPRITES only!)
+	FxEnvRain,               // for environmental rendermode, make rain
+	FxEnvSnow,               //  "        "            "    , make snow
+	FxSpotlight,     
+	FxRagdoll,
+	FxPulseFastWider,
+};
+
+enum Render
+{
+	Normal = 0, 		// src
+	TransColor, 		// c*a+dest*(1-a)
+	TransTexture,		// src*a+dest*(1-a)
+	Glow,				// src*a+dest -- No Z buffer checks -- Fixed size in screen space
+	TransAlpha,			// src*srca+dest*(1-srca)
+	TransAdd,			// src*a+dest
+	Environmental,		// not drawn, used for environmental effects
+	TransAddFrameBlend,	// use a fractional frame value to blend between animation frames
+	TransAlphaAdd,		// src + dest*(1-a)
+	WorldGlow,			// Same as kRenderGlow but not fixed size in screen space
+	None,				// Don't render.
+};
+
+#define BEAM_OFFSET			100.0									// Increase beam diameter by this value to correct visual size.
+#define BEAM_RINGS			5										// Number of beam rings.
+#define SHAKE_RANGE			150.0									// How far to increase the shake from the effect range.
+
+new Render:g_Render = Render:Glow;
 
 public ShowParticle(Float:pos[3], Float:ang[3],String:particlename[], Float:time)
 {
@@ -3465,53 +3561,6 @@ int GetColor(char[] sTemp)
 	return iColor;
 }
 
-// ====================================================================================================
-//					STOCKS - SHAKE
-// ====================================================================================================
-void CreateShake(float intensity, float range, float vPos[3])
-{
-	if( intensity == 0.0 ) return;
-
-	int entity = CreateEntityByName("env_shake");
-	if( entity == -1 )
-	{
-		LogError("Failed to create 'env_shake'");
-		return;
-	}
-
-	static char sTemp[8];
-	FloatToString(intensity, sTemp, sizeof(sTemp));
-	DispatchKeyValue(entity, "amplitude", sTemp);
-	DispatchKeyValue(entity, "frequency", "1.5");
-	DispatchKeyValue(entity, "duration", "0.9");
-	FloatToString(range, sTemp, sizeof(sTemp));
-	DispatchKeyValue(entity, "radius", sTemp);
-	DispatchKeyValue(entity, "spawnflags", "8");
-	DispatchSpawn(entity);
-	ActivateEntity(entity);
-	AcceptEntityInput(entity, "Enable");
-
-	TeleportEntity(entity, vPos, NULL_VECTOR, NULL_VECTOR);
-	AcceptEntityInput(entity, "StartShake");
-	RemoveEdict(entity);
-}
-
-void PrjEffects_Medic(int entity)
-{
-	// Grenade Pos + Effects
-	static float vPos[3];
-	SetupPrjEffects(entity, vPos, "0 150 0"); // Green
-
-	// Sound
-	PlaySound(entity, SOUND_TUNNEL);
-	PlaySound(entity, SOUND_NOISE);
-	PlaySound(entity, SOUND_SQUEAK);
-}
-
-void PlaySound(int entity, const char[] sound, int level = SNDLEVEL_NORMAL)
-{
-	EmitSoundToAll(sound, entity, level == SNDLEVEL_RAIDSIREN ? SNDCHAN_ITEM : SNDCHAN_AUTO, level);
-}
 void SetupPrjEffects(int entity, float vPos[3], const char[] color)
 {
 	// Grenade Pos
@@ -4119,6 +4168,26 @@ public Action:UnhidePlayer(client)
 {
 	if (g_bHide[client] == true) HidePlayer(client);
 	g_bHide[client] = false;
+}
+
+public Action:GrenadeCommand(client, args)
+{
+	if (isAdmin(client)) {
+		// Index
+		int index;
+		char str[3];
+		new type=GetCmdArg(1, str, 32);
+		if(type==0) {
+		}
+		else
+		{
+			int c = StringToInt(str);
+			index = c;
+		}			
+		useCustomCommand("Grenades", client, 1, index);
+	}			
+	
+	return Plugin_Handled;
 }
 
 public Action:HideCommand(client, args)
