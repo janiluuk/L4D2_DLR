@@ -460,7 +460,7 @@ public OnPluginStart( )
 	g_hSkillArray = CreateArray(16);
 
 	// Offsets
-	g_iNPA = FindSendPropInfo("CBaseCombatqWeapon", "m_flNextPrimaryAttack");
+	g_iNPA = FindSendPropInfo("CBaseCombatWeapon", "m_flNextPrimaryAttack");
 	g_oAW = FindSendPropInfo("CTerrorPlayer", "m_hActiveWeapon");
 	g_ioLMV = FindSendPropInfo("CTerrorPlayer", "m_flLaggedMovementValue");
 	g_ioPR = FindSendPropInfo("CBaseCombatWeapon", "m_flPlaybackRate");
@@ -557,7 +557,7 @@ public OnPluginStart( )
 	COMMANDO_DAMAGE_PISTOL = CreateConVar("talents_commando_dmg_pistol", "25.0", "How much bonus damage a Commando does with pistol");
 	COMMANDO_DAMAGE_SMG = CreateConVar("talents_commando_dmg_smg", "7.0", "How much bonus damage a Commando does with smg");
 	COMMANDO_RELOAD_RATIO = CreateConVar("talents_commando_reload_ratio", "0.44", "Ratio for how fast a Commando should be able to reload");
-	COMMANDO_ENABLE_STUMBLE_BLOCK = CreateConVar("talents_commando_enable_stumble_block", "1", "Enable stumble blocking for Commando. 0 = Disable, 1 = Enable");
+	COMMANDO_ENABLE_STUMBLE_BLOCK = CreateConVar("talents_commando_enable_stumble_block", "1", "Enable blocking tank knockdowns for Commando. 0 = Disable, 1 = Enable");
 	COMMANDO_ENABLE_STOMPING = CreateConVar("talents_commando_enable_stomping", "1", "Enable stomping of downed infected  0 = Disable, 1 = Enable");
 	COMMANDO_STOMPING_SLOWDOWN = CreateConVar("talents_commando_stomping_slowdown", "0", "Should movement slow down after stomping: 0 = Disable, 1 = Enable");
 
@@ -598,8 +598,6 @@ public ResetClientVariables(client)
 	ClientData[client].SpecialSkill = SpecialSkill:No_Skill;
 	ClientData[client].LastDropTime = 0.0;
 	g_bInSaferoom[client] = false;
-
-	SDKUnhook(client, SDKHook_OnTakeDamagePost, OnTakeDamage);
 
 }
 
@@ -866,8 +864,7 @@ public Action:TimerLoadGlobal(Handle:hTimer, any:client)
 	if (!client || !IsValidEntity(client) || !IsClientInGame(client))
 	return;
 	
-	SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamagePre);
-
+	SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamagePre);	
 }
 
 public Action:TimerLoadClient(Handle:hTimer, any:client)
@@ -1462,7 +1459,6 @@ public void SetupClasses(client, class)
 			decl String:text[64];
 			text = "";
 			if (GetConVarBool(COMMANDO_ENABLE_STUMBLE_BLOCK)) {
-				SDKHook(client, SDKHook_OnTakeDamagePost, OnTakeDamage);
 				text = ", You're immune to knockdowns";
 			} 
 
@@ -2141,25 +2137,27 @@ public InitHealthModifiers()
 // Commando
 ///////////////////////////////////////////////////////////////////////////////////
 
-public Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, int &damagetype, int &weapon, float damageForce[3], float damagePosition[3], int damagecustom)
+// ====================================================================================================
+//					EVENTS
+// ====================================================================================================
+public Action L4D_OnKnockedDown(int client, int reason)
 {
-	if(GetConVarBool(COMMANDO_ENABLE_STUMBLE_BLOCK) && damagetype == DMG_CLUB && victim > 0 && victim <= MaxClients && attacker > 0 && attacker <= MaxClients && GetClientTeam(victim) == 2 && ClientData[victim].ChosenClass == COMMANDO && GetClientTeam(attacker) == 3 )
+	if( GetConVarBool(COMMANDO_ENABLE_STUMBLE_BLOCK) && ClientData[client].ChosenClass == COMMANDO && reason == 2 )
 	{
-		int class = GetEntProp(attacker, Prop_Send, "m_zombieClass");
-		if( class == (g_bLeft4Dead2 ? 8 : 5) && GetEntProp(victim, Prop_Send, "m_isIncapacitated") == 0)
-		{
-			SDKHook(victim, SDKHook_PostThink, OnThink);
-			SetEntProp(victim, Prop_Send, "m_isIncapacitated", 1);
-		}
-		
+		return Plugin_Handled;
 	}
+
 	return Plugin_Continue;
 }
 
-public void OnThink(int victim)
+public Action L4D_TankClaw_OnPlayerHit_Pre(int tank, int claw, int player)
 {
-	SetEntProp(victim, Prop_Send, "m_isIncapacitated", 0);
-	SDKUnhook(victim, SDKHook_PostThink, OnThink);
+	if( GetConVarBool(COMMANDO_ENABLE_STUMBLE_BLOCK) && ClientData[player].ChosenClass == COMMANDO)
+	{
+		return Plugin_Handled;
+	}
+
+	return Plugin_Continue;
 }
 
 public Event_RelCommandoClass(Handle:event, String:name[], bool:dontBroadcast)
@@ -2571,7 +2569,6 @@ public OnGameFrame()
 			g_fNT[client] = fNTR;
 			continue;
 		}
-		
 	}
 }
 
