@@ -26,7 +26,7 @@ Changes:
 - Turrets don't block anymore, so you cannot abuse it by boxing in opponents.
 - Saboteur moves faster when crouched and shows visibility status.
 - Saboteur has visual effect on turning invisible and specific glow.
-- Saboteur has silencer and nightvision
+- Saboteur has nightvision
 - Redefine visual effect for mines, and actually leave a visible mine. 
 - Mines do less damage to survivors. Standing really close to the mine can still incap.
 - Mines do more damage to infected, 1500hp. Some edge over tank
