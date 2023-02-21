@@ -745,7 +745,7 @@ public int OnCustomCommand(char[] name, int client, int entity, int type)
 		projectile = true;
 	}
 
-	int newentity = DoSpawn(client, type, projectile, entity);
+	DoSpawn(client, type, projectile, entity);
 }
 
 public void OnPluginStart()
@@ -1099,15 +1099,15 @@ int DoSpawn(int client, int index, bool projectile, int ent=-1)
 	} else {
 		// Create
 		entity = CreateEntityByName("pipe_bomb_projectile");
+		SetEntPropEnt(entity, Prop_Send, "m_hThrower", client);		// Store owner
+		SetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity", client);	// Store owner
+		SetEntPropVector(entity, Prop_Send, "m_vInitialVelocity", view_as<float>({ 0.0, 0.0, 1.0 }));
+		SetEntityModel(entity, MODEL_SPRAYCAN);
 	}
 
 	if( entity != -1 )
 	{
-		SetEntityModel(entity, MODEL_SPRAYCAN);
 		g_GrenadeType[entity] = index;								// Store mode type
-		SetEntPropEnt(entity, Prop_Send, "m_hThrower", client);		// Store owner
-		SetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity", client);	// Store owner
-		SetEntPropVector(entity, Prop_Send, "m_vInitialVelocity", view_as<float>({ 0.0, 0.0, 1.0 }));
 		g_iClientGrenadeType[client] = index;
 
 		float vPos[3];
@@ -2011,7 +2011,7 @@ void OnWeaponEquip(int client, int weapon)
 
 				Format(translation, sizeof(translation), "%T %T", "GrenadeMod_Mode", client, translation, client);
 				ReplaceColors(translation, sizeof(translation));
-				PrintToChat(client, translation);
+				//PrintToChat(client, translation);
 
 				// If grenade mode allowed to change
 				if( g_iConfigPrefs != 3 )
@@ -2022,7 +2022,7 @@ void OnWeaponEquip(int client, int weapon)
 						Format(translation, sizeof(translation), "%T", "GrenadeMod_Hint", client);
 
 					ReplaceColors(translation, sizeof(translation));
-					PrintToChat(client, translation);
+					//PrintToChat(client, translation);
 				}
 			}
 		}

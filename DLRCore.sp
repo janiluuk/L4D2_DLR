@@ -50,7 +50,7 @@ forward OnPlayerClassChange(client, className, previousClass);
  * @param skillName      Skill that user just used
  * @noreturn
  */
-forward OnSpecialSkillUsed(int iClient, int skill);  
+forward OnSpecialSkillUsed(int iClient, int skill, int type);  
 
 /**
  * Called when player has successfully used special skill
