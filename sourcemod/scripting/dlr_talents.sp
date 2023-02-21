@@ -2517,7 +2517,7 @@ char[] getBombName(int index) {
 
 	switch( index - 1 )
 	{
-		case 0: return formatBombName("Cluster");
+		case 0: return formatBombName("Bomb");
 		case 1: return formatBombName("Cluster");
 		case 2: return formatBombName("Firework");
 		case 3: return formatBombName("Smoke");
@@ -2580,8 +2580,9 @@ public parseAvailableBombs()
 		if (item < 1) {
 			continue;
 		}
+		item--;
 
-		g_AvailableBombs[i].setItem(i, StringToInt(buffers[i]));
+		g_AvailableBombs[i].setItem(i, item);
 		PrintDebugAll("Added %s", g_AvailableBombs[i].getItem());
 	}
 }
@@ -3002,7 +3003,8 @@ public Action:TimerCheckBombSensors(Handle:hTimer, Handle:hPack)
 					
 					new ent = CreateEntityByName("pipe_bomb_projectile");
 					TeleportEntity(ent, pos, NULL_VECTOR, NULL_VECTOR);
-					useCustomCommand("Grenades", owner, ent, bombType);					
+					DispatchSpawn(ent);
+					useCustomCommand("Grenades", owner, entity, bombType);					
 					BombActive = false;
 					BombIndex[index] = false;
 					CloseHandle(hPack);

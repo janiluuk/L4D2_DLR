@@ -744,12 +744,10 @@ public int OnCustomCommand(char[] name, int client, int entity, int type)
 	if (entity == 0 || !IsValidEntity(entity)) {
 		projectile = true;
 	}
-
-	if (!projectile) {
-		Detonate_Grenade(entity);
-	} else {
+	if (projectile == true) {
 		DoSpawn(client, type, projectile, entity);		
 	}
+	CreateProjectile(entity, client, type);
 }
 
 public void OnPluginStart()
@@ -1128,7 +1126,6 @@ int DoSpawn(int client, int index, bool projectile, int ent=-1)
 			GetEntPropVector(ent, Prop_Send, "m_vecOrigin", vPos);
 			SetEntPropEnt(ent, Prop_Send, "m_hOwnerEntity", client);	// Store owner
 			TeleportEntity(entity, vPos, NULL_VECTOR, NULL_VECTOR);
-			
 		}
 		DispatchSpawn(entity);
 
