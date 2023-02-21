@@ -224,6 +224,8 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 
 public void OnAllPluginsLoaded()
 {
+	if (g_iClassID != -1) return;
+
 	DLR_Available = LibraryExists("dlr_talents_2023");
 	if (DLR_Available) {
 		g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
@@ -244,9 +246,7 @@ public int OnSpecialSkillUsed(int iClient, int skill, int type)
 		GetClientEyeAngles(iClient, vAng);
 		ShowAirstrike(vPos, vAng[1], iClient);
 		return 1;
-	} else {
-		return -1;
-	}
+	} 
 	return 0;
 }
 
@@ -304,6 +304,11 @@ public void OnLibraryAdded(const char[] name)
 {
 	if( strcmp(name, "l4d2_airstrike.triggers") == 0 )
 		g_bPluginTrigger = true;
+
+	if(StrEqual(name, "dlr_talents_2023") && g_iClassID == -1) {
+		DLR_Available = true;		
+		g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
+	}
 }
 
 public void OnLibraryRemoved(const char[] name)
