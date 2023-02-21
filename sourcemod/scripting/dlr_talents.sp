@@ -586,7 +586,6 @@ public Native_RegisterSkill(Handle:plugin, numParams)
 {
 	char szItemInfo[3];
 	int type;
-
 	int len;
 	GetNativeStringLength(1, len);
  
@@ -601,11 +600,12 @@ public Native_RegisterSkill(Handle:plugin, numParams)
 	if(++g_iSkillCounter <= MAXCLASSES)
 	{
 		IntToString(g_iSkillCounter, szItemInfo, sizeof(szItemInfo));
+		int index = FindStringInArray(g_hSkillArray, szSkillName);
+		if (index < 0) return -1;
+
 		PushArrayString(g_hSkillArray, szSkillName);
 		type = GetNativeCell(2);
 		PushArrayCell(g_hSkillTypeArray, type);
-		int index = FindStringInArray(g_hSkillArray, szSkillName);
-
 		AddMenuItem(g_hSkillMenu, szItemInfo, szSkillName);
 		PrintDebugAll("Registered skill %s with type %i and index %i", szSkillName, type, index);
 		return index;
@@ -1020,9 +1020,9 @@ public Action:TimerThink(Handle:hTimer, any:client)
 					ClientData[client].LastButtons = buttons;
 					return Plugin_Continue;
 				}	
-				char pendingMessage[128] = "Next strike available after %d seconds";
+				char pendingMessage[128] = "Wait %d seconds to order new airstrike.";
 				
-				if (g_bAirstrike && canUseSpecialSkill(client, pendingMessage)) {
+				if (g_bAirstrike && g_bAirstrikeValid && canUseSpecialSkill(client, pendingMessage)) {
 					g_bAirstrikeValid = false;
 					CreateAirStrike(client);
 					useSpecialSkill(client, 0);
@@ -1066,6 +1066,9 @@ public void useCustomCommand(char[] pluginName, int client, int entity, int type
 public bool canUseSpecialSkill(client, char[] pendingMessage)
 {	
 	new Float:fCanDropTime = (GetGameTime() - ClientData[client].LastDropTime);
+	if (ClientData[client].LastDropTime == 0) {
+		fCanDropTime+=ClientData[client].SpecialDropInterval;
+	}
 	new bool:CanDrop = (fCanDropTime >= ClientData[client].SpecialDropInterval);
 	char pendMsg[128];
 	char outOfMsg[128];
@@ -2572,7 +2575,13 @@ public parseAvailableBombs()
 	char bombs[128];
 	GetConVarString(SABOTEUR_BOMB_TYPES, bombs, sizeof(bombs));
 
-	ExplodeString(bombs, ",", buffers, sizeof(buffers), sizeof(buffers[]));
+	int amount = ExplodeString(bombs, ",", buffers, sizeof(buffers), sizeof(buffers[]));
+	if (amount == 1) {
+
+		g_AvailableBombs[0].setItem(0, StringToInt(buffers[0]));
+		PrintDebugAll("Added single bombtype to inventory: %s", g_AvailableBombs[0].getItem());
+		return;
+	}
 
 	for( int i = 0; i < MAX_BOMBS; i++ )
 	{	
@@ -2580,10 +2589,9 @@ public parseAvailableBombs()
 		if (item < 1) {
 			continue;
 		}
-		item--;
 
 		g_AvailableBombs[i].setItem(i, item);
-		PrintDebugAll("Added %s", g_AvailableBombs[i].getItem());
+		PrintDebugAll("Added %i bombtype to inventory: %s", g_AvailableBombs[i].getItem());
 	}
 }
 
@@ -2850,7 +2858,6 @@ public void DropBomb(client, bombType)
 	BombActive = true;
 	BombIndex[index] = true;
 
-	ClientData[client].SpecialsUsed++;
 
 	int entity = CreateBombParticleInPos(pos, BOMB_GLOW, index);
 	WritePackCell(hPack, entity);	
@@ -3004,6 +3011,14 @@ public Action:TimerCheckBombSensors(Handle:hTimer, Handle:hPack)
 					new ent = CreateEntityByName("pipe_bomb_projectile");
 					TeleportEntity(ent, pos, NULL_VECTOR, NULL_VECTOR);
 					DispatchSpawn(ent);
+
+					if (GetConVarInt(SABOTEUR_BOMB_TYPES) == 1) {
+						PrintDebugAll("Detonating bomb extras for single bomb mode");
+						CreateExplosion(pos, client);					
+					}
+
+					PrintDebugAll("Detonating Grenade type: %s", getBombName(bombType-1));
+
 					useCustomCommand("Grenades", owner, entity, bombType);					
 					BombActive = false;
 					BombIndex[index] = false;

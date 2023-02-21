@@ -18,6 +18,7 @@
 
 #define PLUGIN_VERSION 		"1.44"
 #define PLUGIN_SKILL_NAME "Grenades"
+#define DEBUG 0
 
 /*======================================================================================
 	Plugin Info:
@@ -602,6 +603,7 @@ int g_iClassTank, m_maxHealth;
 Handle g_hCookie;
 ArrayList g_hAlAcid;
 bool g_bAcidSpawn;
+int g_iClassID = -1;
 
 enum
 {
@@ -696,8 +698,8 @@ public void OnAllPluginsLoaded()
 	bLMC_Available = LibraryExists("LMCEDeathHandler");
 	DLR_Available = LibraryExists("dlr_talents_2023");
 
-	if (DLR_Available) {
-		RegisterDLRSkill("Grenades", 0);
+	if (DLR_Available && g_iClassID == -1) {
+		g_iClassID = RegisterDLRSkill("Grenades", 0);
 	}
 }
 
@@ -736,6 +738,7 @@ public int OnCustomCommand(char[] name, int client, int entity, int type)
 	if(!StrEqual( name, PLUGIN_SKILL_NAME)) {
 		return -1;
 	}
+
 	if (!client || !type) {
 		return -1;
 	}
@@ -744,10 +747,11 @@ public int OnCustomCommand(char[] name, int client, int entity, int type)
 	if (entity == 0 || !IsValidEntity(entity)) {
 		projectile = true;
 	}
-	if (projectile == true) {
-		DoSpawn(client, type, projectile, entity);		
-	}
-	CreateProjectile(entity, client, type);
+	#if DEBUG
+	PrintToChat(client, "%N ignited entity (%s) %i with type %i ", client, name, entity, type);
+	#endif
+
+	DoSpawn(client, type, projectile, entity);
 }
 
 public void OnPluginStart()
@@ -907,7 +911,9 @@ public void OnPluginStart()
 	{
 		LoadDataConfig();
 		IsAllowed();
-		RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);		
+		if (g_iClassID == -1)
+		g_iClassID = RegisterDLRSkill("Grenades", 0);
+
 	}
 
 	g_iClassTank = g_bLeft4Dead2 ? 8 : 5;
@@ -1180,7 +1186,9 @@ Action Cmd_Grenade(int client, int args)
 					Format(translation, sizeof(translation), "GrenadeMod_Title_%d", index);
 					Format(translation, sizeof(translation), "%T %T", "GrenadeMod_Mode", client, translation, client);
 					ReplaceColors(translation, sizeof(translation));
+					#if DEBUG
 					PrintToChat(client, translation);
+					#endif
 				}
 			}
 		}
