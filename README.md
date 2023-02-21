@@ -7,13 +7,14 @@ Changes:
 - Rewrite for internal variable structure, variable naming and functionality.
 - Plugin support, adding new features should be a matter of including the plugin and adding hook to it
 - Soldier has faster moving speed and takes less damage. Also by default melee penalty is off. Configurable. 
-- Soldier can order airstrikes. (Requires F18_Airstrike plugin)
+- Soldier can order airstrikes. (Requires included example plugin)
 - Athlete has faster moving speed and a parachute. configurable.
 - Commando reload rate actually works now
 - Commando damage modifiers are configurable per weapon, default one is used for rest.
 - Commando is immune to knockdowns
 - Commando can stomp downed infected
 - Medic has more options to spawn. Has faster healing and revival times.
+- Medic moves faster when in healing mode (crouched)
 - Includes modifiers for adrenaline/pills/revive/heal durations in the config. disable with "talents_health_modifiers_enabled" 
 - Announcement to other players when healing spot is active.
 - Players get notified when theyre being healed.
@@ -28,20 +29,20 @@ Changes:
 - Saboteur has visual effect on turning invisible and specific glow.
 - Saboteur has nightvision
 - Redefine visual effect for mines, and actually leave a visible mine. 
+* Saboteur has 20 different types of mines with cool effects. You can assign 7 of them at one time. Antigravity, blackhole, freeze, vaporizer and many more. (Needs included grenades plugin example)
 - Mines do less damage to survivors. Standing really close to the mine can still incap.
 - Mines do more damage to infected, 1500hp. Some edge over tank
 - Mines glow now so players know to avoid the spot or lure someone to it.
 - Notifications on placing mines.
 * Warnings for players that go near armed mine
 - Countdown notification before mine becoming armed.
-- Support for multiple types of mines (freeze, vomit, antigravity, black hole), ui missing
 - Engineer, medic and saboteur get notification if out of supplies.
 - More helpful class descriptions and help system.
 - Internal turret system fixed
 - Gun reload glitches fixed
 - Invisibility rewrite, it never really worked properly before.
 - Wipe out all infected from admin menu
-- Debug mode for admins
+- Debug mode for admins. You can test the registered skills straight from menu
 
 Roadmap
 - Cleaner UI, menu option to turn hint texts off. Common HUD component which manages, prioritizes and combines the hint texts properly.
