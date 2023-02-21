@@ -82,10 +82,23 @@ native int RegisterDLRSkill(char[] skillName, int type);
 
 forward OnCustomCommand(char[] name, int client, int entity, int type);  
 
+
+stock function OnDLRAvailable() {
+
+	bool DLR_Available = LibraryExists("dlr_talents_2023");
+	int classId;
+	if (DLR_Available) {
+		classId = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
+	} else {
+		classId = -1;
+	}
+	return classId;
+}
+
 public SharedPlugin __pl_DLRCore = 
 {
     name = "dlr_talents_2023",
-    file = "dlr_talents_2023.smx",
+    file = "dlr_talents.smx",
 #if defined REQUIRE_PLUGIN
     required = 1,
 #else
@@ -103,3 +116,33 @@ public __pl_DLRCore_SetNTVOptional()
     MarkNativeAsOptional("FindSkillIdByName");
 }
 #endif
+
+#define MAX_PROPERTIES			16										// Total data entries to read from a grenades config.
+#define MAX_CLASSES				8	
+
+enum struct playerClass {
+	int perkId
+	char className[32]
+	char classDescription[32]
+	float maxHealth
+	float jumpVelocity
+	float attackDamage
+	float armorRate
+	float healingRate
+	float maxPlayers
+	float tankStumbleBlock
+}
+
+enum struct skillSet {
+	int skillId
+	char skillName[32]
+	char skillDescription[128]
+	char skillIdentifier[32]
+	char successText[128]
+	char failureText[128]
+	char modifierKey[32]
+	int maxUsage
+	int interval
+	int	type // 1 = Plugin, 2 = Internal command, 3 = perk, ran on round start and reset in end
+	int action // 1 = Execute, 2 = Include in menu	
+}

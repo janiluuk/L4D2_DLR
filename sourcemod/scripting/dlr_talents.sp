@@ -17,6 +17,7 @@
 
 #define PLUGIN_NAME "Talents Plugin 2023 anniversary edition"
 #define PLUGIN_VERSION "1.4"
+#define PLUGIN_IDENTIFIER "dlr_talents_2023"
 #pragma semicolon 1
 #define DEBUG 0
 #define DEBUG_LOG 1
@@ -561,7 +562,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 		strcopy(error, err_max, "Plugin only supports Left 4 Dead 1 & 2.");
 		return APLRes_SilentFailure;
 	}
-	RegPluginLibrary("dlr_talents_2023");
+	RegPluginLibrary(PLUGIN_IDENTIFIER);
 	CreateNative("GetPlayerClassName", Native_GetPlayerClassName);
 	CreateNative("RegisterDLRSkill", Native_RegisterSkill);
 	CreateNative("OnSpecialSkillSuccess", Native_OnSpecialSkillSuccess);
@@ -2640,25 +2641,24 @@ public void CalculateSaboteurPlacePos(client, int value)
 	
 	GetClientEyeAngles(client, vAng);
 	GetClientEyePosition(client, vPos);
-
+	
 	new Handle:trace = TR_TraceRayFilterEx(vPos, vAng, MASK_SHOT, RayType_Infinite, TraceFilter, client);
-	if (TR_DidHit(trace) && value > 0)
-	{
+	if (TR_DidHit(trace)) {
 		TR_GetEndPosition(endPos, trace);
+		CloseHandle(trace);
 		
-		if (GetVectorDistance(endPos, vPos) <= GetConVarFloat(MEDIC_MAX_BUILD_RANGE))
-		{
+		if (GetVectorDistance(endPos, vPos) <= GetConVarFloat(ENGINEER_MAX_BUILD_RANGE)) {
 			vAng[0] = 0.0;
 			vAng[2] = 0.0;
-			DropBomb(client, value);				
-			CloseHandle( trace );
-			
+			DropBomb(client, value);
+			ClientData[client].SpecialsUsed++;
+			ClientData[client].LastDropTime = GetGameTime();				
+		} else {
+			PrintToChat(client, "%sCould not place the item because you were looking too far away.", PRINT_PREFIX);
 		}
-		else
-		PrintToChat(client, "%sCould not place the item because you were looking too far away.", PRINT_PREFIX);
-	}
-	else
-	CloseHandle(trace);
+		
+	} else
+		CloseHandle(trace);
 }
 
 public void OnClientWeaponEquip(int client, int weapon)
@@ -2999,7 +2999,10 @@ public Action:TimerCheckBombSensors(Handle:hTimer, Handle:hPack)
 			{
 				if (GetClientTeam(client) == 3 || IsWitch(client)) {
 					PrintHintTextToAll("%N's mine detonated!", owner);
-					useCustomCommand("Grenades", owner, entity, bombType);
+					
+					new ent = CreateEntityByName("pipe_bomb_projectile");
+					TeleportEntity(ent, pos, NULL_VECTOR, NULL_VECTOR);
+					useCustomCommand("Grenades", owner, ent, bombType);					
 					BombActive = false;
 					BombIndex[index] = false;
 					CloseHandle(hPack);
@@ -4213,7 +4216,7 @@ public Action:GrenadeCommand(client, args)
 			int c = StringToInt(str);
 			index = c;
 		}			
-		useCustomCommand("Grenades", client, 1, index);
+		useCustomCommand("Grenades", client, -1, index);
 	}			
 	
 	return Plugin_Handled;

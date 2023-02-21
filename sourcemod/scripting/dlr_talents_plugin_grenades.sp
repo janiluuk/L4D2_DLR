@@ -16,8 +16,6 @@
 *	along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-
-
 #define PLUGIN_VERSION 		"1.44"
 #define PLUGIN_SKILL_NAME "Grenades"
 
@@ -379,6 +377,8 @@ bool	DLR_Available;
 #define SPRITE_BEAM				"materials/sprites/laserbeam.vmt"
 #define SPRITE_HALO				"materials/sprites/glow01.vmt"
 #define SPRITE_GLOW				"sprites/blueglow1.vmt"
+#define MODEL_MINE 				"models/props_buildables/mine_02.mdl"
+
 // L4D2 client? is missing "sprites/blueglow1.vmt" - used by env_entity_dissolver.
 // Precache prevents server's error message, and clients can attempt to precache before round_start to avoid any possible stutter on the first attempt live in-game
 // Error messages:
@@ -733,10 +733,10 @@ public void OnLibraryRemoved(const char[] sName)
 
 public int OnCustomCommand(char[] name, int client, int entity, int type)
 {
-	if(! StrEqual( name, PLUGIN_SKILL_NAME)) {
+	if(!StrEqual( name, PLUGIN_SKILL_NAME)) {
 		return -1;
 	}
-	if (!client || !entity || !type) {
+	if (!client || !type) {
 		return -1;
 	}
 	bool projectile = false;
@@ -745,7 +745,11 @@ public int OnCustomCommand(char[] name, int client, int entity, int type)
 		projectile = true;
 	}
 
-	DoSpawn(client, type, projectile, entity);
+	if (!projectile) {
+		Detonate_Grenade(entity);
+	} else {
+		DoSpawn(client, type, projectile, entity);		
+	}
 }
 
 public void OnPluginStart()
@@ -905,6 +909,7 @@ public void OnPluginStart()
 	{
 		LoadDataConfig();
 		IsAllowed();
+		RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);		
 	}
 
 	g_iClassTank = g_bLeft4Dead2 ? 8 : 5;
@@ -1042,7 +1047,7 @@ void DoSpawnCommand(int client, int args, bool projectile)
 	int entity = CreateEntityByName("pipe_bomb_projectile");
 	if( entity != -1 )
 	{
-		SetEntityModel(entity, MODEL_SPRAYCAN);
+		SetEntityModel(entity, MODEL_MINE);
 		g_GrenadeType[entity] = index;								// Store mode type
 		SetEntPropEnt(entity, Prop_Send, "m_hThrower", client);		// Store owner
 		SetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity", client);	// Store owner
@@ -1068,15 +1073,13 @@ void DoSpawnCommand(int client, int args, bool projectile)
 			TeleportEntity(entity, vPos, NULL_VECTOR, vDir);
 			SetEntPropVector(entity, Prop_Send, "m_vInitialVelocity", vDir);
 		} else {
-			SetTeleportEndPoint(client, vPos);
-			vPos[2] += 20.0;
+			SetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity", client);	// Store owner			
 			TeleportEntity(entity, vPos, NULL_VECTOR, NULL_VECTOR);
 		}
 		DispatchSpawn(entity);
-
 		static char translation[256];
 		Format(translation, sizeof(translation), "GrenadeMod_Title_%d", index);
-		PrintToChat(client, "\x04[\x05Grenade\x04] \x05Created: \x04%T", translation, client);
+		PrintToChat(client, "\x04 \x05Created: \x04%T", translation, client);
 	}
 }
 
@@ -1092,21 +1095,14 @@ int DoSpawn(int client, int index, bool projectile, int ent=-1)
 	{
 		return 0;
 	}
-	int entity;
 
-	if (ent > 0 && IsValidEntity(ent)) {
-		entity = ent;
-	} else {
-		// Create
-		entity = CreateEntityByName("pipe_bomb_projectile");
+	int entity = CreateEntityByName("pipe_bomb_projectile");
+	if( entity != -1 )
+	{
 		SetEntPropEnt(entity, Prop_Send, "m_hThrower", client);		// Store owner
 		SetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity", client);	// Store owner
 		SetEntPropVector(entity, Prop_Send, "m_vInitialVelocity", view_as<float>({ 0.0, 0.0, 1.0 }));
-		SetEntityModel(entity, MODEL_SPRAYCAN);
-	}
-
-	if( entity != -1 )
-	{
+		SetEntityModel(entity, MODEL_MINE);
 		g_GrenadeType[entity] = index;								// Store mode type
 		g_iClientGrenadeType[client] = index;
 
@@ -1117,8 +1113,8 @@ int DoSpawn(int client, int index, bool projectile, int ent=-1)
 			float vDir[3];
 			GetClientEyePosition(client, vPos);
 			GetClientEyeAngles(client, vAng);
-
 			GetAngleVectors(vAng, vDir, NULL_VECTOR, NULL_VECTOR);
+
 			vPos[0] += vDir[0] * 20;
 			vPos[1] += vDir[1] * 20;
 			vPos[2] += vDir[2] * 20;
@@ -1129,15 +1125,16 @@ int DoSpawn(int client, int index, bool projectile, int ent=-1)
 			TeleportEntity(entity, vPos, NULL_VECTOR, vDir);
 			SetEntPropVector(entity, Prop_Send, "m_vInitialVelocity", vDir);
 		} else {
-			SetTeleportEndPoint(client, vPos);
-			vPos[2] += 20.0;
+			GetEntPropVector(ent, Prop_Send, "m_vecOrigin", vPos);
+			SetEntPropEnt(ent, Prop_Send, "m_hOwnerEntity", client);	// Store owner
 			TeleportEntity(entity, vPos, NULL_VECTOR, NULL_VECTOR);
+			
 		}
 		DispatchSpawn(entity);
 
 		static char translation[256];
 		Format(translation, sizeof(translation), "GrenadeMod_Title_%d", index);
-		PrintToChat(client, "\x04[\x05Grenade\x04] \x05Created: \x04%T", translation, client);
+		PrintToChat(client, "\x04\x05Created: \x04%T", translation, client);
 	}
 	return entity;
 }
