@@ -16,7 +16,7 @@
 */
 
 #define PLUGIN_NAME "Talents Plugin 2023 anniversary edition"
-#define PLUGIN_VERSION "1.4"
+#define PLUGIN_VERSION "1.6"
 #define PLUGIN_IDENTIFIER "dlr_talents_2023"
 #pragma semicolon 1
 #define DEBUG 0
@@ -411,7 +411,7 @@ public OnPluginStart( )
 	RegConsoleCmd("sm_class", CmdClassMenu, "Shows the class selection menu");
 	RegConsoleCmd("sm_classinfo", CmdClassInfo, "Shows class descriptions");
 	RegConsoleCmd("sm_classes", CmdClasses, "Shows class descriptions");
-	RegConsoleCmd("sm_dlrdebug", CmdDlrMenu, "Debug & Manage");
+	RegConsoleCmd("sm_dlrm", CmdDlrMenu, "Debug & Manage");
 	RegConsoleCmd("sm_hide", HideCommand, "Hide player");
 	RegConsoleCmd("sm_yay", GrenadeCommand, "Test grenade");
 
@@ -532,14 +532,19 @@ public AssignSkills(client)
 
 		case SOLDIER:
 		{
-			int skillId = FindSkillByName("F18_airstrike");
+			int skillId = FindSkillByName("Airstrike");
 			if (skillId > -1) {
 				g_iPlayerSkill[client] = skillId;
 			}
 		}
 	}
 	if (g_iPlayerSkill[client] >= 0) {
-		PrintToChat(client, "Assigned skill %i to client", g_iPlayerSkill[client]);
+		
+		char skillName[32];
+		int skillSize = sizeof(skillName);
+
+		PlayerIdToSkillName(client, skillName, skillSize);
+		PrintDebugAll("Assigned skill %s to client", skillName);
 		/* Start Function Call */
 		Call_StartForward(g_hOnSkillSelected);
 		/* Add details to Function Call */
@@ -600,10 +605,8 @@ public Native_RegisterSkill(Handle:plugin, numParams)
 	if(++g_iSkillCounter <= MAXCLASSES)
 	{
 		IntToString(g_iSkillCounter, szItemInfo, sizeof(szItemInfo));
-		int index = FindStringInArray(g_hSkillArray, szSkillName);
-		if (index < 0) return -1;
-
 		PushArrayString(g_hSkillArray, szSkillName);
+		int index = FindStringInArray(g_hSkillArray, szSkillName);		
 		type = GetNativeCell(2);
 		PushArrayCell(g_hSkillTypeArray, type);
 		AddMenuItem(g_hSkillMenu, szItemInfo, szSkillName);
@@ -1515,6 +1518,28 @@ public Native_FindSkillIdByName(Handle:plugin, numParams)
 	}	
 }
 
+PlayerIdToSkillName(int client, char[] name, int size)
+{
+	char szSkillName[32] = "None";
+	int iSize = 32;
+	char buffer[32];
+
+	if (!client ||  !IsClientInGame(client) || GetClientTeam(client) != 2) {
+		Format(name, size, "%s", szSkillName);
+	}
+	if (g_iPlayerSkill[client] > -1) {
+		GetArrayString(g_hSkillArray, g_iPlayerSkill[client], buffer, iSize);
+	}
+	Format(name, iSize, "%s", buffer);
+}
+
+PlayerIdToClassName(int client, char[] name, int size)
+{
+	if (!client ||  !IsClientInGame(client) || GetClientTeam(client) != 2) {
+		return;
+	}
+	Format(name, size, "%s", MENU_OPTIONS[ClientData[client].ChosenClass]);
+}
 public Native_GetPlayerClassName(Handle:plugin, numParams)
 {
 	new client = GetNativeCell(1);
@@ -1543,12 +1568,8 @@ stock void PrintDebug(int client, const char[] format, any ...)
 	VFormat(buffer, sizeof(buffer), format, 2);
 	#if DEBUG_LOG
 	PrintToConsole(0, "[Debug] %s", buffer);
+	LogMessage("%s", buffer);	
 	#endif 
-
-	#if DEBUG
-	PrintToConsole(0, "[Debug] %s", buffer);
-	LogMessage("%s", buffer);
-	#endif
 
 	#else
 	//suppress "format" never used warning
@@ -1563,16 +1584,14 @@ stock void PrintDebugAll(const char[] format, any ...)
 {
 	#if DEBUG || DEBUG_LOG
 	static char buffer[192];
-	
 	VFormat(buffer, sizeof(buffer), format, 2);
 	#if DEBUG_LOG
 	PrintToConsole(0, "[Debug] %s", buffer);
+	LogMessage("%s", buffer);
 	#endif
 	#if DEBUG
 	PrintToChatAll("[Debug] %s", buffer);
-	PrintToConsole(0, "[Debug] %s", buffer);
 	#endif
-	LogMessage("%s", buffer);
 	#else
 	if(format[0])
 		return;

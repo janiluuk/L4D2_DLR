@@ -229,9 +229,7 @@ public void OnAllPluginsLoaded()
 	DLR_Available = LibraryExists("dlr_talents_2023");
 	if (DLR_Available) {
 		g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
-	} else {
-		g_iClassID = -1;
-	}	
+	} 
 }
 
 public int OnSpecialSkillUsed(int iClient, int skill, int type)
@@ -305,8 +303,9 @@ public void OnLibraryAdded(const char[] name)
 	if( strcmp(name, "l4d2_airstrike.triggers") == 0 )
 		g_bPluginTrigger = true;
 
-	if(StrEqual(name, "dlr_talents_2023") && g_iClassID == -1) {
-		DLR_Available = true;		
+	if(StrEqual(name, "dlr_talents_2023")) {
+		DLR_Available = true;	
+		if (g_iClassID < 0)	
 		g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
 	}
 }

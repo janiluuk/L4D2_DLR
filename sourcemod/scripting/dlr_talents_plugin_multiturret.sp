@@ -397,9 +397,7 @@ public void OnAllPluginsLoaded()
 	DLR_Available = LibraryExists("dlr_talents_2023");
 	if (DLR_Available) {
 		g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
-	} else {
-		g_iClassID = -1;
-	}	
+	} 
 }
 
 public void OnLibraryAdded(const char[] sName)

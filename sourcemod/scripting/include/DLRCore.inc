@@ -117,9 +117,9 @@ public __pl_DLRCore_SetNTVOptional()
 }
 #endif
 
-#define MAX_PROPERTIES			16										// Total data entries to read from a grenades config.
-#define MAX_CLASSES				8	
-
+#define MAXPROPERTIES			16										// Total data entries to read from a grenades config
+#define MAXCLASS				8	
+/**
 enum struct playerClass {
 	int perkId
 	char className[32]
@@ -146,3 +146,4 @@ enum struct skillSet {
 	int	type // 1 = Plugin, 2 = Internal command, 3 = perk, ran on round start and reset in end
 	int action // 1 = Execute, 2 = Include in menu	
 }
+**/
