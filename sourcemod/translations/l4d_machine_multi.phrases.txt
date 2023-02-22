@@ -54,7 +54,7 @@
 	}
 	"Machine Gun Inactive State"
 	{
-		"en"		"Turret went to hibernation!"
+		"en"		"%N's turret went to hibernation and cannot be carried."
 	}
 	"Is Incapacitated" 
 	{
@@ -194,7 +194,7 @@
 	}
 	"Target Reached"
 	{
-		"en"		"%N was frozen!"
+		"en"		"%N got frozen!"
 	}
 	"Gatling Laser-Type"
 	{

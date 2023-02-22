@@ -493,6 +493,7 @@ public OnPluginStart( )
 	PILLS_HEALTH_BUFFER =  CreateConVar("talents_pills_health_buffer", "75.0", "Default health given on pills");	
 	ADRENALINE_DURATION =  CreateConVar("talents_adrenaline_duration", "30.0", "Default adrenaline duration");
 	ADRENALINE_HEALTH_BUFFER =  CreateConVar("talents_adrenaline_health_buffer", "75.0", "Default health given on adrenaline");
+	g_iShovePenalty = FindSendPropInfo("CTerrorPlayer", "m_iShovePenalty");
 
 	AutoExecConfig(true, "talents");
 	ApplyHealthModifiers();
@@ -785,7 +786,6 @@ public OnMapStart()
 	for (int i = 0; i < MAXPLAYERS +1; i++)
 		g_bHide[i] = false;
 		
-	g_iShovePenalty = FindSendPropInfo("CTerrorPlayer", "m_iShovePenalty");
 }
 
 public void OnMapEnd()
@@ -2775,7 +2775,7 @@ public OnGameFrame()
 			if(GetClientButtons(client) & IN_ATTACK2)
 			{
 				//This will reset the penalty, so it doesnt even get applied.
-				SetEntData(i, g_iShovePenalty, 0, 4);
+				SetEntData(client, g_iShovePenalty, 0, 4);
 			}
 		}
 
