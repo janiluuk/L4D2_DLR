@@ -58,7 +58,7 @@ static const String:ClassTips[][] =
 };
 
 // How long should the Class Select menu stay open?
-static const MENU_OPEN_TIME = view_as<int>(9999);
+static const MENU_OPEN_TIME = view_as<int>(99999);
 static bool:DEBUG_MODE = false;
 
 // API
@@ -179,7 +179,7 @@ new g_iSID = -1;
 new g_iSED = -1;
 new g_iSRS = -1;
 new g_iShovePenalty = 0;
-
+float g_fSavedShoveTime[MAXPLAYERS+1];
 
 // Parachute
 
@@ -222,8 +222,6 @@ new RndSession;
 #define BOMB_GLOW "fire_medium_01_glow"
 #define ENGINEER_MACHINE_GUN "models/w_models/weapons/50cal.mdl"
 #define SPRITE_GLOW "sprites/blueglow1.vmt"
-
-// Convars (change these via the created cfg files)
 
 // CLASS RELATED STUFF
 
@@ -783,9 +781,10 @@ public OnMapStart()
 	for (int i = 0; i < 2; i++)
 		PrecacheModel(g_sModels[i]);
 
-	for (int i = 0; i < MAXPLAYERS +1; i++)
+	for (int i = 0; i < MAXPLAYERS+1; i++) {
 		g_bHide[i] = false;
-		
+		g_fSavedShoveTime[i] = 0.0;
+	}	
 }
 
 public void OnMapEnd()
@@ -793,14 +792,14 @@ public void OnMapEnd()
 	// Cache
 	ClearCache();
 	RoundStarted=false;
-	RndSession = 0;
 }
 
 public OnClientPutInServer(client)
 {
 	if (!client || !IsValidEntity(client) || !IsClientInGame(client))
 	return;
-
+	
+	g_fSavedShoveTime[client] = 0.0;
 	g_bHide[client] = false; 
 	DisableAllUpgrades(client);
 	ResetClientVariables(client);
@@ -2313,9 +2312,13 @@ public Action:CommandoRelFireEnd2(Handle:timer, Handle:hPack)
 	ResetPack(hPack);
 
 	new weapon = ReadPackCell(hPack);
+	if (!IsValidEntity(weapon))
+	{
+		return Plugin_Stop;
+	}
 	new iCid = GetEntPropEnt(weapon, Prop_Data, "m_hOwner");
 	if (iCid <= 0 || IsValidEntity(iCid)==false || IsClientInGame(iCid)==false)
-	return Plugin_Stop;
+		return Plugin_Stop;
 
 	new Float:flStartTime_calc = ReadPackFloat(hPack);
 	CloseHandle(hPack);
@@ -2392,19 +2395,17 @@ public Action:CommandoShotCalculate(Handle:timer, Handle:hPack)
 public Action:Event_WeaponFire(Handle:event, const String:name[], bool:dontBroadcast)
 {
 	new client = GetClientOfUserId(GetEventInt(event, "userid"));
-	
-	if (ClientData[client].ChosenClass == NONE && GetClientTeam(client) == 2)
+
+	if(ClientData[client].ChosenClass == NONE && GetClientTeam(client) == 2 && client > 0 && client <= MaxClients && IsClientInGame( client ) && ClassHint == false)
 	{
-		if(client > 0 && client <= MaxClients && IsClientInGame( client ) && ClassHint == false)
-		{
-			if (RoundStarted == true) {
-				ClassHint = true;
-			}
-			PrintHintText(client,"You really should pick a class, 1,5,7 are good for beginners.");
-			CreatePlayerClassMenu(client);
+		if (RoundStarted == true) {
+			ClassHint = true;
 		}
+		PrintHintText(client,"You really should pick a class, 1,5,7 are good for beginners.");
+		CreatePlayerClassMenu(client);
 	}
-	
+
+
 	if(ClientData[client].ChosenClass == COMMANDO)
 	{
 		GetEventString(event, "weapon", ClientData[client].EquippedGun, 64);
@@ -2456,9 +2457,7 @@ public void OnClientPostAdminCheck(int client)
 Action _MF_Touch(int entity, int other)
 {
 	if (!GetConVarBool(COMMANDO_ENABLE_STOMPING)) return Plugin_Continue;
- 	if (ClientData[entity].ChosenClass != COMMANDO) return Plugin_Continue;
-
-	if (other < 32 || !IsValidEntity(other)) return Plugin_Continue;
+ 	if (ClientData[entity].ChosenClass != COMMANDO || other < 32 || !IsValidEntity(other)) return Plugin_Continue;
 	
 	static char classname[12];
 	GetEntityClassname(other, classname, sizeof(classname));	
@@ -2498,7 +2497,6 @@ void SmashInfected(int zombie, int client)
 ///////////////////////////////////////////////////////////////////////////////////
 // Saboteur
 ///////////////////////////////////////////////////////////////////////////////////
-
 
 // Saboteur vars
 #define MAX_BOMBS 7
@@ -2776,7 +2774,18 @@ public OnGameFrame()
 			{
 				//This will reset the penalty, so it doesnt even get applied.
 				SetEntData(client, g_iShovePenalty, 0, 4);
+
+				bool bIsOnLadder = GetEntityMoveType(client) == MOVETYPE_LADDER;
+				
+				if (!bIsOnLadder) {
+					if (g_fSavedShoveTime[client] > 0.0)
+					{
+						SetEntPropFloat(client, Prop_Send, "m_flNextShoveTime", g_fSavedShoveTime[client]);
+						g_fSavedShoveTime[client] = 0.0;
+					}
+				}
 			}
+			
 		}
 
 		bweapon = GetEntDataEnt2(client, g_oAW);
@@ -3005,6 +3014,7 @@ public Action:TimerCheckBombSensors(Handle:hTimer, Handle:hPack)
 	int index = ReadPackCell(hPack);
 	int bombType = ReadPackCell(hPack);
 	int entity = ReadPackCell(hPack);
+	CloseHandle(hPack);
 
 	if (index < 0) index = 0;
 
@@ -3016,6 +3026,7 @@ public Action:TimerCheckBombSensors(Handle:hTimer, Handle:hPack)
 
 		if (!IsValidEntity(client) || !IsClientInGame(client))
 		continue;
+
 		if(GetClientTeam(client) == 3 || GetClientTeam(client) == 2 || IsWitch(client))
 		{
 			char classname[32];
@@ -3025,26 +3036,29 @@ public Action:TimerCheckBombSensors(Handle:hTimer, Handle:hPack)
 			if (GetVectorDistance(pos, clientpos) < GetConVarFloat(SABOTEUR_BOMB_RADIUS))
 			{
 				if (GetClientTeam(client) == 3 || IsWitch(client)) {
-					PrintHintTextToAll("%N's mine detonated!", owner);
+					BombActive = false;
+					BombIndex[index] = false;
 					
-					new ent = CreateEntityByName("pipe_bomb_projectile");
-					TeleportEntity(ent, pos, NULL_VECTOR, NULL_VECTOR);
-					DispatchSpawn(ent);
-
 					if (GetConVarInt(SABOTEUR_BOMB_TYPES) == 1) {
 						PrintDebugAll("Detonating bomb extras for single bomb mode");
 						CreateExplosion(pos, client);					
 					}
+					
+					if (!IsValidEntity(owner) || !IsClientInGame(owner)) {
+						return Plugin_Stop;
+					}
+
+					PrintHintTextToAll("%N's mine detonated!", owner);
+		
 
 					PrintDebugAll("Detonating Grenade type: %s", getBombName(bombType-1));
 
 					useCustomCommand("Grenades", owner, entity, bombType);					
-					BombActive = false;
-					BombIndex[index] = false;
-					CloseHandle(hPack);
+
 					return Plugin_Stop;
 				}
 				else if (GetClientTeam(client) == 2) {
+					
 					if (!mineWarning[client] || mineWarning[client] < GetGameTime() + 5) {
 						PrintHintText(client, "Warning! You are nearby armed mine.");
 						mineWarning[client] = GetGameTime();
