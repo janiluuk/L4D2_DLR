@@ -1,0 +1,250 @@
+"Phrases"
+{
+	"Common Type"
+	{
+		"en"		"You deployed %s with %s ammunition!"
+	}
+	"Broken Machine Gun"
+	{
+		"en"		"Turret is broken!"
+	}
+	"Ammo Status"
+	{
+		"en"		"Turret's ammo: [%d/%d]"
+	}
+	"Target Reached"
+	{
+		"en"		"Target Reached %i"
+	}
+	"Remove Turret"
+	{
+		"en"  "Remove Turret"
+	}
+	"Ammunition Status"
+	{
+		"en"		"Turret's ammo: %d"
+	}
+	"Owner's Machine Gun" 
+	{
+		"en"		"%N's turret broke down"
+	}
+	"Machine Gun Power"
+	{
+		"en"		"Turret's health: %d/%d"
+	}
+	"Entity Destroyed By Special Infected"
+	{
+		"en"		"Turret was demolished by %N!"
+	}
+	"Finished Ammunition"
+	{
+		"en"		"Turret is out of ammo. Refill by using it with ammo pack!"
+	}
+	"Special Type"
+	{
+		"en"		"You deployed %s with %s ammunition!"
+	}
+	"Can't Pick Up"
+	{
+		"en"		"Can't pick up %N's turret!"
+	}
+	"Inaccessible Entity"
+	{
+		"en"		"Not available"
+	}
+	"Machine Gun Inactive State"
+	{
+		"en"		"Turret went to hibernation!"
+	}
+	"Is Incapacitated" 
+	{
+		"en"		"%N is incapacitated!"
+	}
+	"Is Dead"
+	{
+		"en"		"%N is dead!"
+	}
+	"Vomited Player"
+	{
+		"en"		"%N vomited player!"
+	}
+	"Admin Removed Entity"
+	{
+  		"en"		"Admin removed turret"
+	}
+	"Use Instructor"
+	{
+		"en"		"Use Instructor"
+	}
+	"No Access"
+	{
+		"en"		"No access to this"
+	}
+	"Model Gatling"
+	{	
+		"en"	"Gatling Gun"
+	}
+	"Machine Gun Not Allowed"
+	{
+		"en"		"Turrets are not allowed to spawn"
+	}
+	"Reload Machine Gun"
+	{
+		"en"		"Your turret is out of ammo, please refill"
+	}
+	"Reloaded Machine Gun"
+	{
+		"en"		"Reloaded turret!"
+	}
+	"Too Many Machine Guns"
+	{
+		"en"		"There are too many turrets deployed! (%d/%d)"
+	}
+	"Out Of The Game"
+	{
+		"en"		"Turret's owner is out of the game"
+	}
+	"Current Ammo"
+	{
+		"en"	"Turret ammunition: [%d/%d%%]"
+	}
+	"Plugin Restarted"
+	{
+		"en"		"Plugin has restarted"
+	}
+	"Without Ammunition"
+	{
+		"en"		"Turret is out of ammo"
+	}
+	"Machine Gun Limit"
+	{
+		"en"		"You can only deploy maximum %d turrets!"
+	}
+	"Machine Gun Active State" 
+	{
+		"en"		"Turret woke up!"
+	}
+	"Machine Gun Betrays Infected"
+	{
+		"en"		"Turret control was restored!"
+	}
+	"Machine Gun Betrays Survivors"
+	{
+		"en" 		"Turret was turned against survivors, \nSHOVE the turret to restore control!"
+	}
+	"Fire Type"
+	{
+		"en"	"Fire"
+	}
+	"Type Laser"
+	{
+		"en"		"Laser"
+	}
+	"Type Tesla"
+	{
+		"en"		"Tesla"
+	}
+	"Type Freeze"
+	{
+		"en"		"Freezing"
+	}
+	"Type Nauseating"
+	{
+		"en"		"Nauseating"
+	}
+	"Basic Menu"
+	{
+		"en"		"Gatling gun"
+	}
+	"Advanced Menu"
+	{
+		"en"		"Portable turret"
+	}
+	"Main Menu Title"
+	{
+		"en"		"Choose type"
+	}
+	"Gatling Basic Machine Gun"
+	{
+		"en"		"Gatling gun"
+	}
+	"50 Cal Basic Machine Gun"
+	{
+		"en"		"Portable Turret"
+	}
+	"Secondary Menu Basic Machine Guns"
+	{
+		"en"		"Choose ammo type"
+	}
+	"Damaged Machine Gun"
+	{
+		"en"		"Your turret has been destroyed!"
+	}
+	"Secondary Menu Advanced Machine Gun"
+	{
+		"en"		"Choose ammo type"
+	}
+	"Use instructor"
+	{
+		"en"		"Use Instructor"
+	}
+	"Gatling Fire-Type"
+	{
+		"en"		"Fire"
+	}
+	"Target Reached"
+	{
+		"en"		"%N was frozen!"
+	}
+	"Gatling Laser-Type"
+	{
+   		"en"		"Laser"
+	}
+	"Gatling Freeze-Type"
+	{
+
+		"en"		"Freezing"
+	}
+	"Gatling Nauseating-Type"
+	{
+
+		"en"		"Nauseating"
+	}	
+	"Gatling Tesla-Type"
+	{
+		"en"		"Tesla"
+	}
+	"50 Cal Normal"
+	{
+		"en"		"Normal"
+	}
+	"Model 50 Cal"
+	{
+		"en"		"Portable Turret"
+	}
+	"50 Cal Tesla-Type"
+	{
+
+		"en"		"Tesla"
+	}
+	"50 Cal Freeze-Type"
+	{
+
+		"en"		"Freezing"
+	}
+	"50 Cal Fire-Type"
+	{
+
+		"en"		"Fire"
+	}
+	"50 Cal Laser-Type"
+	{
+
+		"en"	  "Laser"
+	}
+	"Cal 50 Nauseating-Type"
+	{
+
+		"en"	  "Nauseating"
+	}
+}
