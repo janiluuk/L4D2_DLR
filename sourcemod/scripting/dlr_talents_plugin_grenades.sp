@@ -666,7 +666,7 @@ enum
 // ====================================================================================================
 public Plugin myinfo =
 {
-	name = "[L4D & L4D2] Prototype Grenades [DLR]",
+	name = "[DLR] Prototype Grenades plugin",
 	author = "SilverShot",
 	description = "Creates a selection of different grenade types.",
 	version = PLUGIN_VERSION,

@@ -5,10 +5,9 @@
 #include <sdktools>
 #include <sdktools_functions>
 #include <sdkhooks>
-#define PLUGIN_NAME "[L4D1 AND L4D2] Portable turret & gatling guns."
+#define PLUGIN_NAME "[DLR Plugin] Portable turret & gatling guns."
 #define PLUGIN_VERSION "4.5"
 
-/************************************************************************************************************************/
 #define TEAM_SPECTATOR               1 		
 #define TEAM_SURVIVOR                2 		
 #define TEAM_INFECTED                3 		
@@ -28,12 +27,10 @@
 #define EXTENDED_COLOR_TAG_BLUE      2 		
 #define EXTENDED_COLOR_TAG_RED       3 		
 #define EXTENDED_COLOR_TAG_WHITE     4 	
-/************************************************************************************************************************/
 #define State_None 	0
 #define State_Scan 	1
 #define State_Sleep 2
 #define State_Carry 3
-/************************************************************************************************************************/
 #define PARTICLE_MUZZLE_FLASH			"weapon_muzzle_flash_autoshotgun" 		
 #define PARTICLE_WEAPON_TRACER_GATLING	"weapon_tracers" 						
 #define PARTICLE_WEAPON_TRACER_50CAL	"weapon_tracers_50cal" 				
