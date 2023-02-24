@@ -58,7 +58,7 @@ static const String:ClassTips[][] =
 };
 
 // How long should the Class Select menu stay open?
-static const MENU_OPEN_TIME = view_as<int>(9999);
+static const MENU_OPEN_TIME = view_as<int>(99999);
 static bool:DEBUG_MODE = false;
 
 // API
@@ -162,24 +162,24 @@ bool g_bAirstrike, g_bAirstrikeValid;
 new g_iRI[MAXPLAYERS+1] = { -1 },
 g_iRC, g_iEi[MAXPLAYERS+1] = { -1 },
 Float:g_fNT[MAXPLAYERS+1] = { -1.0 },
-g_iNPA = -1,
-g_oAW = -1;
+g_flNextPrimaryAttack = -1,
+g_hActiveWeapon = -1;
 
 // Speed vars
-new g_ioLMV;
+new g_flLaggedMovementValue;
 
 // Commando vars
-new g_ioPR = -1;
+new g_flPlaybackRate = -1;
 new g_iVMStartTimeO  = -1;
 new g_iViewModelO = -1;
-new g_ioNA = -1;
-new g_ioTI = -1;
-new g_iSSD = -1;
-new g_iSID = -1;
-new g_iSED = -1;
+new g_flNextAttack = -1;
+new g_flTimeWeaponIdle = -1;
+new g_reloadStartDuration = -1;
+new g_reloadInsertDuration = -1;
+new g_reloadEndDuration = -1;
 new g_iSRS = -1;
 new g_iShovePenalty = 0;
-
+float g_fSavedShoveTime[MAXPLAYERS+1];
 
 // Parachute
 
@@ -222,8 +222,6 @@ new RndSession;
 #define BOMB_GLOW "fire_medium_01_glow"
 #define ENGINEER_MACHINE_GUN "models/w_models/weapons/50cal.mdl"
 #define SPRITE_GLOW "sprites/blueglow1.vmt"
-
-// Convars (change these via the created cfg files)
 
 // CLASS RELATED STUFF
 
@@ -376,19 +374,20 @@ public OnPluginStart( )
 	g_hSkillTypeArray = CreateArray(16);
 
 	// Offsets
-	g_iNPA = FindSendPropInfo("CBaseCombatWeapon", "m_flNextPrimaryAttack");
-	g_oAW = FindSendPropInfo("CTerrorPlayer", "m_hActiveWeapon");
-	g_ioLMV = FindSendPropInfo("CTerrorPlayer", "m_flLaggedMovementValue");
-	g_ioPR = FindSendPropInfo("CBaseCombatWeapon", "m_flPlaybackRate");
-	g_ioNA = FindSendPropInfo("CTerrorPlayer", "m_flNextAttack");
-	g_ioTI = FindSendPropInfo("CTerrorGun", "m_flTimeWeaponIdle");
-	g_iSSD = FindSendPropInfo("CBaseShotgun", "m_reloadStartDuration");
-	g_iSID = FindSendPropInfo("CBaseShotgun", "m_reloadInsertDuration");
-	g_iSED = FindSendPropInfo("CBaseShotgun", "m_reloadEndDuration");
+	g_flNextPrimaryAttack = FindSendPropInfo("CBaseCombatWeapon", "m_flNextPrimaryAttack");
+	g_hActiveWeapon = FindSendPropInfo("CTerrorPlayer", "m_hActiveWeapon");
+	g_flLaggedMovementValue = FindSendPropInfo("CTerrorPlayer", "m_flLaggedMovementValue");
+	g_flPlaybackRate = FindSendPropInfo("CBaseCombatWeapon", "m_flPlaybackRate");
+	g_flNextAttack = FindSendPropInfo("CTerrorPlayer", "m_flNextAttack");
+	g_flTimeWeaponIdle = FindSendPropInfo("CTerrorGun", "m_flTimeWeaponIdle");
+	g_reloadStartDuration = FindSendPropInfo("CBaseShotgun", "m_reloadStartDuration");
+	g_reloadInsertDuration = FindSendPropInfo("CBaseShotgun", "m_reloadInsertDuration");
+	g_reloadEndDuration = FindSendPropInfo("CBaseShotgun", "m_reloadEndDuration");
 	g_iSRS = FindSendPropInfo("CBaseShotgun", "m_reloadState");
 	g_iVMStartTimeO = FindSendPropInfo("CTerrorViewModel","m_flLayerStartTime");
 	g_iViewModelO = FindSendPropInfo("CTerrorPlayer","m_hViewModel");
 	g_iVelocity = FindSendPropInfo("CBasePlayer", "m_vecVelocity[0]");
+	g_iShovePenalty = FindSendPropInfo("CTerrorPlayer", "m_iShovePenalty");
 
 	// Hooks
 	HookEvent("player_spawn", Event_PlayerSpawn);
@@ -782,10 +781,10 @@ public OnMapStart()
 	for (int i = 0; i < 2; i++)
 		PrecacheModel(g_sModels[i]);
 
-	for (int i = 0; i < MAXPLAYERS +1; i++)
+	for (int i = 0; i < MAXPLAYERS+1; i++) {
 		g_bHide[i] = false;
-		
-	g_iShovePenalty = FindSendPropInfo("CTerrorPlayer", "m_iShovePenalty");
+		g_fSavedShoveTime[i] = 0.0;
+	}	
 }
 
 public void OnMapEnd()
@@ -793,14 +792,14 @@ public void OnMapEnd()
 	// Cache
 	ClearCache();
 	RoundStarted=false;
-	RndSession = 0;
 }
 
 public OnClientPutInServer(client)
 {
 	if (!client || !IsValidEntity(client) || !IsClientInGame(client))
 	return;
-
+	
+	g_fSavedShoveTime[client] = 0.0;
 	g_bHide[client] = false; 
 	DisableAllUpgrades(client);
 	ResetClientVariables(client);
@@ -877,7 +876,7 @@ public Action:TimerThink(Handle:hTimer, any:client)
 	{
 		case ATHLETE:
 		{	
-			SetEntDataFloat(client, g_ioLMV, GetConVarFloat(ATHLETE_SPEED), true);
+			SetEntDataFloat(client, g_flLaggedMovementValue, GetConVarFloat(ATHLETE_SPEED), true);
 		}
 		
 		case SABOTEUR:
@@ -906,7 +905,7 @@ public Action:TimerThink(Handle:hTimer, any:client)
 				if (hidingTime >= GetConVarFloat(SABOTEUR_INVISIBLE_TIME)) {
 					if (InvisibilityTimestamp != RoundToFloor(hidingTime) && InvisibilityHint == false) 
 					{
-						SetEntDataFloat(client, g_ioLMV, 1.8, true);
+						SetEntDataFloat(client, g_flLaggedMovementValue, 1.8, true);
 
 						HidePlayer(client);
 
@@ -932,7 +931,7 @@ public Action:TimerThink(Handle:hTimer, any:client)
 					UnhidePlayer(client);
 					SetRenderProperties(client);
 				}
-				SetEntDataFloat(client, g_ioLMV, 1.0, true);
+				SetEntDataFloat(client, g_flLaggedMovementValue, 1.0, true);
 
 				InvisibilityHint = false;
 			}
@@ -978,7 +977,7 @@ public Action:TimerThink(Handle:hTimer, any:client)
 
 			if (buttons & IN_DUCK) 
 			{
-				SetEntDataFloat(client, g_ioLMV, 1.7, true);
+				SetEntDataFloat(client, g_flLaggedMovementValue, 1.7, true);
 
 				if ((GetGameTime() - ClientData[client].HealStartTime) >= 2.5) {
 					if (MedicHint == false) {
@@ -987,7 +986,7 @@ public Action:TimerThink(Handle:hTimer, any:client)
 					}
 				}
 			} else {
-				SetEntDataFloat(client, g_ioLMV, 1.0, true);					
+				SetEntDataFloat(client, g_flLaggedMovementValue, 1.0, true);					
 				MedicHint = false;
 			}
 		}
@@ -1014,7 +1013,7 @@ public Action:TimerThink(Handle:hTimer, any:client)
 		}
 		case SOLDIER:
 		{
-			SetEntDataFloat(client, g_ioLMV, GetConVarFloat(SOLDIER_SPEED), true);
+			SetEntDataFloat(client, g_flLaggedMovementValue, GetConVarFloat(SOLDIER_SPEED), true);
 
 			if (buttons & IN_SPEED)
 			{
@@ -2218,12 +2217,12 @@ public Event_RelCommandoClass(Handle:event, String:name[], bool:dontBroadcast)
 	if (ClientData[client].ChosenClass != COMMANDO)
 	return;
 	
-	new weapon = GetEntDataEnt2(client, g_oAW);
+	new weapon = GetEntDataEnt2(client, g_hActiveWeapon);
 
 	if (!IsValidEntity(weapon))
 	return;
 	
-	new Float:flGT = GetGameTime();
+	new Float:flGameTime = GetGameTime();
 	decl String:bNetCl[64];
 	decl String:stClass[32];
 
@@ -2238,21 +2237,21 @@ public Event_RelCommandoClass(Handle:event, String:name[], bool:dontBroadcast)
 		new Handle:hPack = CreateDataPack();
 		WritePackCell(hPack, weapon);
 
-		new Float:fRLRat = GetConVarFloat(COMMANDO_RELOAD_RATIO);
-		new Float:fNTC = (GetEntDataFloat(weapon, g_iNPA) - flGT) * fRLRat;
-		new Float:NA = fNTC + flGT;
-		new Float:flNextTime_ret = GetEntDataFloat(weapon, g_iNPA);
-		new Float:flStartTime_calc = flGT - ( flNextTime_ret - flGT ) * ( 1 - fRLRat ) ;
+		new Float:fReloadRatio = GetConVarFloat(COMMANDO_RELOAD_RATIO);
+		new Float:flNextTime_calc = (GetEntDataFloat(weapon, g_flNextPrimaryAttack) - flGameTime) * fReloadRatio;
+		new Float:flNextAttack = flNextTime_calc + flGameTime;
+		new Float:flNextTime_ret = GetEntDataFloat(weapon, g_flNextPrimaryAttack);
+		new Float:flStartTime_calc = flGameTime - ( flNextTime_ret - flGameTime ) * ( 1 - fReloadRatio ) ;
 		WritePackFloat(hPack, flStartTime_calc);
 		
-		if ( (fNTC - 0.4) > 0 )
-		CreateTimer( fNTC - 0.4, CommandoRelFireEnd2, hPack);
+		if ( (flNextTime_calc - 0.4) > 0 )
+		CreateTimer( flNextTime_calc - 0.4, CommandoRelFireEnd2, hPack);
 		
-		SetEntDataFloat(weapon, g_ioPR, 1.0 / fRLRat, true);
-		SetEntDataFloat(weapon, g_ioTI, NA, true);
-		SetEntDataFloat(weapon, g_iNPA, NA, true);
-		SetEntDataFloat(client, g_ioNA, NA, true);
-		CreateTimer(fNTC, CommandoRelFireEnd, weapon);
+		SetEntDataFloat(weapon, g_flPlaybackRate, 1.0 / fReloadRatio, true);
+		SetEntDataFloat(weapon, g_flTimeWeaponIdle, flNextAttack, true);
+		SetEntDataFloat(weapon, g_flNextPrimaryAttack, flNextAttack, true);
+		SetEntDataFloat(client, g_flNextAttack, flNextAttack, true);
+		CreateTimer(flNextTime_calc, CommandoRelFireEnd, weapon);
 	}
 	else
 	{
@@ -2296,7 +2295,7 @@ public Action:CommandoRelFireEnd(Handle:timer, any:weapon)
 	if (weapon <= 0 || !IsValidEntity(weapon))
 	return Plugin_Stop;
 	
-	SetEntDataFloat(weapon, g_ioPR, 1.0, true);
+	SetEntDataFloat(weapon, g_flPlaybackRate, 1.0, true);
 	KillTimer(timer);
 
 	return Plugin_Stop;
@@ -2313,13 +2312,17 @@ public Action:CommandoRelFireEnd2(Handle:timer, Handle:hPack)
 	ResetPack(hPack);
 
 	new weapon = ReadPackCell(hPack);
-	new iCid = GetEntPropEnt(weapon, Prop_Data, "m_hOwner");
-	if (iCid <= 0 || IsValidEntity(iCid)==false || IsClientInGame(iCid)==false)
-	return Plugin_Stop;
+	if (!IsValidEntity(weapon))
+	{
+		return Plugin_Stop;
+	}
+	new iWeaponOwner = GetEntPropEnt(weapon, Prop_Data, "m_hOwner");
+	if (iWeaponOwner <= 0 || IsValidEntity(iWeaponOwner)==false || IsClientInGame(iWeaponOwner)==false)
+		return Plugin_Stop;
 
 	new Float:flStartTime_calc = ReadPackFloat(hPack);
 	CloseHandle(hPack);
-	new iVMid = GetEntDataEnt2(iCid,g_iViewModelO);
+	new iVMid = GetEntDataEnt2(iWeaponOwner,g_iViewModelO);
 	SetEntDataFloat(iVMid, g_iVMStartTimeO, flStartTime_calc, true);
 	return Plugin_Stop;
 }
@@ -2328,19 +2331,19 @@ public Action:CommandoPumpShotReload(Handle:timer, Handle:hOldPack)
 {
 	ResetPack(hOldPack);
 	new weapon = ReadPackCell(hOldPack);
-	new Float:fRLRat = GetConVarFloat(COMMANDO_RELOAD_RATIO);
+	new Float:fReloadRatio = GetConVarFloat(COMMANDO_RELOAD_RATIO);
 	new Float:start = ReadPackFloat(hOldPack);
 	new Float:insert = ReadPackFloat(hOldPack);
 	new Float:end = ReadPackFloat(hOldPack);
 
-	SetEntDataFloat(weapon,	g_iSSD,	start * fRLRat,	true);
-	SetEntDataFloat(weapon,	g_iSID,	insert * fRLRat,	true);
-	SetEntDataFloat(weapon,	g_iSED, end * fRLRat,	true);
-	SetEntDataFloat(weapon, g_ioPR, 1.0 / fRLRat, true);
+	SetEntDataFloat(weapon,	g_reloadStartDuration,	start * fReloadRatio,	true);
+	SetEntDataFloat(weapon,	g_reloadInsertDuration,	insert * fReloadRatio,	true);
+	SetEntDataFloat(weapon,	g_reloadEndDuration, end * fReloadRatio,	true);
+	SetEntDataFloat(weapon, g_flPlaybackRate, 1.0 / fReloadRatio, true);
 	
 	CloseHandle(hOldPack);
 	if (DEBUG_MODE == true) {
-		PrintToChatAll("\x03-spas shotgun detected, ratio \x01%i\x03, startO \x01%i\x03, insertO \x01%i\x03, endO \x01%i", fRLRat, g_iSSD, g_iSID, g_iSED);
+		PrintToChatAll("\x03-spas shotgun detected, ratio \x01%i\x03, startO \x01%i\x03, insertO \x01%i\x03, endO \x01%i", fReloadRatio, g_reloadStartDuration, g_reloadInsertDuration, g_reloadEndDuration);
 	}
 	
 	new Handle:hPack = CreateDataPack();
@@ -2377,10 +2380,10 @@ public Action:CommandoShotCalculate(Handle:timer, Handle:hPack)
 	{
 		new Float:flNextTime = GetGameTime() + addMod;
 		
-		SetEntDataFloat(weapon, g_ioPR, 1.0, true);
-		SetEntDataFloat(GetEntPropEnt(weapon, Prop_Data, "m_hOwner"), g_ioNA, flNextTime, true);
-		SetEntDataFloat(weapon,	g_ioTI, flNextTime, true);
-		SetEntDataFloat(weapon,	g_iNPA, flNextTime, true);
+		SetEntDataFloat(weapon, g_flPlaybackRate, 1.0, true);
+		SetEntDataFloat(GetEntPropEnt(weapon, Prop_Data, "m_hOwner"), g_flNextAttack, flNextTime, true);
+		SetEntDataFloat(weapon,	g_flTimeWeaponIdle, flNextTime, true);
+		SetEntDataFloat(weapon,	g_flNextPrimaryAttack, flNextTime, true);
 		KillTimer(timer);
 		CloseHandle(hPack);
 		return Plugin_Stop;
@@ -2392,19 +2395,17 @@ public Action:CommandoShotCalculate(Handle:timer, Handle:hPack)
 public Action:Event_WeaponFire(Handle:event, const String:name[], bool:dontBroadcast)
 {
 	new client = GetClientOfUserId(GetEventInt(event, "userid"));
-	
-	if (ClientData[client].ChosenClass == NONE && GetClientTeam(client) == 2)
+
+	if(ClientData[client].ChosenClass == NONE && GetClientTeam(client) == 2 && client > 0 && client <= MaxClients && IsClientInGame( client ) && ClassHint == false)
 	{
-		if(client > 0 && client <= MaxClients && IsClientInGame( client ) && ClassHint == false)
-		{
-			if (RoundStarted == true) {
-				ClassHint = true;
-			}
-			PrintHintText(client,"You really should pick a class, 1,5,7 are good for beginners.");
-			CreatePlayerClassMenu(client);
+		if (RoundStarted == true) {
+			ClassHint = true;
 		}
+		PrintHintText(client,"You really should pick a class, 1,5,7 are good for beginners.");
+		CreatePlayerClassMenu(client);
 	}
-	
+
+
 	if(ClientData[client].ChosenClass == COMMANDO)
 	{
 		GetEventString(event, "weapon", ClientData[client].EquippedGun, 64);
@@ -2456,9 +2457,7 @@ public void OnClientPostAdminCheck(int client)
 Action _MF_Touch(int entity, int other)
 {
 	if (!GetConVarBool(COMMANDO_ENABLE_STOMPING)) return Plugin_Continue;
- 	if (ClientData[entity].ChosenClass != COMMANDO) return Plugin_Continue;
-
-	if (other < 32 || !IsValidEntity(other)) return Plugin_Continue;
+ 	if (ClientData[entity].ChosenClass != COMMANDO || other < 32 || !IsValidEntity(other)) return Plugin_Continue;
 	
 	static char classname[12];
 	GetEntityClassname(other, classname, sizeof(classname));	
@@ -2498,7 +2497,6 @@ void SmashInfected(int zombie, int client)
 ///////////////////////////////////////////////////////////////////////////////////
 // Saboteur
 ///////////////////////////////////////////////////////////////////////////////////
-
 
 // Saboteur vars
 #define MAX_BOMBS 7
@@ -2749,10 +2747,10 @@ public OnGameFrame()
 	return;
 
 	decl client;
-	decl bweapon;
-	decl Float:fNTC;
-	decl Float:fNTR;
-	new Float:fGT = GetGameTime();
+	decl iActiveWeapon;
+	decl Float:flNextTime_calc;
+	decl Float:flNextPrimaryAttack;
+	new Float:fGameTime = GetGameTime();
 	
 	for (new i = 1; i <= g_iRC; i++)
 	{
@@ -2764,53 +2762,46 @@ public OnGameFrame()
 			|| !IsClientInGame(client)
 			|| !IsPlayerAlive(client)
 			|| GetClientTeam(client) != 2
-			|| (ClientData[client].ChosenClass != SOLDIER && ClientData[client].ChosenClass != COMMANDO) 
-			)
+			|| ClientData[client].ChosenClass != SOLDIER)
 		continue;
 		
-
-		if(ClientData[client].ChosenClass == SOLDIER && GetConVarBool(SOLDIER_SHOVE_PENALTY) == false)
+		if(GetConVarBool(SOLDIER_SHOVE_PENALTY) == false)
 		{
 			//If the player is pressing the right click of the mouse, proceed
-			if(GetClientButtons(client) & IN_ATTACK2)
+			if(GetClientButtons(i) & IN_ATTACK2)
 			{
 				//This will reset the penalty, so it doesnt even get applied.
 				SetEntData(i, g_iShovePenalty, 0, 4);
 			}
 		}
 
-		bweapon = GetEntDataEnt2(client, g_oAW);
+		iActiveWeapon = GetEntDataEnt2(client, g_hActiveWeapon);
 		
-		if(bweapon <= 0) 
+		if(iActiveWeapon <= 0) 
 		continue;
 		
-		fNTC = fNTR;
-
-		if (g_iNPA == -1) {
-			SetEntDataFloat(bweapon, g_iNPA, fNTC, true);
-
-		}
-
-		if (g_iEi[client] == bweapon && g_fNT[client] >= fNTR)
+		flNextPrimaryAttack = GetEntDataFloat(iActiveWeapon, g_flNextPrimaryAttack);
+		
+		if (g_iEi[client] == iActiveWeapon && g_fNT[client] >= flNextPrimaryAttack)
 		continue;
 		
-		if (ClientData[client].ChosenClass == SOLDIER && g_iEi[client] == bweapon && g_fNT[client] < fNTR)
+		if (g_iEi[client] == iActiveWeapon && g_fNT[client] < flNextPrimaryAttack)
 		{
-
-			fNTC = ( fNTR - fGT ) * GetConVarFloat(SOLDIER_FIRE_RATE) + fGT;
-			g_fNT[client] = fNTC;
-			SetEntDataFloat(bweapon, g_iNPA, fNTC, true);
+			flNextTime_calc = ( flNextPrimaryAttack - fGameTime ) * GetConVarFloat(SOLDIER_FIRE_RATE) + fGameTime;
+			g_fNT[client] = flNextTime_calc;
+			SetEntDataFloat(iActiveWeapon, g_flNextPrimaryAttack, flNextTime_calc, true);
 			continue;
 		}
-		g_fNT[client] = fNTC;
-
-		if (g_iEi[client] != bweapon)
+		
+		if (g_iEi[client] != iActiveWeapon)
 		{
-			g_iEi[client] = bweapon;	
-			g_fNT[client] = fNTR;
+			g_iEi[client] = iActiveWeapon;
+			g_fNT[client] = flNextPrimaryAttack;
 			continue;
 		}
 	}
+
+
 }
 
 public Action:OnTakeDamagePre(victim, &attacker, &inflictor, &Float:damage, &damagetype)
@@ -3005,6 +2996,7 @@ public Action:TimerCheckBombSensors(Handle:hTimer, Handle:hPack)
 	int index = ReadPackCell(hPack);
 	int bombType = ReadPackCell(hPack);
 	int entity = ReadPackCell(hPack);
+	CloseHandle(hPack);
 
 	if (index < 0) index = 0;
 
@@ -3016,6 +3008,7 @@ public Action:TimerCheckBombSensors(Handle:hTimer, Handle:hPack)
 
 		if (!IsValidEntity(client) || !IsClientInGame(client))
 		continue;
+
 		if(GetClientTeam(client) == 3 || GetClientTeam(client) == 2 || IsWitch(client))
 		{
 			char classname[32];
@@ -3025,26 +3018,29 @@ public Action:TimerCheckBombSensors(Handle:hTimer, Handle:hPack)
 			if (GetVectorDistance(pos, clientpos) < GetConVarFloat(SABOTEUR_BOMB_RADIUS))
 			{
 				if (GetClientTeam(client) == 3 || IsWitch(client)) {
-					PrintHintTextToAll("%N's mine detonated!", owner);
+					BombActive = false;
+					BombIndex[index] = false;
 					
-					new ent = CreateEntityByName("pipe_bomb_projectile");
-					TeleportEntity(ent, pos, NULL_VECTOR, NULL_VECTOR);
-					DispatchSpawn(ent);
-
 					if (GetConVarInt(SABOTEUR_BOMB_TYPES) == 1) {
 						PrintDebugAll("Detonating bomb extras for single bomb mode");
 						CreateExplosion(pos, client);					
 					}
+					
+					if (!IsValidEntity(owner) || !IsClientInGame(owner)) {
+						return Plugin_Stop;
+					}
+
+					PrintHintTextToAll("%N's mine detonated!", owner);
+		
 
 					PrintDebugAll("Detonating Grenade type: %s", getBombName(bombType-1));
 
 					useCustomCommand("Grenades", owner, entity, bombType);					
-					BombActive = false;
-					BombIndex[index] = false;
-					CloseHandle(hPack);
+
 					return Plugin_Stop;
 				}
 				else if (GetClientTeam(client) == 2) {
+					
 					if (!mineWarning[client] || mineWarning[client] < GetGameTime() + 5) {
 						PrintHintText(client, "Warning! You are nearby armed mine.");
 						mineWarning[client] = GetGameTime();

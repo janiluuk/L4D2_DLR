@@ -5,10 +5,9 @@
 #include <sdktools>
 #include <sdktools_functions>
 #include <sdkhooks>
-#define PLUGIN_NAME "[L4D1 AND L4D2] Portable turret & gatling guns."
+#define PLUGIN_NAME "[DLR Plugin] Portable turret & gatling guns."
 #define PLUGIN_VERSION "4.5"
 
-/************************************************************************************************************************/
 #define TEAM_SPECTATOR               1 		
 #define TEAM_SURVIVOR                2 		
 #define TEAM_INFECTED                3 		
@@ -28,12 +27,10 @@
 #define EXTENDED_COLOR_TAG_BLUE      2 		
 #define EXTENDED_COLOR_TAG_RED       3 		
 #define EXTENDED_COLOR_TAG_WHITE     4 	
-/************************************************************************************************************************/
 #define State_None 	0
 #define State_Scan 	1
 #define State_Sleep 2
 #define State_Carry 3
-/************************************************************************************************************************/
 #define PARTICLE_MUZZLE_FLASH			"weapon_muzzle_flash_autoshotgun" 		
 #define PARTICLE_WEAPON_TRACER_GATLING	"weapon_tracers" 						
 #define PARTICLE_WEAPON_TRACER_50CAL	"weapon_tracers_50cal" 				
@@ -186,7 +183,7 @@ float GunCarrierAngle[MAXPLAYERS+1][3];
 float GunFireStopTime[MAXPLAYERS+1];
 float GunLastCarryTime[MAXPLAYERS+1];
 float GunFireTime[MAXPLAYERS+1];
-float GunFireTotolTime[MAXPLAYERS+1];
+float GunFireTotalTime[MAXPLAYERS+1];
 float GunHealth[MAXPLAYERS+1];
 
 int LastButton[MAXPLAYERS+1];
@@ -266,6 +263,7 @@ static ConVar hCvar_MachineAllowCarry;
 static ConVar hCvar_MachineAllowCarryGatling;
 static ConVar hCvar_MachineAllowUse;
 static ConVar hCvar_MachineSleepTime;
+static ConVar hCvar_MachineSleepTimeCarry;
 static ConVar hCvar_MachineFireRate;
 static ConVar hCvar_MachineFireRateGatling;
 static ConVar hCvar_MachineHealth;
@@ -275,6 +273,7 @@ static ConVar hCvar_MachineBetrayChance;
 static ConVar hCvar_MachineLimit;
 static ConVar hCvar_MachineLimitGatling;
 
+static ConVar hCvar_MachineEnableDamage;
 static ConVar hCvar_MachineEnableExplosion;
 
 static ConVar hCvar_MachineDroppingTime;
@@ -317,12 +316,14 @@ static bool bCvar_MachineAmmoReloadGatling;
 static bool bCvar_Machine_FinaleOnly;
 static bool bCvar_MachineAllowUse;
 static bool bCvar_MachineBlocking;
+static bool bCvar_MachineEnableDamage;
+static bool bCvar_MachineSleepTimeCarry;
 
 static char sCvar_MachineRequiredAccessLevel[128];
 static char sCvar_MachineBasicAdminOnly[128];
 static char sCvar_MachineSpecialAdminOnly[128];
 static char sCvar_MachineSpecialAllowed[MAX_MESSAGE_LENGTH];
-/**********************************/
+
 static int iCvar_GameModesToggle;
 static int iCvar_CurrentMode;
 
@@ -373,7 +374,6 @@ public void OnSkillSelected(int iClient, int iClass)
 {
 	char szSkillName[32];
 	GetPlayerSkillName(iClient, szSkillName, sizeof(szSkillName));
-	PrintToChat(iClient, "Your skill is %s", szSkillName);
 }
 
 public int OnSpecialSkillUsed(int iClient, int skill, int type)
@@ -385,8 +385,6 @@ public int OnSpecialSkillUsed(int iClient, int skill, int type)
 	{
 		CMD_MainMenu(iClient, 0);
 		return 1;
-	} else {
-		return -1;
 	}
 	return 0;
 }
@@ -474,23 +472,24 @@ public void OnPluginStart()
 	hCvar_MachineDamageToInfected 	= CreateConVar("l4d_machine_damage_to_infected", 	"60", 		"Sets the amount of damage to the infected.", FCVAR_NOTIFY, true, 0.0, true, 100.0);
 	hCvar_MachineDamageToSurvivor 	= CreateConVar("l4d_machine_damage_to_survivor", 	"40", 		"Sets the amount of damage to survivors.", FCVAR_NOTIFY, true, 0.0, true, 100.0);
 	hCvar_MachineRange 				= CreateConVar("l4d_machine_range", 				"1000", 	"Sets the max range of enemy detection by machine guns.", FCVAR_NOTIFY, true, 250.00, true, 3000.00);
-	hCvar_MachineOverHeat 			= CreateConVar("l4d_machine_overheat", 				"10.0", 	"Sets the time before overheat in seconds.", FCVAR_NOTIFY, true, 5.00, true, 30.00);
+	hCvar_MachineOverHeat 			= CreateConVar("l4d_machine_overheat", 				"15.0", 	"Sets the time before overheat in seconds.", FCVAR_NOTIFY, true, 5.00, true, 30.00);
 	hCvar_MachineRequiredAccessLevel= CreateConVar("l4d_machine_required_access_level", "", 		"Admin flags required to use the feature. \nEmpty = Allowed for everyone.", FCVAR_NOTIFY);
 	hCvar_MachineBasicAdminOnly 	= CreateConVar("l4d_machine_basic_adminonly", 		"", 		"Sets access to gatling turrets by admin flags.\n0 = Allowed for everyone.", FCVAR_NOTIFY);
 	hCvar_MachineSpecialAdminOnly 	= CreateConVar("l4d_machine_special_adminonly", 	"", 		"Sets access to 50 cal turrets by admin flags.\n0 = Allowed for everyone.", FCVAR_NOTIFY);
 	hCvar_MachineSpecialAllowed 	= CreateConVar("l4d_machine_special_allowed", 		"Basic,Flame,Laser,Tesla,Freeze,Nauseating", "Set types of machine guns allowed", FCVAR_NOTIFY);	
 	hCvar_MachineUsageMessage 		= CreateConVar("l4d_machine_usage_message", 		"1", 		"Number of times usage information is shown.\n0 = Disable", FCVAR_NOTIFY, true, 0.0, true, 5.0);
 	hCvar_MachineAmmoCountGatling	= CreateConVar("l4d_machine_ammo_gatling_count",	"2000",		"Sets the amount of ammo per gatling gun", FCVAR_NOTIFY, true, 100.0, true, 10000.0);
-	hCvar_MachineAmmoCount 			= CreateConVar("l4d_machine_ammo_count", 			"1000", 	"Sets the amount of ammo per gun", FCVAR_NOTIFY, true, 100.0, true, 10000.0);
+	hCvar_MachineAmmoCount 			= CreateConVar("l4d_machine_ammo_count", 			"2000", 	"Sets the amount of ammo per gun", FCVAR_NOTIFY, true, 100.0, true, 10000.0);
 	hCvar_MachineAmmoType 			= CreateConVar("l4d_machine_ammo_type", 			"0", 		"Sets ammunition type for bullets.\n0 = Normal Ammo.\n1 = Incendiary Ammo.\n2 = Explosive Ammo.", FCVAR_NOTIFY, true, 0.0, true, 2.0);
 	hCvar_MachineAmmoReload 		= CreateConVar("l4d_machine_ammo_reload", 			"0", 		"Enable reloading for 50cal turrets.\n0 = Disabled.\n1 = Enabled.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	hCvar_MachineAmmoReloadGatling	= CreateConVar("l4d_machine_ammo_gatling_reload",	"1", 		"Enable reloading for gatling guns.\n0 = Disabled.\n1 = Enabled.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
-	hCvar_MachineHealth 			= CreateConVar("l4d_machine_health", 				"2000", 	"Sets the amount of health for each turret gun.", FCVAR_NOTIFY, true, 50.0, true, 5000.0);
-	hCvar_MachineHealthGatling 		= CreateConVar("l4d_machine_health_gatling",		"800", 		"Sets the amount of health for each gatling gun.", FCVAR_NOTIFY, true, 50.0, true, 5000.0);
+	hCvar_MachineHealth 			= CreateConVar("l4d_machine_health", 				"3000", 	"Sets the amount of health for each turret gun.", FCVAR_NOTIFY, true, 50.0, true, 5000.0);
+	hCvar_MachineHealthGatling 		= CreateConVar("l4d_machine_health_gatling",		"3000", 	"Sets the amount of health for each gatling gun.", FCVAR_NOTIFY, true, 50.0, true, 5000.0);
 	hCvar_MachineAllowCarry 		= CreateConVar("l4d_machine_allow_carry", 			"0", 		"Allow carrying 50cal turret around. 0 = Disabled\n1 = Anyone \n2 = Only owner", FCVAR_NOTIFY, true, 0.0, true, 2.0);
 	hCvar_MachineAllowCarryGatling	= CreateConVar("l4d_machine_allow_carry_gatling", 	"1", 		"Allow carrying gatling guns. \n0 = Disabled\n1 = Anyone \n2 = Only owner", FCVAR_NOTIFY, true, 0.0, true, 2.0);
 	hCvar_MachineAllowUse 			= CreateConVar("l4d_machine_allow_use", 			"1", 		"Allow using the turrets manually.\n0 = Disabled.\n1 = Enabled.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	hCvar_MachineSleepTime 			= CreateConVar("l4d_machine_sleep_time", 			"180.0", 	"Sets the max waiting time(seconds) to remain inactive when there are no enemies in range.", FCVAR_NOTIFY, true, 60.00, true, 600.00);
+	hCvar_MachineSleepTimeCarry		= CreateConVar("l4d_machine_sleep_allow_carry", 	"1", 		"Allow carrying the turret when it's cooling down.\n0 = Disabled.\n1 = Enabled.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	hCvar_MachineFireRate 			= CreateConVar("l4d_machine_fire_rate",				"5", 		"Sest rate of fire, amount shots per second.", FCVAR_NOTIFY, true, 5.0, true, 30.0);
 	hCvar_MachineFireRateGatling	= CreateConVar("l4d_machine_fire_rate_gatling", 	"7", 		"Sest rate of fire, amount shots per second.", FCVAR_NOTIFY, true, 5.0, true, 30.0);
 	hCvar_MachineBlocking 	 		= CreateConVar("l4d_machine_blocking", 				"0", 		"If enabled, turrets are solid entities instead of walk-through. \n0 = Disabled.\n1 = Enabled.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
@@ -499,6 +498,7 @@ public void OnPluginStart()
 	hCvar_MachineLimit 				= CreateConVar("l4d_machine_limit", 				"3", 		"Maximum turrets per user.", FCVAR_NOTIFY, true, 1.0, true, 16.0);
 	hCvar_MachineLimitGatling		= CreateConVar("l4d_machine_gatling_limit", 		"1", 		"Maximum amount of gatling guns per user", FCVAR_NOTIFY, true, 1.0, true, float(MAX_EACHPLAYER));	
 	hCvar_MachineMaxAllowed 		= CreateConVar("l4d_machine_max_allowed", 			"8", 		"Maximum total amount of turrets per game", FCVAR_NOTIFY, true, 1.0, true, float(MAX_ALLOWED));
+	hCvar_MachineEnableDamage		= CreateConVar("l4d_machine_enable_damage", 		"1", 		"Enable damage for turret from attacks",  FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	hCvar_MachineEnableExplosion 	= CreateConVar("l4d_machine_enable_explosion", 		"10", 		"Amount of damage to cause when exploding \n0 = No damage", FCVAR_NOTIFY, true, 0.0, true, 100.0);
 	hCvar_MachineDroppingTime 		= CreateConVar("l4d_machine_dropping_time", 		"0.5", 		"Deployment time for turret in seconds.", FCVAR_NOTIFY, true, 0.5, true, 3.0);
 //	hCvar_ = CreateConVar("l4d_machine_", "1", "", FCVAR_NOTIFY, true, 0.0, true, 1.0);
@@ -539,7 +539,8 @@ public void OnPluginStart()
 	hCvar_MachineBetrayChance.AddChangeHook(ConVarChange);
 	hCvar_MachineLimit.AddChangeHook(ConVarChange);
 	hCvar_MachineLimitGatling.AddChangeHook(ConVarChange);	
-	
+	hCvar_MachineEnableDamage.AddChangeHook(ConVarChange);
+	hCvar_MachineSleepTimeCarry.AddChangeHook(ConVarChange);
 	hCvar_MachineEnableExplosion.AddChangeHook(ConVarChange);
 	hCvar_MachineDroppingTime.AddChangeHook(ConVarChange);
 
@@ -599,7 +600,8 @@ void GetConVar()
 	bCvar_Machine_FinaleOnly = hCvar_Machine_FinaleOnly.BoolValue;
 	bCvar_Machine_SingleTurretMode = hCvar_Machine_SingleTurretMode.BoolValue;
 	bCvar_MachineBlocking = hCvar_MachineBlocking.BoolValue;	
-
+	bCvar_MachineEnableDamage  = hCvar_MachineEnableDamage.BoolValue;
+	bCvar_MachineSleepTimeCarry	= hCvar_MachineSleepTimeCarry.BoolValue;
 	fCvar_MachineDamageToInfected = hCvar_MachineDamageToInfected.FloatValue;
 	fCvar_MachineDamageToSurvivor = hCvar_MachineDamageToSurvivor.FloatValue;
 	fCvar_MachineOverHeat = hCvar_MachineOverHeat.FloatValue;
@@ -683,6 +685,8 @@ void GetConVar()
 		bNauseatingAllowed = false;
 	
 	fCvar_MachineFireRate = 1.0 / fCvar_MachineFireRate;
+	fCvar_MachineFireRateGatling = 1.0 / fCvar_MachineFireRateGatling;
+
 }
 
 /**
@@ -1560,7 +1564,7 @@ public Action CMD_RemoveMachine(int client, int args)
 		}
 		else if(owner > 0 && IsClientInGame(owner) && IsPlayerAlive(owner))
 		{
-			PrintHintText(client, "%t", "Without Access Entity", owner);
+			PrintHintText(client, "%t", "Can't Pick Up", owner);
 		}
 	}
 	
@@ -1971,7 +1975,7 @@ void CreateMachine(int client, int iMachineGunModel, int iSpecialType = NULL)
 		GunEnemy[MachineCount] = 0;
 		GunFireTime[MachineCount] = 0.0;
 		GunFireStopTime[MachineCount] = 0.0;
-		GunFireTotolTime[MachineCount] = 0.0;
+		GunFireTotalTime[MachineCount] = 0.0;
 		GunOwner[MachineCount] = client;
 		GunUser[MachineCount] = client;
 		GunCarrier[MachineCount] = 0;		
@@ -2073,7 +2077,7 @@ void RemoveMachine(int index, int client)
 		GunEnemy[index] = GunEnemy[MachineCount - 1];
 		GunFireTime[index] = GunFireTime[MachineCount - 1];
 		GunFireStopTime[index] = GunFireStopTime[MachineCount - 1];
-		GunFireTotolTime[index] = GunFireTotolTime[MachineCount - 1];
+		GunFireTotalTime[index] = GunFireTotalTime[MachineCount - 1];
 		GunOwner[index] = GunOwner[MachineCount - 1];
 		GunUser[index] = GunUser[MachineCount - 1];
 		GunCarrier[index] = GunCarrier[MachineCount - 1];
@@ -2246,25 +2250,10 @@ void StartCarry(int client, int iEntity)
 
 		if(canCarryGun(index, client))
 		{
-			int owner = GunOwner[index];
-			if(owner > 0 && IsClientInGame(owner) && IsPlayerAlive(owner))
-			{
-				if(owner != client)
-				{
-					PrintHintText(client, "%t", "Can't Pick Up", owner);
-					return;
-				}
-			}
-			else
-			{
-				GunOwner[index] = client;
-			}
+			GunOwner[index] = client;
 		} else {
-			
-			PrintHintText(client, "This gun is not movable");
 			return;
-		}
-		
+		}	
 		GunCarrier[index] = client;
 		//SetEntProp(iEntity, Prop_Send, "m_CollisionGroup", 2);
 		SetEntProp(iEntity, Prop_Send, "m_firing", 0);
@@ -2279,16 +2268,19 @@ void StartCarry(int client, int iEntity)
 		GunState[index] = State_Carry;
 		GunUser[index] = client;
 		GunLastCarryTime[index] = GetEngineTime();
-		GunHealth[index] = fCvar_MachineHealth;
+		float machineHealth = isGatlingGun(index) ? fCvar_MachineHealthGatling : fCvar_MachineHealth;		
+		GunHealth[index] = machineHealth;
 
 		SDKUnhook(Gun[index], SDKHook_OnTakeDamagePost, OnTakeDamagePost);
 
 		GunTeam[index] = 2;
 		
 		StartGlowing(Gun[index], TEAM_SURVIVOR);
+		int ammoCount = isGatlingGun(index) ? iCvar_MachineAmmoCountGatling : iCvar_MachineAmmoCount ;
+
 		if(GunAmmo[index] > 0)
 		{
-			PrintHintText(client, "%t", "Ammo Status", GunAmmo[index]);
+			PrintHintText(client, "%t", "Ammo Status", GunAmmo[index], ammoCount);
 		}
 		else
 		{
@@ -2356,7 +2348,7 @@ void StopCarry(int index)
 		Broken[index] = false;
 		GunEnemy[index] = 0;
 		GunScanIndex[index] = 0;
-		GunFireTotolTime[index] = 0.0;
+		GunFireTotalTime[index] = 0.0;
 		GunTeam[index] = 2;
 		
 		if (bCvar_MachineBlocking != true)
@@ -2368,7 +2360,7 @@ void StopCarry(int index)
 	}
 }
 
-void Carrying(int index, float intervual)
+void Carrying(int index, float interval)
 {
 	int client = GunCarrier[index];
 	int Button = GetClientButtons(client);
@@ -2390,7 +2382,7 @@ void Carrying(int index, float intervual)
 			return;
 		}
 		
-		PressTime[index] += intervual;
+		PressTime[index] += interval;
 		
 		if(PressTime[index] > fCvar_MachineDroppingTime) 
 			if(GetEntityFlags(client) & FL_ONGROUND) 
@@ -2406,6 +2398,8 @@ void Carrying(int index, float intervual)
 
 void SetStatusHealth(int index, float damage, int attacker, bool bBroken = false)
 {
+	if (!bCvar_MachineEnableDamage) return;
+
 	GunHealth[index] -= damage;
 	
 	if(GunHealth[index] <= 0.0 || bBroken == true)
@@ -2424,19 +2418,19 @@ public void PreThinkGun(int iEntity)
 	if(index != -1)
 	{
 		float time = GetEngineTime();
-		float intervual = time - LastTime[index];
+		float interval = time - LastTime[index];
 		LastTime[index] = time;
 
 		if(GunState[index] == State_Scan || GunState[index] == State_Sleep)
 		{
-			ScanAndShootEnemy(index, time, intervual);
+			ScanAndShootEnemy(index, time, interval);
 		}
 		else if(GunState[index] == State_Carry)
 		{
 			int carrier = GunCarrier[index];
 			if(IsClientInGame(carrier) && IsPlayerAlive(carrier) && !IsFakeClient(carrier))
 			{
-				Carrying(index, intervual);
+				Carrying(index, interval);
 			}
 			else
 			{
@@ -2536,7 +2530,7 @@ public void OnTakeDamagePost(int victim, int attacker, int inflictor, float dama
 			Broken[index] = false;
 			GunEnemy[index] = 0;
 			GunScanIndex[index] = 0;
-			GunFireTotolTime[index] = 0.0;
+			GunFireTotalTime[index] = 0.0;
 			GunTeam[index] = 3;
 			GunHealth[index] = isGatlingGun(index) ? fCvar_MachineHealthGatling : fCvar_MachineHealth;
 			
@@ -2556,7 +2550,7 @@ public void OnTakeDamagePost(int victim, int attacker, int inflictor, float dama
 			Broken[index] = false;
 			GunEnemy[index] = 0;
 			GunScanIndex[index] = 0;
-			GunFireTotolTime[index] = 0.0;
+			GunFireTotalTime[index] = 0.0;
 			GunTeam[index] = 2;
 			GunHealth[index] = isGatlingGun(index) ? fCvar_MachineHealthGatling : fCvar_MachineHealth;
 			
@@ -2576,7 +2570,7 @@ public void OnTakeDamagePost(int victim, int attacker, int inflictor, float dama
 			Broken[index] = false;
 			GunEnemy[index] = 0;
 			GunScanIndex[index] = 0;
-			GunFireTotolTime[index] = 0.0;
+			GunFireTotalTime[index] = 0.0;
 			GunHealth[index] = isGatlingGun(index) ? fCvar_MachineHealthGatling : fCvar_MachineHealth;
 			
 			if(bAttackerIsPlayer) 
@@ -2767,7 +2761,7 @@ public Action UserPushTimer(Handle hTimer, DataPack hPack)
 }
 
 
-void ScanAndShootEnemy(int index, float time, float intervual)
+void ScanAndShootEnemy(int index, float time, float interval)
 {
 	bool bExistingEntity = false;
 	int iEntity = Gun[index];
@@ -2833,7 +2827,7 @@ void ScanAndShootEnemy(int index, float time, float intervual)
 	GetEntPropVector(iEntity, Prop_Send, "m_vecOrigin", vPos);
 	GetEntPropVector(iEntity, Prop_Send, "m_angRotation", vAng);
 
-	if(GunLastCarryTime[index] + fCvar_MachineSleepTime < time)
+	if(!bCvar_MachineSleepTimeCarry && (GunLastCarryTime[index] + fCvar_MachineSleepTime < time))
 	{
 		GunState[index] = State_Sleep;
 		vAng[0] =- 45.0;
@@ -2842,7 +2836,6 @@ void ScanAndShootEnemy(int index, float time, float intervual)
 		
 		if(IsValidClient(client))
 			CustomPrintToChatAll("%s %t", sPluginTag, "Machine Gun Inactive State", client);
-		
 		return;
 	}
 	
@@ -2905,8 +2898,8 @@ void ScanAndShootEnemy(int index, float time, float intervual)
 	float diff0 = AngleDiff(vTargetAng[0], vAng[0]);
 	float diff1 = AngleDiff(vTargetAng[1], vAng[1]);
 
-	float turn0 = 45.0 * Sign(diff0) * intervual;
-	float turn1 = 180.0 * Sign(diff1) * intervual;
+	float turn0 = 45.0 * Sign(diff0) * interval;
+	float turn1 = 180.0 * Sign(diff1) * interval;
 	
 	if(FloatAbs(turn0) >= FloatAbs(diff0))
 		turn0 = diff0;
@@ -2958,8 +2951,8 @@ void ScanAndShootEnemy(int index, float time, float intervual)
 
 	if(time < GunFireStopTime[index])
 	{
-		GunFireTotolTime[index] += intervual;
-		heat = GunFireTotolTime[index] / fCvar_MachineOverHeat;
+		GunFireTotalTime[index] += interval;
+		heat = GunFireTotalTime[index] / fCvar_MachineOverHeat;
 		if(heat > 1.0) 
 			heat = 1.0;
 		SetEntProp(iEntity, Prop_Send, "m_firing", 1);
@@ -2968,7 +2961,7 @@ void ScanAndShootEnemy(int index, float time, float intervual)
 	else
 	{
 		SetEntProp(iEntity, Prop_Send, "m_firing", 0);
-		heat = heat - intervual / 4.0;
+		heat = heat - interval / 4.0;
 		if(heat < 0.0)
 		{
 			heat = 0.0;
@@ -2978,7 +2971,7 @@ void ScanAndShootEnemy(int index, float time, float intervual)
 		else 
 			SetEntPropFloat(iEntity, Prop_Send, "m_heat", heat);
 		
-		GunFireTotolTime[index] = fCvar_MachineOverHeat * heat;
+		GunFireTotalTime[index] = fCvar_MachineOverHeat * heat;
 	}
 	
 	Broken[index] = false;
@@ -3034,7 +3027,7 @@ int IsEnemyVisible(int iEntity, int iNewTarget, float vStartingPos[3], float vEn
 		}
 		else if(iTeam == 3)
 		{
-			if((IsInfected(target) || IsWitch(target) || IsValidInfected(target) == TANK))
+			if(IsInfected(target) || IsWitch(target) || IsValidInfected(target) == TANK || (IsValidInfected(target) != NULL && !IsPlayerGhost(target)))
 				return target;
 			else 
 				return 0;
@@ -3161,7 +3154,7 @@ void Shot(int client, int index, int iEntity, int iTeam, float vMachinePosition[
 			
 		ShowTrack(GunType[index], vMachinePosition, vTargetPosition); 						
 		
-		if(GunType[index] == MACHINE_50CAL && bAllowSound[iEntity] == false) 
+		if((GunType[index] == MACHINE_50CAL || GunType[index] == MACHINE_MINI) && bAllowSound[iEntity] == false)
 			EmitSoundToAll(SOUND_SHOOT_50CAL, 0, SNDCHAN_WEAPON, SNDLEVEL_NORMAL, SND_NOFLAGS, 1.0, SNDPITCH_NORMAL, -1, vMachinePosition, NULL_VECTOR, true, 0.0);			
 	}
 	

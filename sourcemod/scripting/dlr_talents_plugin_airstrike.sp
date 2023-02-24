@@ -15,15 +15,12 @@
 *	You should have received a copy of the GNU General Public License
 *	along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-
-
-
 #define PLUGIN_VERSION		"1.10"
 
 /*======================================================================================
 	Plugin Info:
 
-*	Name	:	[L4D2] F-18 Airstrike
+*	Name	:	[DLR] F-18 Airstrike plugin
 *	Author	:	SilverShot
 *	Descrp	:	Creates F-18 flybys which shoot missiles to where they were triggered from.
 *	Link	:	https://forums.alliedmods.net/showthread.php?t=187567
