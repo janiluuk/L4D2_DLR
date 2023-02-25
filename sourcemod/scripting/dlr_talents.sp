@@ -2927,7 +2927,7 @@ int MA_OnGameFrame()
 		if (g_iMeleeEntityIndex[iCid] == iEntid && g_flNextMeleeAttackTime[iCid] < flNextPrimaryAttack)
 		{
 			//this is a calculation of when the next primary attack will be after applying double tap values
-			//flNextTime_calc = ( flNextPrimaryAttack - flGameTime ) * g_flMA_attrate + flGameTime;
+			flNextTime_calc = ( flNextPrimaryAttack - flGameTime ) * GetConVarFloat(SOLDIER_FIRE_RATE) + flGameTime;
 			//flNextTime_calc = flGameTime + 0.45 ;
 			// flNextTime_calc = flGameTime + melee_speed[iCid] ;
 
