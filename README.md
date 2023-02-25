@@ -54,6 +54,7 @@ Roadmap
 - Show player class above their head / in HUD (Using "Hats" plugin + eddect)
 - Saboteur can see infected outlines when in "predator mode". Instakill if manages to sneak up behind.
 - Smoker should have much more visible and thick cloud when gets killed.
+- Make turrets cfg option to allow having only 1 non destroyed turret at the time.
 - Rewrite for missile plugin to fit better with this one and improve their function.
 - Docker image with rcon web admin tool integrated and plug'n play server generation
 - Skill editor to generate new perks / classes.
@@ -147,7 +148,7 @@ native void OnSpecialSkillFail(int client, char[] skillName, char[] reason);
 native int RegisterDLRSkill(char[] skillName);  
 ``` 
 # Plugin file changes
-Add DLRCore.sp in your include folder and make sure you have dlr_talents_2023.smx available.
+Add DLRCore.sp in your include folder and make sure you have dlr_talents.smx available.
 Include this in the plugin file header that you want to implement
 
 
