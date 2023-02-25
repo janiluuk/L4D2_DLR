@@ -161,25 +161,25 @@ Include this in the plugin file header that you want to implement
 	native void OnSpecialSkillSuccess(int client, char[] skillName);
 	native void OnSpecialSkillFail(int client, char[] skillName, char[] reason);
 	native void GetPlayerSkillName(int client, char[] skillName, int size);
-	native int RegisterDLRSkill(char[] skillName);  
+	native int  RegisterDLRSkill(char[] skillName, 0);  
 #endif
 static bool DLR_Available = false;
-#define PLUGIN_SKILL_NAME "Foobar"
+#define PLUGIN_SKILL_NAME "Plugin Name"
 /****************************************************/
 ``` 
 
 Include these functions;
 ``` 
-public void OnAllPluginsLoaded()
+public void DLR_OnPluginState(int pluginstate)
 {
-	DLR_Available = LibraryExists("dlr_talents");
+	DLR_Available = IntToBool(pluginstate);
+	g_iClassID = DLR_Available ? RegisterDLRSkill(PLUGIN_SKILL_NAME, 0) : -1;
     ....
 }
 
-public void OnLibraryAdded(const char[] sName)
+public void DLR_OnRoundState(int roundstate)
 {
-	if( StrEqual( sName, "dlr_talents" ) )
-		DLR_Available = true;
+	// Implement optional actions on round state change
      ....
 }
 
@@ -198,6 +198,16 @@ public void OnSpecialSkillUsed(int iClient, int skill)
 		CMD_MainMenu(iClient, 0);
 	}
 }
+
+// Alternative way to cal
+public void OnCustomCommand(int iClient, int skill)
+{
+	if (skill == FindSkillIdByName(PLUGIN_SKILL_NAME) {
+
+		CMD_MainMenu(iClient, 0);
+	}
+}
+
 ```
 
 See Multiturret implementation as example
