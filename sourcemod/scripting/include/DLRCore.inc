@@ -53,6 +53,23 @@ forward OnPlayerClassChange(client, className, previousClass);
 forward OnSpecialSkillUsed(int iClient, int skill, int type);  
 
 /**
+ * Called when round starts or finishes
+ *
+ * @param state 	int value, 1=Started/0=Finished
+ * @noreturn
+ */
+forward DLR_OnRoundState(int state);
+
+/**
+ * Called when plugin becomes available
+ *
+ *
+ * @param state 	int value, 1=Available/0=Unloaded
+ * @noreturn
+ */
+forward DLR_OnPluginStateq(int state);
+
+/**
  * Called when player has successfully used special skill
  *
  * @param client         The client index of the player playing tetris.
@@ -117,9 +134,40 @@ public __pl_DLRCore_SetNTVOptional()
 }
 #endif
 
+/**
+ TIMERS 
+**/
+stock Handle:g_ClientTimers[MAXPLAYERS+1];
+
+stock CreateClientTimer(client, Float:interval, Timer:func, flags=TIMER_REPEAT)
+{
+    if (g_ClientTimers[client] == INVALID_HANDLE)
+        g_ClientTimers[client] = CreateTimer(interval,func,client,flags);
+}
+
+stock KillClientTimer(client)
+{
+    new Handle:timer=g_ClientTimers[client];
+    if (timer != INVALID_HANDLE)
+    {
+        KillTimer(timer);
+        g_ClientTimers[client] = INVALID_HANDLE;    
+    }
+}
+
+stock KillAllClientTimers()
+{
+    for (new i = 1; i <= MaxClients; i++)
+        KillClientTimer(i);
+}  
+
+
 #define MAXPROPERTIES			16										// Total data entries to read from a grenades config
 #define MAXCLASS				8	
-/**
+
+
+/** CLASS SYSTEM **/
+
 enum struct playerClass {
 	int perkId
 	char className[32]
@@ -134,16 +182,30 @@ enum struct playerClass {
 }
 
 enum struct skillSet {
-	int skillId
-	char skillName[32]
-	char skillDescription[128]
-	char skillIdentifier[32]
+	int skillSetId
+	char skillSetName[32]
+	char skillSetDescription[128]
+	char skillISetdentifier[32]
+	int maxPlayers
+	int	type 
+	int action // 1 = Plugin, 2 = Internal command, 3 = perk, ran on round start and reset in end
+	char menuIdentifier[16]
+	skillAction[MAXPROPERTIES] actions
+}
+
+enum struck skillAction {
+	int client
+	int actionId
+	int actionType // 1 = Execute standard OnSpecialSKillUsed hooks // 2 = use OnCustomCommand hook // 3 = execute on startup	
+	int pluginName
+	char parameter[3];
+	char[2] bindToKey
+	int interval
+	float lastUsed
+	bool runInStartup
 	char successText[128]
 	char failureText[128]
-	char modifierKey[32]
-	int maxUsage
-	int interval
-	int	type // 1 = Plugin, 2 = Internal command, 3 = perk, ran on round start and reset in end
-	int action // 1 = Execute, 2 = Include in menu	
+	char announceText[128]
 }
-**/
+
+
