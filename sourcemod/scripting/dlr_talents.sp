@@ -2866,7 +2866,7 @@ int MA_OnGameFrame()
 	//been run, so we don't bother with any checks here
 	for (int i = 1; i <= g_iSoldierCount; i++)
 	{
-		if(!ClientData[i].ChosenClass != SOLDIER) {continue;}
+		if(ClientData[i].ChosenClass != SOLDIER) {continue;}
 
 		//PRE-CHECKS 1: RETRIEVE VARS
 		//---------------------------
