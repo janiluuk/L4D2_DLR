@@ -159,10 +159,20 @@ bool g_bLeft4Dead2, g_bLateLoad;
 bool g_bAirstrike, g_bAirstrikeValid;
 
 // Rapid fire variables
-new g_iRI[MAXPLAYERS+1] = { -1 },
-g_iRC, g_iEi[MAXPLAYERS+1] = { -1 },
+new g_iSoldierIndex[MAXPLAYERS+1] = { -1 },
+g_iSoldierCount, g_iEntityIndex[MAXPLAYERS+1] = { -1 },
+g_iMeleeEntityIndex[64] = -1;
+g_iNotMeleeEntityIndex[64] = -1;
+//these are similar to those used by Double Tap
+float g_flMeleeAttackTime[64] = -1.0;
+float g_flNextMeleeAttackTime[64] = -1.0;
+
+//this tracks the attack count, similar to 
+int g_iMeleeAttackCount[64] = -1;
+
 Float:g_fNT[MAXPLAYERS+1] = { -1.0 },
 g_flNextPrimaryAttack = -1,
+g_flNextSecondaryAttack = -1;
 g_hActiveWeapon = -1;
 
 // Speed vars
@@ -177,7 +187,7 @@ new g_flTimeWeaponIdle = -1;
 new g_reloadStartDuration = -1;
 new g_reloadInsertDuration = -1;
 new g_reloadEndDuration = -1;
-new g_iSRS = -1;
+new g_iReloadState = -1;
 new g_iShovePenalty = 0;
 float g_fSavedShoveTime[MAXPLAYERS+1];
 
@@ -375,6 +385,8 @@ public OnPluginStart( )
 
 	// Offsets
 	g_flNextPrimaryAttack = FindSendPropInfo("CBaseCombatWeapon", "m_flNextPrimaryAttack");
+	g_flNextSecondaryAttack	= FindSendPropInfo("CBaseCombatWeapon","m_flNextSecondaryAttack");
+
 	g_hActiveWeapon = FindSendPropInfo("CTerrorPlayer", "m_hActiveWeapon");
 	g_flLaggedMovementValue = FindSendPropInfo("CTerrorPlayer", "m_flLaggedMovementValue");
 	g_flPlaybackRate = FindSendPropInfo("CBaseCombatWeapon", "m_flPlaybackRate");
@@ -383,7 +395,7 @@ public OnPluginStart( )
 	g_reloadStartDuration = FindSendPropInfo("CBaseShotgun", "m_reloadStartDuration");
 	g_reloadInsertDuration = FindSendPropInfo("CBaseShotgun", "m_reloadInsertDuration");
 	g_reloadEndDuration = FindSendPropInfo("CBaseShotgun", "m_reloadEndDuration");
-	g_iSRS = FindSendPropInfo("CBaseShotgun", "m_reloadState");
+	g_iReloadState = FindSendPropInfo("CBaseShotgun", "m_reloadState");
 	g_iVMStartTimeO = FindSendPropInfo("CTerrorViewModel","m_flLayerStartTime");
 	g_iViewModelO = FindSendPropInfo("CTerrorPlayer","m_hViewModel");
 	g_iVelocity = FindSendPropInfo("CBasePlayer", "m_vecVelocity[0]");
@@ -836,17 +848,17 @@ public Action:TimerLoadClient(Handle:hTimer, any:client)
 
 public Action:OnWeaponDrop(client, weapon)
 {
-	RebuildCache();
+//	RebuildCache();
 }
 
 public Action:OnWeaponSwitch(client, weapon)
 {
-	RebuildCache();
+//	RebuildCache();
 }
 
 public Action:OnWeaponEquip(client, weapon)
 {
-	RebuildCache();
+//	RebuildCache();
 }
 
 public OnClientDisconnect(client)
@@ -1132,11 +1144,11 @@ public ShowBar(client, String:msg[], Float:pos, Float:max)
 
 public ClearCache()
 {
-	g_iRC = 0;
+	g_iSoldierCount = 0;
 	for (new i = 1; i <= MaxClients; i++)
 	{
-		g_iRI[i]= -1;
-		g_iEi[i] = -1;
+		g_iSoldierIndex[i]= -1;
+		g_iEntityIndex[i] = -1;
 		g_fNT[i]= -1.0;
 	}
 }
@@ -1152,8 +1164,8 @@ public RebuildCache()
 	{
 		if (IsValidEntity(i) && IsClientInGame(i) && IsPlayerAlive(i) && GetClientTeam(i) == 2 && ClientData[i].ChosenClass == SOLDIER)
 		{
-			g_iRC++;
-			g_iRI[g_iRC] = i;
+			g_iSoldierCount++;
+			g_iSoldierIndex[g_iSoldierCount] = i;
 		}
 	}
 }
@@ -2240,8 +2252,8 @@ public Event_RelCommandoClass(Handle:event, String:name[], bool:dontBroadcast)
 		new Float:fReloadRatio = GetConVarFloat(COMMANDO_RELOAD_RATIO);
 		new Float:flNextTime_calc = (GetEntDataFloat(weapon, g_flNextPrimaryAttack) - flGameTime) * fReloadRatio;
 		new Float:flNextAttack = flNextTime_calc + flGameTime;
-		new Float:flNextTime_ret = GetEntDataFloat(weapon, g_flNextPrimaryAttack);
-		new Float:flStartTime_calc = flGameTime - ( flNextTime_ret - flGameTime ) * ( 1 - fReloadRatio ) ;
+		new Float:flNextPrimaryAttack = GetEntDataFloat(weapon, g_flNextPrimaryAttack);
+		new Float:flStartTime_calc = flGameTime - ( flNextPrimaryAttack - flGameTime ) * ( 1 - fReloadRatio ) ;
 		WritePackFloat(hPack, flStartTime_calc);
 		
 		if ( (flNextTime_calc - 0.4) > 0 )
@@ -2349,7 +2361,7 @@ public Action:CommandoPumpShotReload(Handle:timer, Handle:hOldPack)
 	new Handle:hPack = CreateDataPack();
 	WritePackCell(hPack, weapon);
 	
-	if (GetEntData(weapon, g_iSRS) != 2)
+	if (GetEntData(weapon, g_iReloadState) != 2)
 	{
 		WritePackFloat(hPack, 0.2);
 		CreateTimer(0.3, CommandoShotCalculate, hPack, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
@@ -2376,7 +2388,7 @@ public Action:CommandoShotCalculate(Handle:timer, Handle:hPack)
 		return Plugin_Stop;
 	}
 	
-	if (GetEntData(weapon, g_iSRS) == 0 || GetEntData(weapon, g_iSRS) == 2 )
+	if (GetEntData(weapon, g_iReloadState) == 0 || GetEntData(weapon, g_iReloadState) == 2 )
 	{
 		new Float:flNextTime = GetGameTime() + addMod;
 		
@@ -2743,7 +2755,7 @@ stock DisableAllUpgrades(client)
 
 public OnGameFrame()
 {
-	if (!g_iRC)
+	if (!g_iSoldierCount)
 	return;
 
 	decl client;
@@ -2752,9 +2764,9 @@ public OnGameFrame()
 	decl Float:flNextPrimaryAttack;
 	new Float:fGameTime = GetGameTime();
 	
-	for (new i = 1; i <= g_iRC; i++)
+	for (new i = 1; i <= g_iSoldierCount; i++)
 	{
-		client = g_iRI[i];
+		client = g_iSoldierIndex[i];
 		
 		if (!client
 			|| client >= MAXPLAYERS
@@ -2764,8 +2776,9 @@ public OnGameFrame()
 			|| GetClientTeam(client) != 2
 			|| ClientData[client].ChosenClass != SOLDIER)
 		continue;
-		
-		if(GetConVarBool(SOLDIER_SHOVE_PENALTY) == false)
+
+
+		if(IsValidEntity(i) && IsPlayerAlive(i) && GetClientTeam(i) == 2 && IsClientInGame(i) && ClientData[i].ChosenClass == SOLDIER && GetConVarBool(SOLDIER_SHOVE_PENALTY) == false )
 		{
 			//If the player is pressing the right click of the mouse, proceed
 			if(GetClientButtons(i) & IN_ATTACK2)
@@ -2774,28 +2787,56 @@ public OnGameFrame()
 				SetEntData(i, g_iShovePenalty, 0, 4);
 			}
 		}
+	}
+
+	if (!IsServerProcessing() || !RoundStarted) {return;}
+	else
+	{
+	MA_OnGameFrame();
+		DT_OnGameFrame();
+	}
+}
+void DT_OnGameFrame()
+{
+	if (g_iSoldierCount == 0) {return;}
+
+	//this tracks the calculated next attack
+	float flNextTime_calc;
+	//this, on the other hand, tracks the current next attack
+	float flNextPrimaryAttack;
+
+	decl iActiveWeapon;
+	float flGameTime = GetGameTime();
+	int client;
+
+	for (new i = 1; i <= g_iSoldierCount; i++)
+	{
+
+		if(ClientData[i].ChosenClass != SOLDIER) continue;
+		client = g_iSoldierIndex[i];
+
 
 		iActiveWeapon = GetEntDataEnt2(client, g_hActiveWeapon);
-		
+
 		if(iActiveWeapon <= 0) 
 		continue;
 		
 		flNextPrimaryAttack = GetEntDataFloat(iActiveWeapon, g_flNextPrimaryAttack);
 		
-		if (g_iEi[client] == iActiveWeapon && g_fNT[client] >= flNextPrimaryAttack)
+		if (g_iEntityIndex[client] == iActiveWeapon && g_fNT[client] >= flNextPrimaryAttack)
 		continue;
 		
-		if (g_iEi[client] == iActiveWeapon && g_fNT[client] < flNextPrimaryAttack)
+		if (g_iEntityIndex[client] == iActiveWeapon && g_fNT[client] < flNextPrimaryAttack)
 		{
-			flNextTime_calc = ( flNextPrimaryAttack - fGameTime ) * GetConVarFloat(SOLDIER_FIRE_RATE) + fGameTime;
+			flNextTime_calc = ( flNextPrimaryAttack - flGameTime ) * GetConVarFloat(SOLDIER_FIRE_RATE) + flGameTime;
 			g_fNT[client] = flNextTime_calc;
 			SetEntDataFloat(iActiveWeapon, g_flNextPrimaryAttack, flNextTime_calc, true);
 			continue;
 		}
 		
-		if (g_iEi[client] != iActiveWeapon)
+		if (g_iEntityIndex[client] != iActiveWeapon)
 		{
-			g_iEi[client] = iActiveWeapon;
+			g_iEntityIndex[client] = iActiveWeapon;
 			g_fNT[client] = flNextPrimaryAttack;
 			continue;
 		}
@@ -2803,6 +2844,131 @@ public OnGameFrame()
 
 
 }
+
+/* ***************************************************************************/
+//Since this is called EVERY game frame, we need to be careful not to run too many functions
+//kinda hard, though, considering how many things we have to check for =.=
+int MA_OnGameFrame()
+{
+	if (g_iSoldierCount <= 0) {return 0;}
+
+	int iCid;
+	//this tracks the player's ability id
+	int iEntid;
+	//this tracks the calculated next attack
+	float flNextTime_calc;
+	//this, on the other hand, tracks the current next attack
+	float flNextPrimaryAttack;
+	//and this tracks the game time
+	float flGameTime = GetGameTime();
+
+	//theoretically, to get on the MA registry, all the necessary checks would have already
+	//been run, so we don't bother with any checks here
+	for (int i = 1; i <= g_iSoldierCount; i++)
+	{
+		if(ClientData[i].ChosenClass != SOLDIER) {continue;}
+
+		//PRE-CHECKS 1: RETRIEVE VARS
+		//---------------------------
+		iCid = g_iSoldierIndex[i];
+		//stop on this client when the next client id is null
+		if (iCid <= 0) continue;
+		if(!IsClientInGame(iCid)) continue;
+		if(!IsClientConnected(iCid)) continue; 
+		if (!IsPlayerAlive(iCid)) continue;
+		if(GetClientTeam(iCid) != 2) continue;
+		iEntid = GetEntDataEnt2(iCid, g_hActiveWeapon);
+		//if the retrieved gun id is -1, then...
+		//wtf mate? just move on
+		if (iEntid == -1) continue;
+		//and here is the retrieved next attack time
+		flNextPrimaryAttack = GetEntDataFloat(iEntid, g_flNextPrimaryAttack);
+
+		//CHECK 1: IS PLAYER USING A KNOWN NON-MELEE WEAPON?
+		//--------------------------------------------------
+		//as the title states... to conserve processing power,
+		//if the player's holding a gun for a prolonged time
+		//then we want to be able to track that kind of state
+		//and not bother with any checks
+		//checks: weapon is non-melee weapon
+		//actions: do nothing
+		if (iEntid == g_iNotMeleeEntityIndex[iCid])
+		{
+			continue;
+		}
+
+		//CHECK 1.5: THE PLAYER HASN'T SWUNG HIS WEAPON FOR A WHILE
+		//---------------------------------------------------------
+		//in this case, if the player made 1 swing of his 2 strikes, and then paused long enough, 
+		//we should reset his strike count so his next attack will allow him to strike twice
+		//checks: is the delay between attacks greater than 1.5s?
+		//actions: set attack count to 0, and CONTINUE CHECKS
+		if (g_iMeleeEntityIndex[iCid] == iEntid && g_iMeleeAttackCount[iCid] != 0 && (flGameTime - flNextPrimaryAttack) > 1.0)
+		{
+			g_iMeleeAttackCount[iCid] = 0;
+		}
+
+		//CHECK 2: BEFORE ADJUSTED ATT IS MADE
+		//------------------------------------
+		//since this will probably be the case most of the time, we run this first
+		//checks: weapon is unchanged; time of shot has not passed
+		//actions: do nothing
+		if (g_iMeleeEntityIndex[iCid] == iEntid && g_flNextMeleeAttackTime[iCid] >= flNextPrimaryAttack)
+		{
+			continue;
+		}
+
+		//CHECK 3: AFTER ADJUSTED ATT IS MADE
+		//------------------------------------
+		//at this point, either a gun was swapped, or the attack time needs to be adjusted
+		//checks: stored gun id same as retrieved gun id,
+		//        and retrieved next attack time is after stored value
+		//actions: adjusts next attack time
+		if (g_iMeleeEntityIndex[iCid] == iEntid && g_flNextMeleeAttackTime[iCid] < flNextPrimaryAttack)
+		{
+			//this is a calculation of when the next primary attack will be after applying double tap values
+			flNextTime_calc = ( flNextPrimaryAttack - flGameTime ) * GetConVarFloat(SOLDIER_FIRE_RATE) + flGameTime;
+			//flNextTime_calc = flGameTime + 0.45 ;
+			// flNextTime_calc = flGameTime + melee_speed[iCid] ;
+
+			//then we store the value
+			g_flNextMeleeAttackTime[iCid] = flNextTime_calc;
+
+			//and finally adjust the value in the gun
+			SetEntDataFloat(iEntid, g_flNextPrimaryAttack, flNextTime_calc, true);
+
+			continue;
+		}
+
+		//CHECK 4: CHECK THE WEAPON
+		//-------------------------
+		//lastly, at this point we need to check if we are, in fact, using a melee weapon =P
+		//we check if the current weapon is the same one stored in memory; if it is, move on;
+		//otherwise, check if it's a melee weapon - if it is, store and continue; else, continue.
+		//checks: if the active weapon is a melee weapon
+		//actions: store the weapon's entid into either
+		//         the known-melee or known-non-melee variable
+
+		//check if the weapon is a melee
+		char stName[32];
+		GetEntityNetClass(iEntid,stName,32);
+		if (StrEqual(stName,"CTerrorMeleeWeapon",false)==true)
+		{
+			//if yes, then store in known-melee var
+			g_iMeleeEntityIndex[iCid]=iEntid;
+			g_flNextMeleeAttackTime[iCid]=flNextPrimaryAttack;
+			continue;
+		}
+		else
+		{
+			//if no, then store in known-non-melee var
+			g_iNotMeleeEntityIndex[iCid]=iEntid;
+			continue;
+		}
+	}
+	return 0;
+}
+
 
 public Action:OnTakeDamagePre(victim, &attacker, &inflictor, &Float:damage, &damagetype)
 {
