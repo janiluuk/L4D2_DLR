@@ -2928,7 +2928,7 @@ int MA_OnGameFrame()
 		{
 			//this is a calculation of when the next primary attack will be after applying double tap values
 			//flNextTime_calc = ( flNextPrimaryAttack - flGameTime ) * g_flMA_attrate + flGameTime;
-			flNextTime_calc = flGameTime + 0.45 ;
+			//flNextTime_calc = flGameTime + 0.45 ;
 			// flNextTime_calc = flGameTime + melee_speed[iCid] ;
 
 			//then we store the value
