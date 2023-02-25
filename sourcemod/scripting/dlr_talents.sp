@@ -16,7 +16,7 @@
 */
 
 #define PLUGIN_NAME "Talents Plugin 2023 anniversary edition"
-#define PLUGIN_VERSION "1.6"
+#define PLUGIN_VERSION "1.62"
 #define PLUGIN_IDENTIFIER "dlr_talents_2023"
 #pragma semicolon 1
 #define DEBUG 0
@@ -621,7 +621,8 @@ public Native_RegisterSkill(Handle:plugin, numParams)
 {
 	if (GetConVarBool(pluginEnabled) == false) 
 	{
-		PrintDebugAll(, any ...)
+		PrintDebugAll("DLR plugin is disabled");
+		return -1;
 	}
 
 	char szItemInfo[3];
@@ -636,6 +637,10 @@ public Native_RegisterSkill(Handle:plugin, numParams)
  
 	char[] szSkillName = new char[len + 1];
 	GetNativeString(1, szSkillName, len + 1);
+	if (g_hSkillArray == INVALID_HANDLE) {
+		g_hSkillArray = CreateArray(16);
+		g_hSkillTypeArray = CreateArray(16);
+	}
 
 	if(++g_iSkillCounter <= MAXCLASSES)
 	{
@@ -3111,7 +3116,7 @@ public Action:OnTakeDamagePre(victim, &attacker, &inflictor, &Float:damage, &dam
 	
 	if (victim && attacker && IsValidEntity(attacker) && attacker <= MaxClients && IsValidEntity(victim) && victim <= MaxClients)
 	{
-		if( damagetype & DMG_BLAST && GetEntProp(inflictor, Prop_Data, 	)
+		if( damagetype & DMG_BLAST && GetEntProp(inflictor, Prop_Data,  "m_iHammerID") == 1078682)
 		{
 			if(GetClientTeam(victim) == 2 )
 				damage = GetConVarFloat(SABOTEUR_BOMB_DAMAGE_SURV);

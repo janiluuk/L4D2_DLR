@@ -165,7 +165,9 @@ stock KillAllClientTimers()
 #define MAXPROPERTIES			16										// Total data entries to read from a grenades config
 #define MAXCLASS				8	
 
-/**
+
+/** CLASS SYSTEM **/
+
 enum struct playerClass {
 	int perkId
 	char className[32]
@@ -180,16 +182,30 @@ enum struct playerClass {
 }
 
 enum struct skillSet {
-	int skillId
-	char skillName[32]
-	char skillDescription[128]
-	char skillIdentifier[32]
+	int skillSetId
+	char skillSetName[32]
+	char skillSetDescription[128]
+	char skillISetdentifier[32]
+	int maxPlayers
+	int	type 
+	int action // 1 = Plugin, 2 = Internal command, 3 = perk, ran on round start and reset in end
+	char menuIdentifier[16]
+	skillAction[MAXPROPERTIES] actions
+}
+
+enum struck skillAction {
+	int client
+	int actionId
+	int actionType // 1 = Execute standard OnSpecialSKillUsed hooks // 2 = use OnCustomCommand hook // 3 = execute on startup	
+	int pluginName
+	char parameter[3];
+	char[2] bindToKey
+	int interval
+	float lastUsed
+	bool runInStartup
 	char successText[128]
 	char failureText[128]
-	char modifierKey[32]
-	int maxUsage
-	int interval
-	int	type // 1 = Plugin, 2 = Internal command, 3 = perk, ran on round start and reset in end
-	int action // 1 = Execute, 2 = Include in menu	
+	char announceText[128]
 }
-**/
+
+
