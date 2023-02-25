@@ -673,65 +673,9 @@ public Plugin myinfo =
 	url = "https://forums.alliedmods.net/showthread.php?t=318965"
 }
 
-public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
-{
-	EngineVersion test = GetEngineVersion();
-	if( test == Engine_Left4Dead ) g_bLeft4Dead2 = false;
-	else if( test == Engine_Left4Dead2 ) g_bLeft4Dead2 = true;
-	else
-	{
-		strcopy(error, err_max, "Plugin only supports Left 4 Dead 1 & 2.");
-		return APLRes_SilentFailure;
-	}
-	MarkNativeAsOptional("LMC_GetEntityOverlayModel"); // LMC
-	MarkNativeAsOptional("L4D_AngularVelocity");
-	MarkNativeAsOptional("F18_ShowAirstrike");
-	MarkNativeAsOptional("OnCustomCommand");	
-
-	g_bLateLoad = late;
-
-	return APLRes_Success;
-}
-
-public void OnAllPluginsLoaded()
-{
-	bLMC_Available = LibraryExists("LMCEDeathHandler");
-	DLR_Available = LibraryExists("dlr_talents_2023");
-
-	if (DLR_Available && g_iClassID == -1) {
-		g_iClassID = RegisterDLRSkill("Grenades", 0);
-	}
-}
-
-public void OnLibraryAdded(const char[] sName)
-{
-	if( strcmp(sName, "LMCEDeathHandler") == 0 )
-		bLMC_Available = true;
-	else if( strcmp(sName, "left4dhooks") == 0 )
-		g_bLeft4DHooks = true;
-	else if( strcmp(sName, "dlr_talents_2023") == 0 )
-		DLR_Available = true;		
-	else if( g_bLeft4Dead2 && strcmp(sName, "l4d2_airstrike") == 0 )
-	{
-		g_bAirstrike = true;
-
-		// Assuming valid for late load
-		if( g_bLateLoad )
-			g_bAirstrikeValid = true;
-	}
-}
-
-public void OnLibraryRemoved(const char[] sName)
-{
-	if( strcmp(sName, "LMCEDeathHandler") == 0 )
-		bLMC_Available = false;
-	else if( strcmp(sName, "left4dhooks") == 0 )
-		g_bLeft4DHooks = false;
-	else if( strcmp(sName, "dlr_talents_2023") == 0 )
-		DLR_Available = false;		
-	else if( g_bLeft4Dead2 && strcmp(sName, "l4d2_airstrike") == 0 )
-		g_bAirstrike = true;
-}
+//////////////////////7
+// DLR functions
+///////////////////////
 
 public int OnCustomCommand(char[] name, int client, int entity, int type)
 {
@@ -752,6 +696,46 @@ public int OnCustomCommand(char[] name, int client, int entity, int type)
 	#endif
 
 	DoSpawn(client, type, projectile, entity);
+}
+
+public void DLR_OnPluginState(int pluginstate)
+{
+	static int mystate;
+
+	if( pluginstate == 1 && mystate == 0 )
+	{
+		SetConVarFloat(g_hCvarAllow, true);ä
+		mystate = 1;
+		DLRAvailable = true;
+		g_		
+		if (g_iClassID == -1) {
+			g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
+		}
+
+	}
+	else if( pluginstate == 0 && mystate == 1 )
+	{
+		SetConVarFloat(g_hCvarAllow, false);ä
+		mystate = 0;
+		DLRAvailable = false;
+		if (g_iClassID > -1) {
+			g_iClassID = -1;
+
+		}
+	}
+}
+
+public void DLR_OnRoundState(int roundstate)
+{
+
+	if( roundstate == 1 && g_bMapStarted == 0 )
+	{
+		g_bMapStarted = 1;
+	}
+	else if( roundstate == 0 && g_bMapStarted == 1 )
+	{
+		g_bMapStarted = 0;
+	}
 }
 
 public void OnPluginStart()
@@ -820,8 +804,6 @@ public void OnPluginStart()
 
 	delete hGameData;
 
-
-
 	// ====================================================================================================
 	// CVARS
 	// ====================================================================================================
@@ -877,8 +859,6 @@ public void OnPluginStart()
 	RegAdminCmd("sm_grenade_spawn",		Cmd_SpawnSpawn,	ADMFLAG_ROOT, "Spawn grenade explosions: <type: 1 - 20>");
 	RegAdminCmd("sm_grenade_throw",		Cmd_SpawnThrow,	ADMFLAG_ROOT, "Spawn grenade projectile: <type: 1 - 20>");
 
-
-
 	// ====================================================================================================
 	// OTHER
 	// ====================================================================================================
@@ -889,31 +869,20 @@ public void OnPluginStart()
 
 	LoadTranslations("grenades.phrases");
 
-
-
 	// Saved client options
 	g_hCookie = RegClientCookie("l4d_grenades_modes", "Prototype Grenades - Modes", CookieAccess_Protected);
-
-
 
 	// Max char health
 	m_maxHealth = FindSendPropInfo("CTerrorPlayerResource", "m_maxHealth");
 
-
-
 	// UserMsg
 	g_FadeUserMsgId = GetUserMessageId("Fade");
-
-
 
 	// Late load
 	if( g_bLateLoad )
 	{
 		LoadDataConfig();
 		IsAllowed();
-		if (g_iClassID == -1)
-		g_iClassID = RegisterDLRSkill("Grenades", 0);
-
 	}
 
 	g_iClassTank = g_bLeft4Dead2 ? 8 : 5;
@@ -922,16 +891,10 @@ public void OnPluginStart()
 		g_hAlAcid = new ArrayList();
 }
 
-public void OnPluginEnd()
-{
-	ResetPlugin(true);
-}
-
-
-
 // ====================================================================================================
 //					CLIENT PREFS
 // ====================================================================================================
+
 public void OnClientPutInServer(int client)
 {
 	if( g_bCvarAllow )
@@ -994,8 +957,66 @@ void SetClientPrefs(int client)
 	}
 }
 
+public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
+{
+	EngineVersion test = GetEngineVersion();
+	if( test == Engine_Left4Dead ) g_bLeft4Dead2 = false;
+	else if( test == Engine_Left4Dead2 ) g_bLeft4Dead2 = true;
+	else
+	{
+		strcopy(error, err_max, "Plugin only supports Left 4 Dead 1 & 2.");
+		return APLRes_SilentFailure;
+	}
+	MarkNativeAsOptional("LMC_GetEntityOverlayModel"); // LMC
+	MarkNativeAsOptional("L4D_AngularVelocity");
+	MarkNativeAsOptional("F18_ShowAirstrike");
+	MarkNativeAsOptional("OnCustomCommand");	
+	MarkNativeAsOptional("DLR_OnRoundState");	
+	MarkNativeAsOptional("DLR_OnPluginState");	
+	g_bLateLoad = late;
 
+	return APLRes_Success;
+}
 
+public void OnAllPluginsLoaded()
+{
+	bLMC_Available = LibraryExists("LMCEDeathHandler");
+}
+
+public void OnLibraryAdded(const char[] sName)
+{
+	if( strcmp(sName, "LMCEDeathHandler") == 0 )
+		bLMC_Available = true;
+	else if( strcmp(sName, "left4dhooks") == 0 )
+		g_bLeft4DHooks = true;
+	else if( strcmp(sName, "dlr_talents_2023") == 0 )
+		DLR_Available = true;		
+	else if( g_bLeft4Dead2 && strcmp(sName, "l4d2_airstrike") == 0 )
+	{
+		g_bAirstrike = true;
+		// Assuming valid for late load
+		if( g_bLateLoad )
+			g_bAirstrikeValid = true;
+	}
+}
+public void OnLibraryRemoved(const char[] sName)
+{
+	if( strcmp(sName, "LMCEDeathHandler") == 0 )
+		bLMC_Available = false;
+	else if( strcmp(sName, "left4dhooks") == 0 )
+		g_bLeft4DHooks = false;
+	else if( strcmp(sName, "dlr_talents_2023") == 0 ) {
+		DLR_Available = false;
+		g_iClassID = -1;
+	}
+	else if( g_bLeft4Dead2 && strcmp(sName, "l4d2_airstrike") == 0 )
+		g_bAirstrike = true;
+}
+
+public void OnPluginEnd()
+{
+	ResetPlugin(true);
+}
 // ====================================================================================================
 //					COMMANDS
 // ====================================================================================================
@@ -1321,8 +1342,6 @@ int Menu_Grenade(Menu menu, MenuAction action, int client, int index)
 
 	return 0;
 }
-
-
 
 // ====================================================================================================
 //					CVARS
@@ -1677,9 +1696,6 @@ public void OnMapStart()
 		PrecacheGeneric("scripts/melee/pitchfork.txt", true);
 		PrecacheGeneric("scripts/melee/shovel.txt", true);
 	}
-
-
-
 	// Pre-cache env_shake -_- WTF
 	int shake = CreateEntityByName("env_shake");
 	if( shake != -1 )
@@ -1697,8 +1713,6 @@ public void OnMapStart()
 		RemoveEdict(shake);
 	}
 
-
-
 	// LOAD CONFIG
 	if( g_bLateLoad )
 	{
@@ -1708,11 +1722,10 @@ public void OnMapStart()
 	}
 }
 
-
-
 // ====================================================================================================
 //					CONFIG
 // ====================================================================================================
+
 void LoadDataEntry(int index, KeyValues hFile, const char[] KeyName)
 {
 	if( hFile.JumpToKey(KeyName) )
@@ -1901,8 +1914,6 @@ any Clamp(any value, any min = 0.0, any max)
 	return value;
 }
 
-
-
 // ====================================================================================================
 //					L4D2 - F-18 AIRSTRIKE
 // ====================================================================================================
@@ -1937,8 +1948,6 @@ public void F18_OnRoundState(int roundstate)
 		g_bAirstrikeValid = false;
 	}
 }
-
-
 
 // ====================================================================================================
 //					EVENTS - WEAPON EQUIP
@@ -2045,8 +2054,6 @@ void OnWeaponDrop(int client, int weapon)
 	}
 }
 
-
-
 // ====================================================================================================
 //					SOUND HOOK
 // ====================================================================================================
@@ -2077,8 +2084,6 @@ Action SoundHook(int clients[64], int &numClients, char sample[PLATFORM_MAX_PATH
 		}
 	}
 
-
-
 	// Replace Prototype Grenades bounce sound.
 	// weapons/hegrenade/he_bounce-1.wav
 	if( sample[0] == 'w' && sample[8] == 'h' && sample[18] == 'h' )
@@ -2093,8 +2098,6 @@ Action SoundHook(int clients[64], int &numClients, char sample[PLATFORM_MAX_PATH
 			return Plugin_Changed;
 		}
 	}
-
-
 
 	// L4D2 survivors only.
 	// Change players saying "throwing molotov" or "throwing pipebomb" to "throwing grenade" when a Prototype Grenade mode is selected.
@@ -2138,8 +2141,6 @@ Action SoundHook(int clients[64], int &numClients, char sample[PLATFORM_MAX_PATH
 				}
 			}
 
-
-
 			// boomerjar##.wav
 			else if( pos && sample[pos] == 'B' && sample[pos + 6] == 'J' && sample[22] != 'C' ) // Not Coach
 			{
@@ -2175,8 +2176,6 @@ Action SoundHook(int clients[64], int &numClients, char sample[PLATFORM_MAX_PATH
 
 	return Plugin_Continue;
 }
-
-
 
 // ====================================================================================================
 //					RESET PLUGIN
@@ -5328,28 +5327,6 @@ int ValidTargetRef(int target)
 	return 0;
 }
 
-/*
-int GetColor(char[] sTemp)
-{
-	if( sTemp[0] == 0 )
-		return 0;
-
-	char sColors[3][4];
-	int color = ExplodeString(sTemp, " ", sColors, sizeof(sColors), sizeof(sColors[]));
-
-	if( color != 3 )
-		return 0;
-
-	color = StringToInt(sColors[0]);
-	color += 256 * StringToInt(sColors[1]);
-	color += 65536 * StringToInt(sColors[2]);
-
-	return color;
-}
-// */
-
-
-
 // ====================================================================================================
 //					STOCKS - SHAKE
 // ====================================================================================================
@@ -5381,8 +5358,6 @@ void CreateShake(float intensity, float range, float vPos[3])
 	RemoveEdict(entity);
 }
 
-
-
 // ====================================================================================================
 //					STOCKS - HEALTH
 // ====================================================================================================
@@ -5400,8 +5375,6 @@ void SetTempHealth(int client, float fHealth)
 	SetEntPropFloat(client, Prop_Send, "m_healthBuffer", fHealth < 0.0 ? 0.0 : fHealth );
 	SetEntPropFloat(client, Prop_Send, "m_healthBufferTime", GetGameTime());
 }
-
-
 
 // ====================================================================================================
 //					STOCKS - HURT
@@ -5472,8 +5445,6 @@ void InputKill(int entity, float time)
 	AcceptEntityInput(entity, "FireUser4");
 }
 
-
-
 // ====================================================================================================
 //					STOCKS - TRIGGER
 // ====================================================================================================
@@ -5535,8 +5506,6 @@ void OnTouchTriggerMultple(int trigger, int target)
 		}
 	}
 }
-
-
 
 // ====================================================================================================
 //					STOCKS - FX
@@ -5647,8 +5616,6 @@ void CreateBeamRing(int entity, int iColor[4], float min, float max)
 	}
 }
 
-
-
 // ====================================================================================================
 //					STOCKS - PARTICLES
 // ====================================================================================================
@@ -5714,8 +5681,6 @@ int PrecacheParticle(const char[] sEffectName)
 
 	return index;
 }
-
-
 
 // ====================================================================================================
 //					STOCKS - TRACERAY
@@ -5799,8 +5764,6 @@ bool ExcludeSelf_Filter(int entity, int contentsMask, any client)
 		return false;
 	return true;
 }
-
-
 
 // ====================================================================================================
 //					STOCKS - TEMPENT PARTICLE - By Lux

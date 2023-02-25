@@ -53,6 +53,23 @@ forward OnPlayerClassChange(client, className, previousClass);
 forward OnSpecialSkillUsed(int iClient, int skill, int type);  
 
 /**
+ * Called when round starts or finishes
+ *
+ * @param state 	int value, 1=Started/0=Finished
+ * @noreturn
+ */
+forward DLR_OnRoundState(int state);
+
+/**
+ * Called when plugin becomes available
+ *
+ *
+ * @param state 	int value, 1=Available/0=Unloaded
+ * @noreturn
+ */
+forward DLR_OnPluginStateq(int state);
+
+/**
  * Called when player has successfully used special skill
  *
  * @param client         The client index of the player playing tetris.
@@ -117,8 +134,37 @@ public __pl_DLRCore_SetNTVOptional()
 }
 #endif
 
+/**
+ TIMERS 
+**/
+stock Handle:g_ClientTimers[MAXPLAYERS+1];
+
+stock CreateClientTimer(client, Float:interval, Timer:func, flags=TIMER_REPEAT)
+{
+    if (g_ClientTimers[client] == INVALID_HANDLE)
+        g_ClientTimers[client] = CreateTimer(interval,func,client,flags);
+}
+
+stock KillClientTimer(client)
+{
+    new Handle:timer=g_ClientTimers[client];
+    if (timer != INVALID_HANDLE)
+    {
+        KillTimer(timer);
+        g_ClientTimers[client] = INVALID_HANDLE;    
+    }
+}
+
+stock KillAllClientTimers()
+{
+    for (new i = 1; i <= MaxClients; i++)
+        KillClientTimer(i);
+}  
+
+
 #define MAXPROPERTIES			16										// Total data entries to read from a grenades config
 #define MAXCLASS				8	
+
 /**
 enum struct playerClass {
 	int perkId

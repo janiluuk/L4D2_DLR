@@ -75,6 +75,8 @@ new Handle:g_hSkillMenu = INVALID_HANDLE;
 
 //Forward Handlers
 new Handle:g_hOnSkillSelected = INVALID_HANDLE;
+new Handle:g_hForwardPluginState = INVALID_HANDLE;
+new Handle:g_hForwardRoundState = INVALID_HANDLE;
 
 //Player Related Variables
 new g_iPlayerSkill[MAXPLAYERS+1];
@@ -155,35 +157,35 @@ enum struct PlayerInfo
 PlayerInfo ClientData[MAXPLAYERS+1];
 
 // API
-bool g_bLeft4Dead2, g_bLateLoad;
+bool g_bLeft4Dead2, g_bLateLoad, g_bDmgHooked;
 bool g_bAirstrike, g_bAirstrikeValid;
 
 // Rapid fire variables
-new g_iSoldierIndex[MAXPLAYERS+1] = { -1 },
-g_iSoldierCount, g_iEntityIndex[MAXPLAYERS+1] = { -1 },
-g_iMeleeEntityIndex[64] = -1;
-g_iNotMeleeEntityIndex[64] = -1;
+int g_iSoldierIndex[MAXPLAYERS+1] = { -1 };
+int g_iSoldierCount, g_iEntityIndex[MAXPLAYERS+1] = { -1 };
+int g_iMeleeEntityIndex[64] = { -1 };
+int g_iNotMeleeEntityIndex[64] =  { -1 };
 //these are similar to those used by Double Tap
-float g_flMeleeAttackTime[64] = -1.0;
-float g_flNextMeleeAttackTime[64] = -1.0;
+float g_flNextMeleeAttackTime[64] = { -1.0 };
 
 //this tracks the attack count, similar to 
-int g_iMeleeAttackCount[64] = -1;
+int g_iMeleeAttackCount[64] = { -1 };
 
-Float:g_fNT[MAXPLAYERS+1] = { -1.0 },
-g_flNextPrimaryAttack = -1,
-g_flNextSecondaryAttack = -1;
-g_hActiveWeapon = -1;
+Float:g_fNextAttackTime[MAXPLAYERS+1] = { -1.0 };
+int g_iNextPrimaryAttack = -1;
+int g_iNextSecondaryAttack = -1;
+int g_hActiveWeapon = -1;
+new g_ActiveWeaponOffset;
 
 // Speed vars
 new g_flLaggedMovementValue;
 
 // Commando vars
-new g_flPlaybackRate = -1;
+new g_iPlaybackRate = -1;
 new g_iVMStartTimeO  = -1;
 new g_iViewModelO = -1;
-new g_flNextAttack = -1;
-new g_flTimeWeaponIdle = -1;
+new g_iNextAttack = -1;
+new g_iTimeWeaponIdle = -1;
 new g_reloadStartDuration = -1;
 new g_reloadInsertDuration = -1;
 new g_reloadEndDuration = -1;
@@ -215,7 +217,6 @@ new g_BeamSprite = -1, g_HaloSprite = -1;
 new redColor[4]		= {255, 75, 75, 255};
 new greenColor[4]	= {75, 255, 75, 255};
 new RndSession;
-
 #define SOUND_HELICOPTER "vehicles/airboat/fan_blade_fullthrottle_loop1.wav"
 #define PUNCH_SOUND "melee_tonfa_02.wav"
 #define SOUND_TUNNEL "ambient/atmosphere/tunnel1.wav"
@@ -332,6 +333,10 @@ new LastClassConfirmed[MAXPLAYERS+1];
 
 new bool:BombIndex[16];
 new bool:RoundStarted =false;
+new bool:g_PluginLoaded;
+new Handle:pluginEnabled;
+
+new bool:g_iPlayerSpawn;
 new bool:ClassHint =false;
 new bool:InvisibilityHint = false;
 new bool:MedicHint = false;
@@ -373,6 +378,8 @@ public OnPluginStart( )
 	g_hfwdOnCustomCommand = CreateGlobalForward("OnCustomCommand", ET_Ignore, Param_String, Param_Cell, Param_Cell, Param_Cell);
 	//Create a Class Selection forward
 	g_hOnSkillSelected = CreateGlobalForward("OnSkillSelected", ET_Event, Param_Cell, Param_Cell);
+	g_hForwardPluginState = CreateGlobalForward("DLR_OnPluginState", ET_Ignore, Param_Cell);
+	g_hForwardRoundState = CreateGlobalForward("DLR_OnRoundState", ET_Ignore, Param_Cell);
 
 	//Create menu and set properties
 	g_hSkillMenu = CreateMenu(DlrSkillMenuHandler);
@@ -384,20 +391,23 @@ public OnPluginStart( )
 	g_hSkillTypeArray = CreateArray(16);
 
 	// Offsets
-	g_flNextPrimaryAttack = FindSendPropInfo("CBaseCombatWeapon", "m_flNextPrimaryAttack");
-	g_flNextSecondaryAttack	= FindSendPropInfo("CBaseCombatWeapon","m_flNextSecondaryAttack");
+	g_iNextPrimaryAttack = FindSendPropInfo("CBaseCombatWeapon", "m_flNextPrimaryAttack");
 
-	g_hActiveWeapon = FindSendPropInfo("CTerrorPlayer", "m_hActiveWeapon");
+	g_hActiveWeapon = FindSendPropInfo("CBaseCombatCharacter", "m_hActiveWeapon");
 	g_flLaggedMovementValue = FindSendPropInfo("CTerrorPlayer", "m_flLaggedMovementValue");
-	g_flPlaybackRate = FindSendPropInfo("CBaseCombatWeapon", "m_flPlaybackRate");
-	g_flNextAttack = FindSendPropInfo("CTerrorPlayer", "m_flNextAttack");
-	g_flTimeWeaponIdle = FindSendPropInfo("CTerrorGun", "m_flTimeWeaponIdle");
+	g_iPlaybackRate = FindSendPropInfo("CBaseCombatWeapon", "m_flPlaybackRate");
+	g_iNextAttack = FindSendPropInfo("CTerrorPlayer", "m_flNextAttack");
+	g_iTimeWeaponIdle = FindSendPropInfo("CTerrorGun", "m_flTimeWeaponIdle");
 	g_reloadStartDuration = FindSendPropInfo("CBaseShotgun", "m_reloadStartDuration");
 	g_reloadInsertDuration = FindSendPropInfo("CBaseShotgun", "m_reloadInsertDuration");
 	g_reloadEndDuration = FindSendPropInfo("CBaseShotgun", "m_reloadEndDuration");
 	g_iReloadState = FindSendPropInfo("CBaseShotgun", "m_reloadState");
 	g_iVMStartTimeO = FindSendPropInfo("CTerrorViewModel","m_flLayerStartTime");
 	g_iViewModelO = FindSendPropInfo("CTerrorPlayer","m_hViewModel");
+
+	g_ActiveWeaponOffset = FindSendPropInfo("CBasePlayer", "m_hActiveWeapon");
+	g_iNextSecondaryAttack	= FindSendPropInfo("CBaseCombatWeapon","m_flNextSecondaryAttack");
+
 	g_iVelocity = FindSendPropInfo("CBasePlayer", "m_vecVelocity[0]");
 	g_iShovePenalty = FindSendPropInfo("CTerrorPlayer", "m_iShovePenalty");
 
@@ -407,6 +417,7 @@ public OnPluginStart( )
 	HookEvent("player_death", Event_PlayerDeath);
 	HookEvent("round_end", Event_RoundChange);
 	HookEvent("round_start_post_nav", Event_RoundChange);
+	HookEvent("round_start", Event_RoundStart,	EventHookMode_PostNoCopy);	
 	HookEvent("mission_lost", Event_RoundChange);
 	HookEvent("weapon_reload", Event_RelCommandoClass);
 	HookEvent("player_entered_checkpoint", Event_EnterSaferoom);
@@ -430,6 +441,8 @@ public OnPluginStart( )
 	new Handle:hVersion = CreateConVar("talents_version", PLUGIN_VERSION, "Version of this release", FCVAR_NOTIFY|FCVAR_REPLICATED|FCVAR_DONTRECORD);
 	if(hVersion != INVALID_HANDLE)
 		SetConVarString(hVersion, PLUGIN_VERSION);
+	// Convars
+	pluginEnabled = CreateConVar("talents_enabled","1","Enables/Disables Plugin 0 = OFF, 1 = ON.", FCVAR_NOTIFY);
 
 	MAX_SOLDIER = CreateConVar("talents_soldier_max", "1", "Max number of soldiers");
 	MAX_ATHLETE = CreateConVar("talents_athelete_max", "1", "Max number of athletes");
@@ -510,6 +523,10 @@ public OnPluginStart( )
 	parseAvailableBombs();
 
 }
+public void OnPluginEnd()
+{
+	ResetPlugin();
+}
 
 public ResetClientVariables(client)
 {
@@ -522,6 +539,8 @@ public ResetClientVariables(client)
 	ClientData[client].SpecialSkill = SpecialSkill:No_Skill;
 	ClientData[client].LastDropTime = 0.0;
 	g_bInSaferoom[client] = false;
+	g_fSavedShoveTime[client] = 0.0;
+	g_bHide[client] = false; 
 }
 
 /* Temporarily hardcoded until get config right */
@@ -600,6 +619,11 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 // Register skill
 public Native_RegisterSkill(Handle:plugin, numParams)
 {
+	if (GetConVarBool(pluginEnabled) == false) 
+	{
+		PrintDebugAll(, any ...)
+	}
+
 	char szItemInfo[3];
 	int type;
 	int len;
@@ -802,18 +826,50 @@ public OnMapStart()
 public void OnMapEnd()
 {
 	// Cache
-	ClearCache();
 	RoundStarted=false;
+	ClearCache();
+	OnRoundState(0);
+}
+
+public void OnConfigsExecuted()
+{
+	OnPluginReady();
+}
+
+public OnPluginReady() {
+	
+	if(g_PluginLoaded == false && GetConVarBool(pluginEnabled) == true) {
+	
+		Call_StartForward(g_hForwardPluginState);
+		Call_PushCell(1);
+		Call_Finish();
+		g_PluginLoaded = true;
+
+		if( g_bLateLoad == true )
+		{
+			g_bLateLoad = false;
+			OnRoundState(1);
+		}
+	} else if(g_PluginLoaded == true && GetConVarBool(pluginEnabled) == false) {
+
+		g_PluginLoaded = false;
+		ResetPlugin();
+		Call_StartForward(g_hForwardPluginState);
+		Call_PushCell(0);
+		Call_Finish();
+	}
+}
+void ResetPlugin()
+{
+	RoundStarted=false;
+	g_iPlayerSpawn = false;
 }
 
 public OnClientPutInServer(client)
 {
-	if (!client || !IsValidEntity(client) || !IsClientInGame(client))
+	if (!client || !IsValidEntity(client) || !IsClientInGame(client) || g_PluginLoaded == false)
 	return;
-	
-	g_fSavedShoveTime[client] = 0.0;
-	g_bHide[client] = false; 
-	DisableAllUpgrades(client);
+
 	ResetClientVariables(client);
 	RebuildCache();
 }
@@ -822,28 +878,48 @@ public Action:TimerLoadGlobal(Handle:hTimer, any:client)
 {
 	if (!client || !IsValidEntity(client) || !IsClientInGame(client))
 	return;
-	
-	SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamagePre);	
 }
 
+void DmgHookUnhook(bool enabled)
+{
+	if( !enabled && g_bDmgHooked )
+	{
+		g_bDmgHooked = false;
+		for( int i = 1; i <= MaxClients; i++ )
+		{
+			if( IsClientInGame(i) )
+			{
+				UnhookPlayer(i);
+			}
+		}
+	}
+
+	if( enabled && !g_bDmgHooked )
+	{
+		g_bDmgHooked = true;
+		for( int i = 1; i <= MaxClients; i++ )
+		{
+			if( IsClientInGame(i) )
+			{
+				HookPlayer(i);
+			}
+		}
+	}
+}
 public Action:TimerLoadClient(Handle:hTimer, any:client)
 {
 	if (!client ||  !IsValidEntity(client) || !IsClientInGame(client))
 	return;
-	
-	if (RoundStarted == false && !IsPlayerInSaferoom(client) && !IsInEndingSaferoom(client)) {
-		RoundStarted = true;
-	}
+	ResetPlugin();
 
-	SDKHook(client, SDKHook_WeaponSwitch, OnWeaponSwitch);
-	SDKHook(client, SDKHook_WeaponEquip, OnWeaponEquip);
-	SDKHook(client, SDKHook_SetTransmit, Hook_SetTransmit);
-	SDKHook(client, SDKHook_WeaponDrop, OnWeaponDrop);
-	SDKHook(client, SDKHook_WeaponEquipPost, OnClientWeaponEquip);
-	SDKHook(client, SDKHook_WeaponDropPost, OnClientWeaponEquip);
-
+	HookPlayer(client);
 	ResetClientVariables(client);
-	RebuildCache();		
+	RebuildCache();	
+
+	if (RoundStarted == false && !IsPlayerInSaferoom(client) && !IsInEndingSaferoom(client)) {
+		RoundStarted = true;	
+	}
+	
 }
 
 public Action:OnWeaponDrop(client, weapon)
@@ -863,11 +939,9 @@ public Action:OnWeaponEquip(client, weapon)
 
 public OnClientDisconnect(client)
 {
-	SDKUnhook(client, SDKHook_WeaponEquipPost, OnClientWeaponEquip);
-	SDKUnhook(client, SDKHook_WeaponDropPost, OnClientWeaponEquip);
+	UnhookPlayer(client);
 	RebuildCache();
 	ResetClientVariables(client);
-
 }
 
 public Action:TimerThink(Handle:hTimer, any:client)
@@ -1149,7 +1223,7 @@ public ClearCache()
 	{
 		g_iSoldierIndex[i]= -1;
 		g_iEntityIndex[i] = -1;
-		g_fNT[i]= -1.0;
+		g_fNextAttackTime[i]= -1.0;
 	}
 }
 
@@ -1176,12 +1250,51 @@ public Event_RoundChange(Handle:event, String:name[], bool:dontBroadcast)
 	{
 		ResetClientVariables(i);
 		LastClassConfirmed[i] = 0;
-		DisableAllUpgrades(i);		
+		DisableAllUpgrades(i);
 	}
 	
 	RndSession++;
 	RoundStarted = false;
 }
+
+public Event_RoundStart(Handle:event, String:name[], bool:dontBroadcast)
+{
+	if( g_iPlayerSpawn == true && RoundStarted == true )
+		CreateTimer(1.0, TimerStart, _, TIMER_FLAG_NO_MAPCHANGE);
+	
+	RoundStarted = true;
+
+}
+
+Action TimerStart(Handle timer)
+{
+	ResetPlugin();
+	OnRoundState(1);
+	DmgHookUnhook(true);
+
+	return Plugin_Continue;
+}
+
+void OnRoundState(int roundstate)
+{
+	static int mystate;
+
+	if( roundstate == 1 && mystate == 0 )
+	{
+		mystate = 1;
+		Call_StartForward(g_hForwardRoundState);
+		Call_PushCell(1);
+		Call_Finish();
+	}
+	else if( roundstate == 0 && mystate == 1 )
+	{
+		mystate = 0;
+		Call_StartForward(g_hForwardRoundState);
+		Call_PushCell(0);
+		Call_Finish();
+	}
+}
+
 
 public Event_PlayerSpawn(Handle:hEvent, String:sName[], bool:bDontBroadcast)
 {
@@ -1203,8 +1316,9 @@ public Event_PlayerSpawn(Handle:hEvent, String:sName[], bool:bDontBroadcast)
 		}
 		
 		CreateTimer(0.3, TimerLoadGlobal, client, TIMER_FLAG_NO_MAPCHANGE);
+		g_iPlayerSpawn = true;
 	}
-	
+
 	RebuildCache();
 }
 
@@ -2229,15 +2343,17 @@ public Event_RelCommandoClass(Handle:event, String:name[], bool:dontBroadcast)
 	if (ClientData[client].ChosenClass != COMMANDO)
 	return;
 	
-	new weapon = GetEntDataEnt2(client, g_hActiveWeapon);
+	int weapon = GetEntDataEnt2(client, g_hActiveWeapon);
 
 	if (!IsValidEntity(weapon))
 	return;
 	
-	new Float:flGameTime = GetGameTime();
+	float flGameTime = GetGameTime();
+	float flNextTime_calc;
+
 	decl String:bNetCl[64];
 	decl String:stClass[32];
-
+	float flNextPrimaryAttack, flNextAttack;
 	GetEntityNetClass(weapon, bNetCl, sizeof(bNetCl));
 	GetEntityNetClass(weapon,stClass,32);
 
@@ -2250,19 +2366,19 @@ public Event_RelCommandoClass(Handle:event, String:name[], bool:dontBroadcast)
 		WritePackCell(hPack, weapon);
 
 		new Float:fReloadRatio = GetConVarFloat(COMMANDO_RELOAD_RATIO);
-		new Float:flNextTime_calc = (GetEntDataFloat(weapon, g_flNextPrimaryAttack) - flGameTime) * fReloadRatio;
-		new Float:flNextAttack = flNextTime_calc + flGameTime;
-		new Float:flNextPrimaryAttack = GetEntDataFloat(weapon, g_flNextPrimaryAttack);
+		flNextTime_calc = (GetEntDataFloat(weapon, g_iNextPrimaryAttack) - flGameTime) * fReloadRatio;
+		flNextAttack = flNextTime_calc + flGameTime;
+		flNextPrimaryAttack = GetEntDataFloat(weapon, g_iNextPrimaryAttack);
 		new Float:flStartTime_calc = flGameTime - ( flNextPrimaryAttack - flGameTime ) * ( 1 - fReloadRatio ) ;
 		WritePackFloat(hPack, flStartTime_calc);
 		
 		if ( (flNextTime_calc - 0.4) > 0 )
 		CreateTimer( flNextTime_calc - 0.4, CommandoRelFireEnd2, hPack);
 		
-		SetEntDataFloat(weapon, g_flPlaybackRate, 1.0 / fReloadRatio, true);
-		SetEntDataFloat(weapon, g_flTimeWeaponIdle, flNextAttack, true);
-		SetEntDataFloat(weapon, g_flNextPrimaryAttack, flNextAttack, true);
-		SetEntDataFloat(client, g_flNextAttack, flNextAttack, true);
+		SetEntDataFloat(weapon, g_iPlaybackRate, 1.0 / fReloadRatio, true);
+		SetEntDataFloat(weapon, g_iTimeWeaponIdle, flNextAttack, true);
+		SetEntDataFloat(weapon, g_iNextPrimaryAttack, flNextAttack, true);
+		SetEntDataFloat(client, g_iNextAttack, flNextAttack, true);
 		CreateTimer(flNextTime_calc, CommandoRelFireEnd, weapon);
 	}
 	else
@@ -2307,7 +2423,7 @@ public Action:CommandoRelFireEnd(Handle:timer, any:weapon)
 	if (weapon <= 0 || !IsValidEntity(weapon))
 	return Plugin_Stop;
 	
-	SetEntDataFloat(weapon, g_flPlaybackRate, 1.0, true);
+	SetEntDataFloat(weapon, g_iPlaybackRate, 1.0, true);
 	KillTimer(timer);
 
 	return Plugin_Stop;
@@ -2351,7 +2467,7 @@ public Action:CommandoPumpShotReload(Handle:timer, Handle:hOldPack)
 	SetEntDataFloat(weapon,	g_reloadStartDuration,	start * fReloadRatio,	true);
 	SetEntDataFloat(weapon,	g_reloadInsertDuration,	insert * fReloadRatio,	true);
 	SetEntDataFloat(weapon,	g_reloadEndDuration, end * fReloadRatio,	true);
-	SetEntDataFloat(weapon, g_flPlaybackRate, 1.0 / fReloadRatio, true);
+	SetEntDataFloat(weapon, g_iPlaybackRate, 1.0 / fReloadRatio, true);
 	
 	CloseHandle(hOldPack);
 	if (DEBUG_MODE == true) {
@@ -2387,15 +2503,18 @@ public Action:CommandoShotCalculate(Handle:timer, Handle:hPack)
 		KillTimer(timer);
 		return Plugin_Stop;
 	}
-	
 	if (GetEntData(weapon, g_iReloadState) == 0 || GetEntData(weapon, g_iReloadState) == 2 )
 	{
 		new Float:flNextTime = GetGameTime() + addMod;
 		
-		SetEntDataFloat(weapon, g_flPlaybackRate, 1.0, true);
-		SetEntDataFloat(GetEntPropEnt(weapon, Prop_Data, "m_hOwner"), g_flNextAttack, flNextTime, true);
-		SetEntDataFloat(weapon,	g_flTimeWeaponIdle, flNextTime, true);
-		SetEntDataFloat(weapon,	g_flNextPrimaryAttack, flNextTime, true);
+		int owner = GetEntPropEnt(weapon, Prop_Data, "m_hOwner");
+		if (owner > 0) {  
+			SetEntDataFloat(weapon, g_iPlaybackRate, 1.0, true);
+			SetEntDataFloat(owner, g_iNextAttack, flNextTime, true);
+			SetEntDataFloat(weapon,	g_iTimeWeaponIdle, flNextTime, true);
+			SetEntDataFloat(weapon,	g_iNextPrimaryAttack, flNextTime, true);
+		}
+
 		KillTimer(timer);
 		CloseHandle(hPack);
 		return Plugin_Stop;
@@ -2722,8 +2841,8 @@ public void ToggleNightVision(client)
 				if (cl_upgrades > 4194304) {
 					return; // already has nightvision
 				}
-				SetEntProp(iWeapon, Prop_Send, "m_upgradeBitVec", cl_upgrades + 4194304, 4);
 
+				SetEntProp(iWeapon, Prop_Send, "m_upgradeBitVec", cl_upgrades + 4194304, 4);
 				SetEntProp(client, Prop_Send, "m_bNightVisionOn", 1, 4);
 				SetEntProp(client, Prop_Send, "m_bHasNightVision", 1, 4);
 			}
@@ -2744,55 +2863,47 @@ stock DisableAllUpgrades(client)
 			SetEntProp(client, Prop_Send, "m_bNightVisionOn", 0, 4);
 			SetEntProp(client, Prop_Send, "m_bHasNightVision", 0, 4);
 		}
-		SDKUnhook(client, SDKHook_WeaponEquipPost, OnClientWeaponEquip);
-		SDKUnhook(client, SDKHook_WeaponDropPost, OnClientWeaponEquip);
 	}
 }
 
+stock UnhookPlayer(client)
+{
+	if (client > 0 && client <= 16 && IsValidEntity(client) && IsClientInGame(client) && GetClientTeam(client) == 2) {
+		
+		SDKUnhook(client, SDKHook_WeaponEquipPost, OnClientWeaponEquip);
+		SDKUnhook(client, SDKHook_WeaponDropPost, OnClientWeaponEquip);
+		SDKUnhook(client, SDKHook_SetTransmit, Hook_SetTransmit);
+		SDKUnhook(client, SDKHook_OnTakeDamage, OnTakeDamagePre);	
+		SDKUnhook(client, SDKHook_StartTouch, _MF_Touch);
+		SDKUnhook(client, SDKHook_Touch, _MF_Touch);
+		SDKUnhook(client, SDKHook_OnTakeDamage, OnTakeDamagePre);
+
+	}
+}
+
+stock HookPlayer(client) 
+{
+	if (client > 0 && client <= 16 && IsValidEntity(client) && IsClientInGame(client) && GetClientTeam(client) == 2) {
+
+		SDKHook(client, SDKHook_WeaponSwitch, OnWeaponSwitch);
+		SDKHook(client, SDKHook_WeaponEquip, OnWeaponEquip);
+		SDKHook(client, SDKHook_SetTransmit, Hook_SetTransmit);
+		SDKHook(client, SDKHook_WeaponDrop, OnWeaponDrop);
+		SDKHook(client, SDKHook_WeaponEquipPost, OnClientWeaponEquip);
+		SDKHook(client, SDKHook_WeaponDropPost, OnClientWeaponEquip);
+		SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamagePre);
+	}
+}
 ///////////////////////////////////////////////////////////////////////////////////
 // Soldier
 ///////////////////////////////////////////////////////////////////////////////////
 
 public OnGameFrame()
 {
-	if (!g_iSoldierCount)
-	return;
-
-	decl client;
-	decl iActiveWeapon;
-	decl Float:flNextTime_calc;
-	decl Float:flNextPrimaryAttack;
-	new Float:fGameTime = GetGameTime();
-	
-	for (new i = 1; i <= g_iSoldierCount; i++)
-	{
-		client = g_iSoldierIndex[i];
-		
-		if (!client
-			|| client >= MAXPLAYERS
-			|| !IsValidEntity(client)
-			|| !IsClientInGame(client)
-			|| !IsPlayerAlive(client)
-			|| GetClientTeam(client) != 2
-			|| ClientData[client].ChosenClass != SOLDIER)
-		continue;
-
-
-		if(IsValidEntity(i) && IsPlayerAlive(i) && GetClientTeam(i) == 2 && IsClientInGame(i) && ClientData[i].ChosenClass == SOLDIER && GetConVarBool(SOLDIER_SHOVE_PENALTY) == false )
-		{
-			//If the player is pressing the right click of the mouse, proceed
-			if(GetClientButtons(i) & IN_ATTACK2)
-			{
-				//This will reset the penalty, so it doesnt even get applied.
-				SetEntData(i, g_iShovePenalty, 0, 4);
-			}
-		}
-	}
-
-	if (!IsServerProcessing() || !RoundStarted) {return;}
+	if (!IsServerProcessing() || !RoundStarted) { return; }
 	else
 	{
-	MA_OnGameFrame();
+		MA_OnGameFrame();
 		DT_OnGameFrame();
 	}
 }
@@ -2800,14 +2911,17 @@ void DT_OnGameFrame()
 {
 	if (g_iSoldierCount == 0) {return;}
 
+	decl client;
+	decl iActiveWeapon;
+
 	//this tracks the calculated next attack
 	float flNextTime_calc;
 	//this, on the other hand, tracks the current next attack
-	float flNextPrimaryAttack;
-
-	decl iActiveWeapon;
+	decl Float:flNextPrimaryAttack;
+	//and this tracks next melee attack times
+	decl Float:flNextSecondaryAttack;
+	//and this tracks the game time
 	float flGameTime = GetGameTime();
-	int client;
 
 	for (new i = 1; i <= g_iSoldierCount; i++)
 	{
@@ -2815,39 +2929,47 @@ void DT_OnGameFrame()
 		if(ClientData[i].ChosenClass != SOLDIER) continue;
 		client = g_iSoldierIndex[i];
 
-
 		iActiveWeapon = GetEntDataEnt2(client, g_hActiveWeapon);
 
-		if(iActiveWeapon <= 0) 
+		if(iActiveWeapon < 0) 
 		continue;
+
+		//and here is the retrieved next attack time
+		flNextPrimaryAttack = GetEntDataFloat(iActiveWeapon, g_iNextPrimaryAttack);
+		//and for retrieved next melee time
+		flNextSecondaryAttack = GetEntDataFloat(iActiveWeapon,g_iNextSecondaryAttack);
+
+		if (g_iEntityIndex[client] == iActiveWeapon && g_fNextAttackTime[client] >= flNextPrimaryAttack)
+			continue;
 		
-		flNextPrimaryAttack = GetEntDataFloat(iActiveWeapon, g_flNextPrimaryAttack);
-		
-		if (g_iEntityIndex[client] == iActiveWeapon && g_fNT[client] >= flNextPrimaryAttack)
-		continue;
-		
-		if (g_iEntityIndex[client] == iActiveWeapon && g_fNT[client] < flNextPrimaryAttack)
+		if (flNextSecondaryAttack > flGameTime)
+		{
+			//----RSDEBUG----
+			//PrintToChatAll("\x03DT client \x01%i\x03; melee attack inferred",iCid );
+			continue;
+		}
+
+		if (g_iEntityIndex[client] == iActiveWeapon && g_fNextAttackTime[client] < flNextPrimaryAttack)
 		{
 			flNextTime_calc = ( flNextPrimaryAttack - flGameTime ) * GetConVarFloat(SOLDIER_FIRE_RATE) + flGameTime;
-			g_fNT[client] = flNextTime_calc;
-			SetEntDataFloat(iActiveWeapon, g_flNextPrimaryAttack, flNextTime_calc, true);
+			g_fNextAttackTime[client] = flNextTime_calc;
+			SetEntDataFloat(iActiveWeapon, g_iNextPrimaryAttack, flNextTime_calc, true);
 			continue;
 		}
 		
 		if (g_iEntityIndex[client] != iActiveWeapon)
 		{
 			g_iEntityIndex[client] = iActiveWeapon;
-			g_fNT[client] = flNextPrimaryAttack;
+			g_fNextAttackTime[client] = flNextPrimaryAttack;
 			continue;
 		}
 	}
-
-
 }
 
 /* ***************************************************************************/
 //Since this is called EVERY game frame, we need to be careful not to run too many functions
 //kinda hard, though, considering how many things we have to check for =.=
+
 int MA_OnGameFrame()
 {
 	if (g_iSoldierCount <= 0) {return 0;}
@@ -2864,25 +2986,38 @@ int MA_OnGameFrame()
 
 	//theoretically, to get on the MA registry, all the necessary checks would have already
 	//been run, so we don't bother with any checks here
-	for (int i = 1; i <= g_iSoldierCount; i++)
+	for (new i = 1; i <= g_iSoldierCount; i++)
 	{
 		if(ClientData[i].ChosenClass != SOLDIER) {continue;}
 
 		//PRE-CHECKS 1: RETRIEVE VARS
 		//---------------------------
 		iCid = g_iSoldierIndex[i];
+
 		//stop on this client when the next client id is null
 		if (iCid <= 0) continue;
 		if(!IsClientInGame(iCid)) continue;
 		if(!IsClientConnected(iCid)) continue; 
 		if (!IsPlayerAlive(iCid)) continue;
 		if(GetClientTeam(iCid) != 2) continue;
-		iEntid = GetEntDataEnt2(iCid, g_hActiveWeapon);
+		if(ClientData[iCid].ChosenClass != SOLDIER) { continue;}
+
+		iEntid = GetEntDataEnt2(iCid, g_ActiveWeaponOffset);
+
+		if (GetConVarBool(SOLDIER_SHOVE_PENALTY) == false )
+		{
+			//If the player is pressing the right click of the mouse, proceed
+			if(GetClientButtons(iCid) & IN_ATTACK2)
+			{
+				//This will reset the penalty, so it doesnt even get applied.
+				SetEntData(iCid, g_iShovePenalty, 0, 4);
+			}
+		}
 		//if the retrieved gun id is -1, then...
 		//wtf mate? just move on
 		if (iEntid == -1) continue;
 		//and here is the retrieved next attack time
-		flNextPrimaryAttack = GetEntDataFloat(iEntid, g_flNextPrimaryAttack);
+		flNextPrimaryAttack = GetEntDataFloat(iEntid, g_iNextPrimaryAttack);
 
 		//CHECK 1: IS PLAYER USING A KNOWN NON-MELEE WEAPON?
 		//--------------------------------------------------
@@ -2935,7 +3070,7 @@ int MA_OnGameFrame()
 			g_flNextMeleeAttackTime[iCid] = flNextTime_calc;
 
 			//and finally adjust the value in the gun
-			SetEntDataFloat(iEntid, g_flNextPrimaryAttack, flNextTime_calc, true);
+			SetEntDataFloat(iEntid, g_iNextPrimaryAttack, flNextTime_calc, true);
 
 			continue;
 		}
@@ -2969,7 +3104,6 @@ int MA_OnGameFrame()
 	return 0;
 }
 
-
 public Action:OnTakeDamagePre(victim, &attacker, &inflictor, &Float:damage, &damagetype)
 {
 	if (!IsServerProcessing())
@@ -2977,7 +3111,7 @@ public Action:OnTakeDamagePre(victim, &attacker, &inflictor, &Float:damage, &dam
 	
 	if (victim && attacker && IsValidEntity(attacker) && attacker <= MaxClients && IsValidEntity(victim) && victim <= MaxClients)
 	{
-		if( damagetype & DMG_BLAST && GetEntProp(inflictor, Prop_Data, "m_iHammerID") == 1078682)
+		if( damagetype & DMG_BLAST && GetEntProp(inflictor, Prop_Data, 	)
 		{
 			if(GetClientTeam(victim) == 2 )
 				damage = GetConVarFloat(SABOTEUR_BOMB_DAMAGE_SURV);
