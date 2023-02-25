@@ -5,11 +5,11 @@ This is anniversary update for the infamous DLR mode for Left 4 Dead 2. Original
 Changes:
 - Sourcemod 11 compatible
 - Rewrite for internal variable structure, variable naming and functionality.
-- Plugin support, adding new features should be a matter of including the plugin and adding hook to it
-- Soldier has faster moving speed and takes less damage. Also by default melee penalty is off. Configurable. 
+- Plugin support, adding new features should be a matter of including the plugin and adding hook to it.
+- Soldier has faster moving speed and takes less damage. Default melee penalty is disabled by default config. Configurable. 
 - Soldier can order airstrikes. (Requires included example plugin)
 - Athlete has faster moving speed and a parachute. configurable.
-- Commando reload rate actually works now
+- Commando reload rate actually works now.
 - Commando damage modifiers are configurable per weapon, default one is used for rest.
 - Commando is immune to knockdowns
 - Commando can stomp downed infected
@@ -21,20 +21,23 @@ Changes:
 - Players healed by medic have special glow
 - Default health for players without class configurable. Menu does not spam you if you don't choose a class.
 - Engineer spawns ready-to-use upgrade packs instead of deployable boxes.
-- Engineer now spawns 2 different types of turrets. 8 different ammo types for various situations. (Requires plugin from https://github.com/janiluuk/L4D2_Machine)
+- Engineer now spawns 2 different types of turrets. 8 different ammo types for various situations. 
+- Turrets are smarter and bit more devastating. By default they can be blown up by infected.
+- Turrets have now more helpful notifications.
+- Turrets are by default non-blocking.
+- "Single turret mode" enables oldschool mode.
 - Engineer can now barricade open doors & windows. Requires plugin version of (https://forums.alliedmods.net/showthread.php?p=2780813). Adding the plugin version as soon as have tested it properly
 - Engineer, medic and saboteur get countdown for next deployment when trying to deploy too early
-- Turrets don't block anymore, so you cannot abuse it by boxing in opponents.
 - Saboteur moves faster when crouched and shows visibility status.
 - Saboteur has visual effect on turning invisible and specific glow.
 - Saboteur has nightvision
 - Redefine visual effect for mines, and actually leave a visible mine. 
-* Saboteur has 20 different types of mines with cool effects. You can assign 7 of them at one time. Antigravity, blackhole, freeze, vaporizer and many more. (Needs included grenades plugin example)
+- Saboteur has 20 different types of mines with cool effects. You can assign 7 of them at one time. Antigravity, blackhole, freeze, vaporizer and many more. (Needs included grenades plugin example)
 - Mines do less damage to survivors. Standing really close to the mine can still incap.
 - Mines do more damage to infected, 1500hp. Some edge over tank
 - Mines glow now so players know to avoid the spot or lure someone to it.
 - Notifications on placing mines.
-* Warnings for players that go near armed mine
+- Warnings for players that go near armed mine
 - Countdown notification before mine becoming armed.
 - Engineer, medic and saboteur get notification if out of supplies.
 - More helpful class descriptions and help system.
@@ -47,19 +50,21 @@ Changes:
 Roadmap
 - Cleaner UI, menu option to turn hint texts off. Common HUD component which manages, prioritizes and combines the hint texts properly.
 - Integrate game instructor UI to be utilized for counters, and other live indicators. 
-- Show player class above their head (Using "Hats" plugin, missing graphics for it)
-- Engineer can build different types of defences
+- Random Game modes: Melee only rounds, Jockey race. Horror movie mode with pitch black lights, common infected disabled and can only do damage by not seen by player.
+- Show player class above their head / in HUD (Using "Hats" plugin + eddect)
 - Saboteur can see infected outlines when in "predator mode". Instakill if manages to sneak up behind.
 - Smoker should have much more visible and thick cloud when gets killed.
-- Rewrite for missile plugin to fit better with this one
-- Add more plugins including berserk mode, jetpack, special grenades.
-- Incap players can fight with attacker with some keys, if indicator goes back to zero, player is freed.
+- Rewrite for missile plugin to fit better with this one and improve their function.
+- Docker image with rcon web admin tool integrated and plug'n play server generation
+- Skill editor to generate new perks / classes.
+- Downloadable UI upgrades
+- Incap players can struggle with attacker on shared progressbar. if indicator goes back to zero, player is freed.
 - When incapacitated without supplies and you have kit available, ask survivor if want to consume it.
 - Revamp infected skills to match the added ones for survivors;
     - Infected can bite survivors, after defined about of time player turns into a witch for 30 seconds. If the witch gets killed, player gets killed, otherwise transform back to playable character.
     - Charger can drop survivor and continue running
-    - Hunter can use boost for ultra long jumps
-    - Jockey can make player shoot others with FF damage while riding
+    - Hunter can use boost for ultra long jumps. 
+    - Jockey can make player shoot others with FF damage while riding. 
     - Smoker can shove opponent to any direction when pinned, e.g throw out of window.
     - Hunter can masquerade as survivor for 30 second time (Using LMC)
     - More suggestions welcome!
