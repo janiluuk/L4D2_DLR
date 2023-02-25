@@ -10,6 +10,7 @@ Changes:
 - Soldier can order airstrikes. (Requires included example plugin)
 - Athlete has faster moving speed and a parachute. configurable.
 - Commando reload rate actually works now.
+- New user interface, more minimalistic HUD. In tst use on EU servers)
 - Commando damage modifiers are configurable per weapon, default one is used for rest.
 - Commando is immune to knockdowns
 - Commando can stomp downed infected
@@ -26,7 +27,7 @@ Changes:
 - Turrets have now more helpful notifications.
 - Turrets are by default non-blocking.
 - "Single turret mode" enables oldschool mode.
-- Engineer can now barricade open doors & windows. Requires plugin version of (https://forums.alliedmods.net/showthread.php?p=2780813). Adding the plugin version as soon as have tested it properly
+- Engineer can now barricade open doors & windows. Requires plugin included with test version.
 - Engineer, medic and saboteur get countdown for next deployment when trying to deploy too early
 - Saboteur moves faster when crouched and shows visibility status.
 - Saboteur has visual effect on turning invisible and specific glow.
