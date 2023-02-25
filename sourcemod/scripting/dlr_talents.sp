@@ -2792,7 +2792,7 @@ public OnGameFrame()
 	if (!IsServerProcessing() || !RoundStarted) {return;}
 	else
 	{
-	//	MA_OnGameFrame();
+	MA_OnGameFrame();
 		DT_OnGameFrame();
 	}
 }
