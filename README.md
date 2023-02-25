@@ -10,7 +10,7 @@ Changes:
 - Soldier can order airstrikes. (Requires included example plugin)
 - Athlete has faster moving speed and a parachute. configurable.
 - Commando reload rate actually works now.
-- New user interface, more minimalistic HUD. In tst use on EU servers)
+- New user interface, more minimalistic HUD that gets less on your way. In test use on EU servers)
 - Commando damage modifiers are configurable per weapon, default one is used for rest.
 - Commando is immune to knockdowns
 - Commando can stomp downed infected
@@ -172,13 +172,13 @@ Include these functions;
 ``` 
 public void OnAllPluginsLoaded()
 {
-	DLR_Available = LibraryExists("dlr_talents_2023");
+	DLR_Available = LibraryExists("dlr_talents");
     ....
 }
 
 public void OnLibraryAdded(const char[] sName)
 {
-	if( StrEqual( sName, "dlr_talents_2023" ) )
+	if( StrEqual( sName, "dlr_talents" ) )
 		DLR_Available = true;
      ....
 }
