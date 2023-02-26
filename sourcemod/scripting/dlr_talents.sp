@@ -1750,7 +1750,7 @@ stock void PrintDebugAll(const char[] format, any ...)
 	VFormat(buffer, sizeof(buffer), format, 2);
 	#if DEBUG_LOG
 	PrintToConsole(0, "[Debug] %s", buffer);
-	LogMessage("q%s", buffer);
+	LogMessage("%s", buffer);
 	#endif
 	#if DEBUG
 	PrintToChatAll("[Debug] %s", buffer);
