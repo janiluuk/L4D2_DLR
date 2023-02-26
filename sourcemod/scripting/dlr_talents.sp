@@ -161,8 +161,9 @@ bool g_bLeft4Dead2, g_bLateLoad, g_bDmgHooked;
 bool g_bAirstrike, g_bAirstrikeValid;
 
 // Rapid fire variables
-int g_iSoldierIndex[MAXPLAYERS+1] = { -1 };
-int g_iSoldierCount, g_iEntityIndex[MAXPLAYERS+1] = { -1 };
+int g_iSoldierIndex[64] = { -1 };
+int g_iSoldierCount = 0;
+int g_iEntityIndex[64] = { -1 };
 int g_iMeleeEntityIndex[64] = { -1 };
 int g_iNotMeleeEntityIndex[64] =  { -1 };
 //these are similar to those used by Double Tap
@@ -192,6 +193,9 @@ new g_reloadEndDuration = -1;
 new g_iReloadState = -1;
 new g_iShovePenalty = 0;
 float g_fSavedShoveTime[MAXPLAYERS+1];
+float g_Reload_Rate = 0.9;
+float g_Attack_Rate = 0.6;
+
 
 // Parachute
 
@@ -264,7 +268,7 @@ new Handle:ADRENALINE_DURATION;
 new Handle:ADRENALINE_HEALTH_BUFFER;
 
 // Soldier
-new Handle:SOLDIER_FIRE_RATE;
+new Handle:SOLDIER_ATTACK_RATE;
 new Handle:SOLDIER_DAMAGE_REDUCE_RATIO;
 new Handle:SOLDIER_SPEED;
 new Handle:SOLDIER_SHOVE_PENALTY;
@@ -327,7 +331,6 @@ new Float:ReviveDuration;
 new bool:BombActive = false;
 
 new Handle:SABOTEUR_ACTIVE_BOMB_COLOR;
-
 // Last class taken
 new LastClassConfirmed[MAXPLAYERS+1];
 
@@ -463,7 +466,10 @@ public OnPluginStart( )
 	ENGINEER_HEALTH = CreateConVar("talents_engineer_health", "150", "How much health a engineer should have");
 	BRAWLER_HEALTH = CreateConVar("talents_brawler_health", "600", "How much health a brawler should have");
 	
-	SOLDIER_FIRE_RATE = CreateConVar("talents_soldier_fire_rate", "0.6666", "How fast the soldier should fire. Lower values = faster");
+	SOLDIER_ATTACK_RATE = CreateConVar("talents_soldier_fire_rate", "0.6666", "How fast the soldier should attack. Lower values = faster. Between 0.2 and 0.9", FCVAR_NONE|FCVAR_NOTIFY, true, 0.2, true, 0.9);
+	HookConVarChange(SOLDIER_ATTACK_RATE, Convar_Attack_Rate);	
+	g_Attack_Rate = 0.666;
+
 	SOLDIER_SPEED = CreateConVar("talents_soldier_speed", "1.15", "How fast soldier should run. A value of 1.0 = normal speed");
 	SOLDIER_DAMAGE_REDUCE_RATIO = CreateConVar("talents_soldier_damage_reduce_ratio", "0.75", "Ratio for how much armor reduces damage for soldier");
 	SOLDIER_SHOVE_PENALTY = CreateConVar("talents_soldier_shove_penalty_enabled","0.0","Enables/Disables shove penalty for soldier. 0 = OFF, 1 = ON.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
@@ -500,7 +506,10 @@ public OnPluginStart( )
 	COMMANDO_DAMAGE_HUNTING = CreateConVar("talents_commando_dmg_hunting", "15.0", "How much bonus damage a Commando does with hunting rifle");
 	COMMANDO_DAMAGE_PISTOL = CreateConVar("talents_commando_dmg_pistol", "25.0", "How much bonus damage a Commando does with pistol");
 	COMMANDO_DAMAGE_SMG = CreateConVar("talents_commando_dmg_smg", "7.0", "How much bonus damage a Commando does with smg");
-	COMMANDO_RELOAD_RATIO = CreateConVar("talents_commando_reload_ratio", "0.44", "Ratio for how fast a Commando should be able to reload");
+	COMMANDO_RELOAD_RATIO = CreateConVar("talents_commando_reload_ratio", "0.5", "Ratio for how fast a Commando should be able to reload. Between 0.3 and 0.9",FCVAR_NONE|FCVAR_NOTIFY, true, 0.3, true, 0.9);
+	HookConVarChange(COMMANDO_RELOAD_RATIO, Convar_Reload_Rate);
+	g_Reload_Rate = 0.6;
+
 	COMMANDO_ENABLE_STUMBLE_BLOCK = CreateConVar("talents_commando_enable_stumble_block", "1", "Enable blocking tank knockdowns for Commando. 0 = Disable, 1 = Enable");
 	COMMANDO_ENABLE_STOMPING = CreateConVar("talents_commando_enable_stomping", "1", "Enable stomping of downed infected  0 = Disable, 1 = Enable");
 	COMMANDO_STOMPING_SLOWDOWN = CreateConVar("talents_commando_stomping_slowdown", "0", "Should movement slow down after stomping: 0 = Disable, 1 = Enable");
@@ -523,8 +532,27 @@ public OnPluginStart( )
 	AutoExecConfig(true, "talents");
 	ApplyHealthModifiers();
 	parseAvailableBombs();
-
 }
+
+public Convar_Reload_Rate (Handle:convar, const String:oldValue[], const String:newValue[])
+{
+	new Float:flF=StringToFloat(newValue);
+	if (flF<0.02)
+		flF=0.02;
+	else if (flF>0.9)
+		flF=0.9;
+	g_Reload_Rate = flF;
+}
+public Convar_Attack_Rate (Handle:convar, const String:oldValue[], const String:newValue[])
+{
+	new Float:flF=StringToFloat(newValue);
+	if (flF<0.02)
+		flF=0.02;
+	else if (flF>0.9)
+		flF=0.9;
+	g_Attack_Rate = flF;
+}
+
 public void OnPluginEnd()
 {
 	ResetPlugin();
@@ -1242,6 +1270,9 @@ public RebuildCache()
 		{
 			g_iSoldierCount++;
 			g_iSoldierIndex[g_iSoldierCount] = i;
+			#if DEBUG
+			PrintToChatAll("\x03-registering \x01%N as Soldier",i);
+			#endif			
 		}
 	}
 }
@@ -2345,7 +2376,9 @@ public Event_RelCommandoClass(Handle:event, String:name[], bool:dontBroadcast)
 
 	if (!IsValidEntity(weapon))
 	return;
-	
+	#if DEBUG
+	PrintDebugAll("\x03Client \x01%i\x03; start of reload detected",client );
+	#endif
 	float flGameTime = GetGameTime();
 	float flNextTime_calc;
 	decl String:bNetCl[64];
@@ -2353,17 +2386,25 @@ public Event_RelCommandoClass(Handle:event, String:name[], bool:dontBroadcast)
 	float flStartTime_calc;
 	GetEntityNetClass(weapon, bNetCl, sizeof(bNetCl));
 	GetEntityNetClass(weapon,stClass,32);
-
-	if (DEBUG_MODE)
-	PrintToChatAll("\x03-class of gun: \x01%s",stClass );
+	#if DEBUG
+	PrintDebugAll("\x03-class of gun: \x01%s",stClass );
+	#endif
 
 	if (StrContains(bNetCl, "shotgun", false) == -1)
 	{
+
 		new Handle:hPack = CreateDataPack();
 		WritePackCell(hPack, client);
 		float flNextPrimaryAttack = GetEntDataFloat(weapon, g_iNextPrimaryAttack);		
+		PrintToChatAll("\x03- pre, gametime \x01%f\x03, retrieved nextattack\x01 %i %f\x03, retrieved time idle \x01%i %f",
+		flGameTime,
+		g_iNextPrimaryAttack,
+		GetEntDataFloat(client,g_iNextPrimaryAttack),
+		g_iTimeWeaponIdle,
+		GetEntDataFloat(weapon,g_iTimeWeaponIdle)
+		);
 
-		new Float:fReloadRatio = GetConVarFloat(COMMANDO_RELOAD_RATIO);
+		new Float:fReloadRatio = g_Reload_Rate;
 		flNextTime_calc = (flNextPrimaryAttack - flGameTime) * fReloadRatio;
 
 		SetEntDataFloat(weapon, g_iPlaybackRate, 1.0 / fReloadRatio, true);
@@ -2378,6 +2419,16 @@ public Event_RelCommandoClass(Handle:event, String:name[], bool:dontBroadcast)
 		SetEntDataFloat(weapon, g_iTimeWeaponIdle, flNextTime_calc, true);
 		SetEntDataFloat(weapon, g_iNextPrimaryAttack, flNextTime_calc, true);
 		SetEntDataFloat(client, g_iNextAttack, flNextTime_calc, true);
+		#if DEBUG
+		PrintDebugAll("\x03- post, calculated nextattack \x01%f\x03, gametime \x01%f\x03, retrieved nextattack\x01 %i %f\x03, retrieved time idle \x01%i %f",
+		flNextTime_calc,
+		flGameTime,
+		g_iNextPrimaryAttack,
+		GetEntDataFloat(client,g_iNextPrimaryAttack),
+		g_iTimeWeaponIdle,
+		GetEntDataFloat(weapon,g_iTimeWeaponIdle)
+		);
+		#endif
 	}
 	else
 	{
@@ -2389,9 +2440,9 @@ public Event_RelCommandoClass(Handle:event, String:name[], bool:dontBroadcast)
 
 		if (StrContains(bNetCl, "shotgun_spas", false) != -1)
 		{
-			WritePackFloat(hPack, 0.293939);
-			WritePackFloat(hPack, 0.272999);
-			WritePackFloat(hPack, 0.675000);
+			WritePackFloat(hPack, 0.193939);
+			WritePackFloat(hPack, 0.172999);
+			WritePackFloat(hPack, 0.575000);
 
 			CreateTimer(0.1, CommandoPumpShotReload, hPack);
 		}
@@ -2909,7 +2960,7 @@ stock HookPlayer(client)
 
 public OnGameFrame()
 {
-	if (!IsServerProcessing() || !RoundStarted) { return; }
+	if (!IsServerProcessing())  { return; } // RoundStarted
 	else
 	{
 		MA_OnGameFrame();
@@ -2961,9 +3012,16 @@ void DT_OnGameFrame()
 
 		if (g_iEntityIndex[client] == iActiveWeapon && g_fNextAttackTime[client] < flNextPrimaryAttack)
 		{
-			flNextTime_calc = (( flNextPrimaryAttack - flGameTime ) * GetConVarFloat(SOLDIER_FIRE_RATE)) + flGameTime;
+			#if DEBUG
+			PrintDebugAll("\x03DT after adjusted shot\n-pre, client \x01%i\x03; entid \x01%i\x03; enginetime\x01 %f\x03; NextTime_orig \x01 %f\x03; interval \x01%f",client,iActiveWeapon,flGameTime,flNextPrimaryAttack, flNextPrimaryAttack-flGameTime );
+			#endif
+
+			flNextTime_calc = ( flNextPrimaryAttack - flGameTime ) * g_Attack_Rate + flGameTime;
 			g_fNextAttackTime[client] = flNextTime_calc;
 			SetEntDataFloat(iActiveWeapon, g_iNextPrimaryAttack, flNextTime_calc, true);
+			#if DEBUG
+			PrintDebugAll("\x03-post, NextTime_calc \x01 %f\x03; new interval \x01%f",GetEntDataFloat(iActiveWeapon,g_iNextPrimaryAttack), GetEntDataFloat(iActiveWeapon,g_iNextPrimaryAttack)-flGameTime );
+			#endif
 			continue;
 		}
 		
@@ -3072,7 +3130,7 @@ int MA_OnGameFrame()
 		if (g_iMeleeEntityIndex[iCid] == iEntid && g_flNextMeleeAttackTime[iCid] < flNextPrimaryAttack)
 		{
 			//this is a calculation of when the next primary attack will be after applying double tap values
-			flNextTime_calc = flGameTime + GetConVarFloat(SOLDIER_FIRE_RATE);
+			flNextTime_calc =  ( flNextPrimaryAttack - flGameTime ) * g_Attack_Rate + flGameTime;
 			//flNextTime_calc = flGameTime + 0.45 ;
 			// flNextTime_calc = flGameTime + melee_speed[iCid] ;
 
@@ -3081,7 +3139,9 @@ int MA_OnGameFrame()
 
 			//and finally adjust the value in the gun
 			SetEntDataFloat(iEntid, g_iNextPrimaryAttack, flNextTime_calc, true);
-
+			#if DEBUG
+			PrintDebugAll("\x03-post, NextTime_calc \x01 %f\x03; new interval \x01%f",GetEntDataFloat(iEntid,g_iNextPrimaryAttack), GetEntDataFloat(iEntid,g_iNextPrimaryAttack	)-flGameTime );
+			#endif
 			continue;
 		}
 
