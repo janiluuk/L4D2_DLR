@@ -4,6 +4,8 @@
 #endif
 #define _DLRCore_included
 #define DLRCore_version "1.0.0"
+#define DLRCORE_PLUGIN_NAME = "dlr_talents_2023"
+#define DLRCORE_PLUGIN_FILE = "dlr_talents.smx"
 
 /**
  * Get player classname
@@ -70,6 +72,17 @@ forward DLR_OnRoundState(int state);
 forward DLR_OnPluginStateq(int state);
 
 /**
+ * Called when plugin wants to execute custom command instead
+ *
+ * @param name           Custom command name
+ * @param client         Client ID
+ * @param int            Custom param
+ * @param int            Custom param 2
+ * @noreturn
+ */
+forward OnCustomCommand(char[] name, int client, int param, int param2);  
+
+/**
  * Called when player has successfully used special skill
  *
  * @param client         The client index of the player playing tetris.
@@ -97,7 +110,6 @@ native void OnSpecialSkillFail(int client, char[] skillName, char[] reason);
  */
 native int RegisterDLRSkill(char[] skillName, int type);  
 
-forward OnCustomCommand(char[] name, int client, int entity, int type);  
 
 
 stock function OnDLRAvailable() {
@@ -114,8 +126,8 @@ stock function OnDLRAvailable() {
 
 public SharedPlugin __pl_DLRCore = 
 {
-    name = "dlr_talents_2023",
-    file = "dlr_talents.smx",
+    name = DLRCORE_PLUGIN_NAME,
+    file = DLRCORE_PLUGIN_FILE,
 #if defined REQUIRE_PLUGIN
     required = 1,
 #else
@@ -172,13 +184,17 @@ enum struct playerClass {
 	int perkId
 	char className[32]
 	char classDescription[32]
-	float maxHealth
-	float jumpVelocity
-	float attackDamage
-	float armorRate
-	float healingRate
-	float maxPlayers
-	float tankStumbleBlock
+    playerClassProperties properties
+}
+
+enum struct playerClassProperties {
+    float maxHealth
+    float jumpVelocity
+    float attackDamage
+    float attackRate
+    float armorRate
+    float healingRate
+    float tankStumbleBlock
 }
 
 enum struct skillSet {
@@ -187,13 +203,13 @@ enum struct skillSet {
 	char skillSetDescription[128]
 	char skillISetdentifier[32]
 	int maxPlayers
-	int	type 
+	int	skillSetType 
 	int action // 1 = Plugin, 2 = Internal command, 3 = perk, ran on round start and reset in end
 	char menuIdentifier[16]
 	skillAction[MAXPROPERTIES] actions
 }
 
-enum struck skillAction {
+enum struct skillAction {
 	int client
 	int actionId
 	int actionType // 1 = Execute standard OnSpecialSKillUsed hooks // 2 = use OnCustomCommand hook // 3 = execute on startup	
