@@ -191,7 +191,7 @@ int Native_ShowAirstrike(Handle plugin, int numParams)
 // ====================================================================================================
 public Plugin myinfo =
 {
-	name = "[L4D2] F-18 Airstrike",
+	name = "[DLR] F-18 Airstrike plugin version",
 	author = "SilverShot",
 	description = "Creates F-18 flybys which shoot missiles to where they were triggered from.",
 	version = PLUGIN_VERSION,

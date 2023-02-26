@@ -692,10 +692,11 @@ public int OnCustomCommand(char[] name, int client, int entity, int type)
 		projectile = true;
 	}
 	#if DEBUG
-	PrintToChat(client, "%N ignited entity (%s) %i with type %i ", client, name, entity, type);
+//	PrintToChat(client, "%N ignited entity (%s) %i with type %i ", client, name, entity, type);
 	#endif
 
 	DoSpawn(client, type, projectile, entity);
+	return 1;
 }
 
 public void DLR_OnPluginState(int pluginstate)
@@ -704,10 +705,9 @@ public void DLR_OnPluginState(int pluginstate)
 
 	if( pluginstate == 1 && mystate == 0 )
 	{
-		SetConVarFloat(g_hCvarAllow, true);ä
+		SetConVarBool(g_hCvarAllow, true);
 		mystate = 1;
-		DLRAvailable = true;
-		g_		
+		DLR_Available = true;	
 		if (g_iClassID == -1) {
 			g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
 		}
@@ -715,9 +715,9 @@ public void DLR_OnPluginState(int pluginstate)
 	}
 	else if( pluginstate == 0 && mystate == 1 )
 	{
-		SetConVarFloat(g_hCvarAllow, false);ä
+		SetConVarBool(g_hCvarAllow, false);
 		mystate = 0;
-		DLRAvailable = false;
+		DLR_Available = false;
 		if (g_iClassID > -1) {
 			g_iClassID = -1;
 
@@ -728,13 +728,13 @@ public void DLR_OnPluginState(int pluginstate)
 public void DLR_OnRoundState(int roundstate)
 {
 
-	if( roundstate == 1 && g_bMapStarted == 0 )
+	if( roundstate == 1 && g_bMapStarted == false )
 	{
-		g_bMapStarted = 1;
+		g_bMapStarted = true;
 	}
-	else if( roundstate == 0 && g_bMapStarted == 1 )
+	else if(roundstate == 0 && g_bMapStarted == true )
 	{
-		g_bMapStarted = 0;
+		g_bMapStarted = false;
 	}
 }
 
@@ -1104,7 +1104,7 @@ void DoSpawnCommand(int client, int args, bool projectile)
 		DispatchSpawn(entity);
 		static char translation[256];
 		Format(translation, sizeof(translation), "GrenadeMod_Title_%d", index);
-		PrintToChat(client, "\x04 \x05Created: \x04%T", translation, client);
+	//	PrintToChat(client, "\x04 \x05Created: \x04%T", translation, client);
 	}
 }
 
@@ -1158,7 +1158,7 @@ int DoSpawn(int client, int index, bool projectile, int ent=-1)
 
 		static char translation[256];
 		Format(translation, sizeof(translation), "GrenadeMod_Title_%d", index);
-		PrintToChat(client, "\x04\x05Created: \x04%T", translation, client);
+	//	PrintToChat(client, "\x04\x05Created: \x04%T", translation, client);
 	}
 	return entity;
 }
@@ -1292,7 +1292,7 @@ void ShowGrenadeMenu(int client)
 	static char translation[256];
 	Format(translation, sizeof(translation), "%T", "GrenadeMenu_Invalid", client);
 	ReplaceColors(translation, sizeof(translation));
-	PrintToChat(client, translation);
+	//PrintToChat(client, translation);
 }
 
 int Menu_Grenade(Menu menu, MenuAction action, int client, int index)
@@ -1325,7 +1325,7 @@ int Menu_Grenade(Menu menu, MenuAction action, int client, int index)
 					Format(translation, sizeof(translation), "GrenadeMod_Title_%d", index);
 					Format(translation, sizeof(translation), "%T %T", "GrenadeMod_Mode", client, translation, client);
 					ReplaceColors(translation, sizeof(translation));
-					PrintToChat(client, translation);
+				//	PrintToChat(client, translation);
 
 					// Redisplay menu
 					ShowGrenadeMenu(client);
@@ -1333,7 +1333,7 @@ int Menu_Grenade(Menu menu, MenuAction action, int client, int index)
 			} else {
 				Format(translation, sizeof(translation), "%T", "GrenadeMenu_Invalid", client);
 				ReplaceColors(translation, sizeof(translation));
-				PrintToChat(client, translation);
+			//	PrintToChat(client, translation);
 			}
 		}
 		case MenuAction_End:
@@ -2284,7 +2284,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 							Format(translation, sizeof(translation), "GrenadeMod_Title_%d", index);
 							Format(translation, sizeof(translation), "%T %T", "GrenadeMod_Mode", client, translation, client);
 							ReplaceColors(translation, sizeof(translation));
-							PrintToChat(client, translation);
+							//PrintToChat(client, translation);
 
 							if( g_iConfigBinds == 4 )
 							{
