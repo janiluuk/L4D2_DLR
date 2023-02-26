@@ -168,15 +168,24 @@ int g_iMeleeEntityIndex[64] = { -1 };
 int g_iNotMeleeEntityIndex[64] =  { -1 };
 //these are similar to those used by Double Tap
 float g_flNextMeleeAttackTime[64] = { -1.0 };
-
 //this tracks the attack count, similar to 
 int g_iMeleeAttackCount[64] = { -1 };
-
 Float:g_fNextAttackTime[MAXPLAYERS+1] = { -1.0 };
 int g_iNextPrimaryAttack = -1;
 int g_iNextSecondaryAttack = -1;
 int g_hActiveWeapon = -1;
 new g_ActiveWeaponOffset;
+//This keeps track of the default values for reload speeds for the different shotgun types
+//NOTE: Pump and Chrome have identical values
+const Float:g_fl_AutoS = 0.4;
+const Float:g_fl_AutoI = 0.4;
+const Float:g_fl_AutoE = 0.4;
+const Float:g_fl_SpasS = 0.4;
+const Float:g_fl_SpasI = 0.4;
+const Float:g_fl_SpasE = 0.4;
+const Float:g_fl_PumpS = 0.4;
+const Float:g_fl_PumpI = 0.4;
+const Float:g_fl_PumpE = 0.4;
 
 // Speed vars
 new g_flLaggedMovementValue;
@@ -2396,13 +2405,15 @@ public Event_RelCommandoClass(Handle:event, String:name[], bool:dontBroadcast)
 		new Handle:hPack = CreateDataPack();
 		WritePackCell(hPack, client);
 		float flNextPrimaryAttack = GetEntDataFloat(weapon, g_iNextPrimaryAttack);		
-		PrintToChatAll("\x03- pre, gametime \x01%f\x03, retrieved nextattack\x01 %i %f\x03, retrieved time idle \x01%i %f",
+		#if DEBUG
+		PrintDebugAll("\x03- pre, gametime \x01%f\x03, retrieved nextattack\x01 %i %f\x03, retrieved time idle \x01%i %f",
 		flGameTime,
 		g_iNextPrimaryAttack,
-		GetEntDataFloat(client,g_iNextPrimaryAttack),
+		GetEntDataFloat(weapon,g_iNextPrimaryAttack),
 		g_iTimeWeaponIdle,
 		GetEntDataFloat(weapon,g_iTimeWeaponIdle)
 		);
+		#endif
 
 		new Float:fReloadRatio = g_Reload_Rate;
 		flNextTime_calc = (flNextPrimaryAttack - flGameTime) * fReloadRatio;
@@ -2424,7 +2435,7 @@ public Event_RelCommandoClass(Handle:event, String:name[], bool:dontBroadcast)
 		flNextTime_calc,
 		flGameTime,
 		g_iNextPrimaryAttack,
-		GetEntDataFloat(client,g_iNextPrimaryAttack),
+		GetEntDataFloat(weapon,g_iNextPrimaryAttack),
 		g_iTimeWeaponIdle,
 		GetEntDataFloat(weapon,g_iTimeWeaponIdle)
 		);
@@ -2435,31 +2446,31 @@ public Event_RelCommandoClass(Handle:event, String:name[], bool:dontBroadcast)
 		new Handle:hPack = CreateDataPack();
 		WritePackCell(hPack, weapon);
 		WritePackCell(hPack, client);		
-		if (DEBUG_MODE) 
-		PrintToChatAll("Class: %s", stClass);
-
+		#if DEBUG
+		PrintDebugAll("Shotgun Class: %s", stClass);
+		#endif
 		if (StrContains(bNetCl, "shotgun_spas", false) != -1)
 		{
-			WritePackFloat(hPack, 0.193939);
-			WritePackFloat(hPack, 0.172999);
-			WritePackFloat(hPack, 0.575000);
+			WritePackFloat(hPack, g_fl_SpasS);
+			WritePackFloat(hPack, g_fl_SpasI);
+			WritePackFloat(hPack, g_fl_SpasE);
 
 			CreateTimer(0.1, CommandoPumpShotReload, hPack);
 		}
 		else if (StrContains(bNetCl, "pumpshotgun", false) != -1)
 		{
 
-			WritePackFloat(hPack, 0.393939);
-			WritePackFloat(hPack, 0.472999);
-			WritePackFloat(hPack, 0.875000);
+			WritePackFloat(hPack, g_fl_PumpS);
+			WritePackFloat(hPack, g_fl_PumpI);
+			WritePackFloat(hPack, g_fl_PumpE);
 
 			CreateTimer(0.1, CommandoPumpShotReload, hPack);
 		}
 		else if (StrContains(bNetCl, "autoshotgun", false) != -1)
 		{
-			WritePackFloat(hPack, 0.416666);
-			WritePackFloat(hPack, 0.395999);
-			WritePackFloat(hPack, 1.000000);
+			WritePackFloat(hPack, g_fl_AutoS);
+			WritePackFloat(hPack, g_fl_AutoI);
+			WritePackFloat(hPack, g_fl_AutoE);
 
 			CreateTimer(0.1, CommandoPumpShotReload, hPack);
 		}
@@ -2508,7 +2519,7 @@ public Action:CommandoPumpShotReload(Handle:timer, Handle:hOldPack)
 	ResetPack(hOldPack);
 	new weapon = ReadPackCell(hOldPack);
 	new client = ReadPackCell(hOldPack);	
-	new Float:fReloadRatio = GetConVarFloat(COMMANDO_RELOAD_RATIO);
+	new Float:fReloadRatio = g_Reload_Rate;
 	new Float:start = ReadPackFloat(hOldPack);
 	new Float:insert = ReadPackFloat(hOldPack);
 	new Float:end = ReadPackFloat(hOldPack);
@@ -2527,7 +2538,7 @@ public Action:CommandoPumpShotReload(Handle:timer, Handle:hOldPack)
 	SetEntDataFloat(weapon, g_iPlaybackRate, 1.0 / fReloadRatio, true);
 	
 	if (DEBUG_MODE == true) {
-		PrintToChatAll("\x03-spas shotgun detected, ratio \x01%i\x03, startO \x01%i\x03, insertO \x01%i\x03, endO \x01%i", fReloadRatio, g_reloadStartDuration, g_reloadInsertDuration, g_reloadEndDuration);
+		PrintDebugAll("\x03-spas shotgun detected, ratio \x01%i\x03, startO \x01%i\x03, insertO \x01%i\x03, endO \x01%i", fReloadRatio, g_reloadStartDuration, g_reloadInsertDuration, g_reloadEndDuration);
 	}
 	
 	new Handle:hPack = CreateDataPack();
@@ -3140,7 +3151,7 @@ int MA_OnGameFrame()
 			//and finally adjust the value in the gun
 			SetEntDataFloat(iEntid, g_iNextPrimaryAttack, flNextTime_calc, true);
 			#if DEBUG
-			PrintDebugAll("\x03-post, NextTime_calc \x01 %f\x03; new interval \x01%f",GetEntDataFloat(iEntid,g_iNextPrimaryAttack), GetEntDataFloat(iEntid,g_iNextPrimaryAttack	)-flGameTime );
+			//PrintDebugAll("\x03-post, NextTime_calc \x01 %f\x03; new interval \x01%f",GetEntDataFloat(iEntid,g_iNextPrimaryAttack), GetEntDataFloat(iEntid,g_iNextPrimaryAttack	)-flGameTime );
 			#endif
 			continue;
 		}
