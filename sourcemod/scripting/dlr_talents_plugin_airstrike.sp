@@ -213,6 +213,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	MarkNativeAsOptional("OnSpecialSkillFail");	
 	MarkNativeAsOptional("OnSpecialSkillSuccess");		
 	MarkNativeAsOptional("OnPlayerClassChange");
+	MarkNativeAsOptional("DLR_OnPluginState");	
 	MarkNativeAsOptional("GetPlayerSkillName");	
 	MarkNativeAsOptional("RegisterDLRSkill");
 
@@ -224,16 +225,13 @@ public void OnAllPluginsLoaded()
 	if (g_iClassID != -1) return;
 
 	DLR_Available = LibraryExists("dlr_talents_2023");
-	if (DLR_Available) {
-		g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
-	} 
+	g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
 }
 
 public int OnSpecialSkillUsed(int iClient, int skill, int type)
 {
 	char szSkillName[32];
 	GetPlayerSkillName(iClient, szSkillName, sizeof(szSkillName));
-
 	if (StrEqual(szSkillName,PLUGIN_SKILL_NAME))
 	{
 		float vPos[3], vAng[3];
@@ -303,7 +301,32 @@ public void OnLibraryAdded(const char[] name)
 	if(StrEqual(name, "dlr_talents_2023")) {
 		DLR_Available = true;	
 		if (g_iClassID < 0)	
-		g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
+			g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
+	}
+}
+
+public void DLR_OnPluginState(int pluginstate)
+{
+	static int mystate;
+
+	if( pluginstate == 1 && mystate == 0 )
+	{
+		SetConVarBool(g_hCvarAllow, true);
+		mystate = 1;
+		DLR_Available = true;	
+		if (g_iClassID == -1) {
+			g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
+		}
+
+	}
+	else if( pluginstate == 0 && mystate == 1 )
+	{
+		SetConVarBool(g_hCvarAllow, false);
+		mystate = 0;
+		DLR_Available = false;
+		if (g_iClassID > -1) {
+			g_iClassID = -1;
+		}
 	}
 }
 

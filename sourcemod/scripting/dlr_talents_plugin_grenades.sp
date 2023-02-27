@@ -701,27 +701,17 @@ public int OnCustomCommand(char[] name, int client, int entity, int type)
 
 public void DLR_OnPluginState(int pluginstate)
 {
-	static int mystate;
-
-	if( pluginstate == 1 && mystate == 0 )
+	if( pluginstate == 1)
 	{
 		SetConVarBool(g_hCvarAllow, true);
-		mystate = 1;
 		DLR_Available = true;	
-		if (g_iClassID == -1) {
-			g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
-		}
+		g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
 
 	}
-	else if( pluginstate == 0 && mystate == 1 )
+	else if( pluginstate == 0)
 	{
 		SetConVarBool(g_hCvarAllow, false);
-		mystate = 0;
 		DLR_Available = false;
-		if (g_iClassID > -1) {
-			g_iClassID = -1;
-
-		}
 	}
 }
 
@@ -884,11 +874,14 @@ public void OnPluginStart()
 		LoadDataConfig();
 		IsAllowed();
 	}
-
+	if (DLR_Available == true) {
+		g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
+	}
 	g_iClassTank = g_bLeft4Dead2 ? 8 : 5;
 
 	if( g_bLeft4Dead2 )
 		g_hAlAcid = new ArrayList();
+
 }
 
 // ====================================================================================================
@@ -981,6 +974,11 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 public void OnAllPluginsLoaded()
 {
 	bLMC_Available = LibraryExists("LMCEDeathHandler");
+	DLR_Available = LibraryExists("dlr_talents_2023");
+
+	if (g_iClassID != -1) return;
+	
+	g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);	
 }
 
 public void OnLibraryAdded(const char[] sName)
@@ -990,7 +988,7 @@ public void OnLibraryAdded(const char[] sName)
 	else if( strcmp(sName, "left4dhooks") == 0 )
 		g_bLeft4DHooks = true;
 	else if( strcmp(sName, "dlr_talents_2023") == 0 )
-		DLR_Available = true;		
+		DLR_Available = true;	
 	else if( g_bLeft4Dead2 && strcmp(sName, "l4d2_airstrike") == 0 )
 	{
 		g_bAirstrike = true;
@@ -1015,6 +1013,8 @@ public void OnLibraryRemoved(const char[] sName)
 
 public void OnPluginEnd()
 {
+	g_iClassID = -1;
+
 	ResetPlugin(true);
 }
 // ====================================================================================================
@@ -1716,6 +1716,7 @@ public void OnMapStart()
 	// LOAD CONFIG
 	if( g_bLateLoad )
 	{
+
 		g_bLateLoad = false; // No double load from lateload
 	} else {
 		LoadDataConfig();

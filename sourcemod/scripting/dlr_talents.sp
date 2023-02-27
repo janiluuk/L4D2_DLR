@@ -180,9 +180,9 @@ new g_ActiveWeaponOffset;
 const Float:g_fl_AutoS = 0.4;
 const Float:g_fl_AutoI = 0.4;
 const Float:g_fl_AutoE = 0.4;
-const Float:g_fl_SpasS = 0.4;
-const Float:g_fl_SpasI = 0.4;
-const Float:g_fl_SpasE = 0.4;
+const Float:g_fl_SpasS = 0.2;
+const Float:g_fl_SpasI = 0.2;
+const Float:g_fl_SpasE = 0.2;
 const Float:g_fl_PumpS = 0.4;
 const Float:g_fl_PumpI = 0.4;
 const Float:g_fl_PumpE = 0.4;
@@ -397,7 +397,7 @@ public OnPluginStart( )
 	g_hSkillMenu = CreateMenu(DlrSkillMenuHandler);
 
 	//Create a Class Selection forward
-	SetMenuTitle(g_hSkillMenu, "Registered classes");
+	SetMenuTitle(g_hSkillMenu, "Registered plugins");
 	SetMenuExitButton(g_hSkillMenu, true);
 	if (g_hSkillArray == INVALID_HANDLE)
 		g_hSkillArray = CreateArray(16);
@@ -447,9 +447,11 @@ public OnPluginStart( )
 	RegConsoleCmd("sm_class", CmdClassMenu, "Shows the class selection menu");
 	RegConsoleCmd("sm_classinfo", CmdClassInfo, "Shows class descriptions");
 	RegConsoleCmd("sm_classes", CmdClasses, "Shows class descriptions");
-	RegConsoleCmd("sm_dlrm", CmdDlrMenu, "Debug & Manage");
-	RegConsoleCmd("sm_hide", HideCommand, "Hide player");
-	RegConsoleCmd("sm_yay", GrenadeCommand, "Test grenade");
+	RegAdminCmd("sm_dlrm", CmdDlrMenu, ADMFLAG_ROOT, "Debug & Manage");
+	RegAdminCmd("sm_hide", HideCommand, ADMFLAG_ROOT, "Hide player");
+	RegAdminCmd("sm_dlr_plugins", CmdPlugins, ADMFLAG_ROOT, "List plugins");	
+	RegAdminCmd("sm_yay", GrenadeCommand, ADMFLAG_ROOT, "Test grenades");
+
 
 	// Convars
 	new Handle:hVersion = CreateConVar("talents_version", PLUGIN_VERSION, "Version of this release", FCVAR_NOTIFY|FCVAR_REPLICATED|FCVAR_DONTRECORD);
@@ -565,6 +567,9 @@ public Convar_Attack_Rate (Handle:convar, const String:oldValue[], const String:
 public void OnPluginEnd()
 {
 	ResetPlugin();
+	Call_StartForward(g_hForwardPluginState);
+	Call_PushCell(0);
+	Call_Finish();	
 }
 
 public ResetClientVariables(client)
@@ -655,6 +660,23 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	return APLRes_Success;
 }
 
+/*
+public InitSkillArray()
+{
+    g_hArray = CreateArray(cArraySize, MAXPLAYERS);
+    
+    for(new i = 1; i <= MAXPLAYERS; i++)
+    {
+        if(!IsClientInGame(i))
+            continue;
+
+        SetArrayCell(g_hArray, (i - 1), true, cIndexValid);
+        SetArrayCell(g_hArray, (i - 1), GetClientUserId(i), cIndexUserid);
+        SetArrayCell(g_hArray, (i - 1), GetClientTeam(i), cIndexTeam);
+        SetArrayCell(g_hArray, (i - 1), IsPlayerAlive(i), cIndexAlive);
+    }
+}
+*/
 // Register skill
 public Native_RegisterSkill(Handle:plugin, numParams)
 {
@@ -684,8 +706,12 @@ public Native_RegisterSkill(Handle:plugin, numParams)
 	if(++g_iSkillCounter <= MAXCLASSES)
 	{
 		IntToString(g_iSkillCounter, szItemInfo, sizeof(szItemInfo));
-		PushArrayString(g_hSkillArray, szSkillName);
 		int index = FindStringInArray(g_hSkillArray, szSkillName);		
+		if (index >= 0) {
+			PrintDebugAll("Skill %s already exists on index %i", szSkillName, index);
+			return index;
+		}
+		index = PushArrayString(g_hSkillArray, szSkillName);
 		type = GetNativeCell(2);
 		PushArrayCell(g_hSkillTypeArray, type);
 		AddMenuItem(g_hSkillMenu, szItemInfo, szSkillName);
@@ -954,7 +980,6 @@ public Action:TimerLoadClient(Handle:hTimer, any:client)
 
 	ResetPlugin();
 	ResetClientVariables(client);	
-	RebuildCache();	
 	if (RoundStarted == false && !IsPlayerInSaferoom(client) && !IsInEndingSaferoom(client)) {
 		RoundStarted = true;	
 	}
@@ -1361,8 +1386,6 @@ public Event_PlayerSpawn(Handle:hEvent, String:sName[], bool:bDontBroadcast)
 		
 		g_iPlayerSpawn = true;
 	}
-
-	RebuildCache();
 }
 
 public Event_PlayerDeath(Handle:hEvent, String:sName[], bool:bDontBroadcast)
@@ -1432,6 +1455,17 @@ public Action:CmdClasses(client, args)
 		if(ClientData[i].ChosenClass != NONE)
 		{
 			PrintToChatAll("\x04%N\x01 : is a %s",i,MENU_OPTIONS[ClientData[i].ChosenClass]);
+		}
+	}
+}
+
+public Action:CmdPlugins(client, args)
+{
+	for (new i = 1; i <= MaxClients; i++)
+	{
+		if(ClientData[i].ChosenClass != NONE)
+		{
+			PrintToChat(client, "\x04%N\x01 : is a %s",i,MENU_OPTIONS[ClientData[i].ChosenClass]);
 		}
 	}
 }
@@ -1520,7 +1554,8 @@ public PanelHandler_SelectClass(Handle:menu, MenuAction:action, client, param)
 				
 				SetupClasses(client, param);
 				EmitSoundToClient(client, SOUND_CLASS_SELECTED);
-				
+				RebuildCache();
+
 				if(OldClass == 0)
 				{
 					PrintToChatAll("\x04%N\x01 is a \x05%s\x01%s",client,MENU_OPTIONS[param],ClassTips[param]);
@@ -2443,14 +2478,17 @@ public Event_RelCommandoClass(Handle:event, String:name[], bool:dontBroadcast)
 	}
 	else
 	{
+
 		new Handle:hPack = CreateDataPack();
 		WritePackCell(hPack, weapon);
 		WritePackCell(hPack, client);		
-		#if DEBUG
-		PrintDebugAll("Shotgun Class: %s", stClass);
-		#endif
-		if (StrContains(bNetCl, "shotgun_spas", false) != -1)
+
+		if (StrContains(bNetCl, "CShotgun_SPAS", false) != -1)
 		{
+
+			#if DEBUG
+				PrintDebugAll("Shotgun Class: %s", stClass);
+			#endif
 			WritePackFloat(hPack, g_fl_SpasS);
 			WritePackFloat(hPack, g_fl_SpasI);
 			WritePackFloat(hPack, g_fl_SpasE);
@@ -2474,8 +2512,13 @@ public Event_RelCommandoClass(Handle:event, String:name[], bool:dontBroadcast)
 
 			CreateTimer(0.1, CommandoPumpShotReload, hPack);
 		}
-		else
-		CloseHandle(hPack);
+		else {
+		#if DEBUG
+			PrintDebugAll("\x03 did not find: \x01%s",stClass );
+		#endif
+			CloseHandle(hPack);
+
+		}
 	}
 }
 
@@ -2524,12 +2567,15 @@ public Action:CommandoPumpShotReload(Handle:timer, Handle:hOldPack)
 	new Float:insert = ReadPackFloat(hOldPack);
 	new Float:end = ReadPackFloat(hOldPack);
 	CloseHandle(hOldPack);
+	#if DEBUG
+		PrintDebugAll("Starting reload");
+	#endif
 
 	if (client <= 0
 		|| weapon <= 0
 		|| IsValidEntity(weapon)==false
-		|| IsValidEntity(weapon)==false
-		|| IsClientInGame(weapon)==false)
+		|| IsValidEntity(client)==false
+		|| IsClientInGame(client)==false)
 		return Plugin_Stop;
 
 	SetEntDataFloat(weapon,	g_reloadStartDuration,	start * fReloadRatio,	true);
@@ -2537,10 +2583,10 @@ public Action:CommandoPumpShotReload(Handle:timer, Handle:hOldPack)
 	SetEntDataFloat(weapon,	g_reloadEndDuration, end * fReloadRatio,	true);
 	SetEntDataFloat(weapon, g_iPlaybackRate, 1.0 / fReloadRatio, true);
 	
-	if (DEBUG_MODE == true) {
+	#if DEBUG
 		PrintDebugAll("\x03-spas shotgun detected, ratio \x01%i\x03, startO \x01%i\x03, insertO \x01%i\x03, endO \x01%i", fReloadRatio, g_reloadStartDuration, g_reloadInsertDuration, g_reloadEndDuration);
-	}
-	
+	#endif
+
 	new Handle:hPack = CreateDataPack();
 	WritePackCell(hPack, weapon);
 	WritePackCell(hPack, client);
@@ -2577,9 +2623,13 @@ public Action:CommandoShotCalculate(Handle:timer, Handle:hPack)
 		KillTimer(timer);
 		return Plugin_Stop;
 	}
+	#if DEBUG
+	PrintDebugAll("Shotgun finished reloading");
+	#endif
 
 	if (GetEntData(weapon, g_iReloadState) == 0 || GetEntData(weapon, g_iReloadState) == 2 )
 	{
+
 		new Float:flNextTime = GetGameTime() + addMod;
 		
 		SetEntDataFloat(weapon, g_iPlaybackRate, 1.0, true);
@@ -3017,7 +3067,9 @@ void DT_OnGameFrame()
 		if (flNextSecondaryAttack > flGameTime)
 		{
 			//----RSDEBUG----
-			//PrintToChatAll("\x03DT client \x01%i\x03; melee attack inferred",iCid );
+			#if DEBUG
+			PrintDebugAll("\x03DT client \x01%i\x03; melee attack inferred",client );
+			#endif
 			continue;
 		}
 
@@ -3377,7 +3429,6 @@ public Action:TimerCheckBombSensors(Handle:hTimer, Handle:hPack)
 	int index = ReadPackCell(hPack);
 	int bombType = ReadPackCell(hPack);
 	int entity = ReadPackCell(hPack);
-	CloseHandle(hPack);
 
 	if (index < 0) index = 0;
 
@@ -3417,7 +3468,8 @@ public Action:TimerCheckBombSensors(Handle:hTimer, Handle:hPack)
 					PrintDebugAll("Detonating Grenade type: %s", getBombName(bombType-1));
 
 					useCustomCommand("Grenades", owner, entity, bombType);					
-
+					KillTimer(hTimer);
+					
 					return Plugin_Stop;
 				}
 				else if (GetClientTeam(client) == 2) {

@@ -362,6 +362,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	MarkNativeAsOptional("OnPlayerClassChange");
 	MarkNativeAsOptional("GetPlayerSkillName");	
 	MarkNativeAsOptional("RegisterDLRSkill");
+	MarkNativeAsOptional("DLR_OnPluginState");	
 
 	return APLRes_Success;
 }
@@ -393,9 +394,28 @@ public void OnAllPluginsLoaded()
 {
 	bLMC_Available = LibraryExists("LMCEDeathHandler");
 	DLR_Available = LibraryExists("dlr_talents_2023");
-	if (DLR_Available) {
+	if (DLR_Available && g_iClassID != -1) return;
+
+	g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
+ 
+}
+
+public void DLR_OnPluginState(int pluginstate)
+{
+	if( pluginstate == 1)
+	{
+		SetConVarBool(hCvar_Machine_Enabled, true);
+		DLR_Available = true;	
 		g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
-	} 
+	}
+	else if( pluginstate == 0)
+	{
+		SetConVarBool(hCvar_Machine_Enabled, false);
+		DLR_Available = false;
+		if (g_iClassID > -1) {
+			g_iClassID = -1;
+		}
+	}
 }
 
 public void OnLibraryAdded(const char[] sName)
@@ -570,6 +590,7 @@ public void OnPluginStart()
 //	HookEvent("finale_vehicle_incoming", Event_FinaleVehicleInComing, EventHookMode_PostNoCopy); // L4D2
 
 	if (DLR_Available) {
+
 		g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
 	} else {
 		g_iClassID = -1;
