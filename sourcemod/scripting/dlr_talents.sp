@@ -21,11 +21,13 @@
 #pragma semicolon 1
 #define DEBUG 0
 #define DEBUG_LOG 1
+#define DEBUG_TRACE 0
+
 
 #include <sourcemod>
 #include <sdktools>
 #include <sdkhooks>
-
+#include <DLRCore>
 /**
 * CONFIGURABLE VARIABLES
 * Feel free to change the following code-related values.
@@ -160,7 +162,8 @@ PlayerInfo ClientData[MAXPLAYERS+1];
 bool g_bLeft4Dead2, g_bLateLoad, g_bDmgHooked;
 bool g_bAirstrike, g_bAirstrikeValid;
 
-// Rapid fire variables
+// Soldier vars
+
 int g_iSoldierIndex[64] = { -1 };
 int g_iSoldierCount = 0;
 int g_iEntityIndex[64] = { -1 };
@@ -174,18 +177,22 @@ Float:g_fNextAttackTime[MAXPLAYERS+1] = { -1.0 };
 int g_iNextPrimaryAttack = -1;
 int g_iNextSecondaryAttack = -1;
 int g_hActiveWeapon = -1;
-new g_ActiveWeaponOffset;
+new g_hActiveWeaponOffset;
+float g_flReloadRate = 0.6;
+float g_flAttackRate = 0.666;
+float g_flMeleeRate = 0.45;
+
 //This keeps track of the default values for reload speeds for the different shotgun types
 //NOTE: Pump and Chrome have identical values
-const Float:g_fl_AutoS = 0.4;
-const Float:g_fl_AutoI = 0.4;
-const Float:g_fl_AutoE = 0.4;
-const Float:g_fl_SpasS = 0.2;
-const Float:g_fl_SpasI = 0.2;
-const Float:g_fl_SpasE = 0.2;
-const Float:g_fl_PumpS = 0.4;
-const Float:g_fl_PumpI = 0.4;
-const Float:g_fl_PumpE = 0.4;
+const Float:g_flAutoShotgunS = 0.4;
+const Float:g_flAutoShotgunI = 0.4;
+const Float:g_flAutoShotgunE = 0.4;
+const Float:g_flShotgunSpasS = 0.2;
+const Float:g_flShotgunSpasI = 0.2;
+const Float:g_flShotgunSpasE = 0.2;
+const Float:g_flPumpShotgunS = 0.4;
+const Float:g_flPumpShotgunI = 0.4;
+const Float:g_flPumpShotgunE = 0.4;
 
 // Speed vars
 new g_flLaggedMovementValue;
@@ -201,9 +208,6 @@ new g_reloadInsertDuration = -1;
 new g_reloadEndDuration = -1;
 new g_iReloadState = -1;
 new g_iShovePenalty = 0;
-float g_fSavedShoveTime[MAXPLAYERS+1];
-float g_Reload_Rate = 0.9;
-float g_Attack_Rate = 0.6;
 
 
 // Parachute
@@ -278,6 +282,7 @@ new Handle:ADRENALINE_HEALTH_BUFFER;
 
 // Soldier
 new Handle:SOLDIER_ATTACK_RATE;
+new Handle:SOLDIER_MELEE_ATTACK_RATE;
 new Handle:SOLDIER_DAMAGE_REDUCE_RATIO;
 new Handle:SOLDIER_SPEED;
 new Handle:SOLDIER_SHOVE_PENALTY;
@@ -420,7 +425,7 @@ public OnPluginStart( )
 	g_iVMStartTimeO = FindSendPropInfo("CTerrorViewModel","m_flLayerStartTime");
 	g_iViewModelO = FindSendPropInfo("CTerrorPlayer","m_hViewModel");
 
-	g_ActiveWeaponOffset = FindSendPropInfo("CBasePlayer", "m_hActiveWeapon");
+	g_hActiveWeaponOffset = FindSendPropInfo("CBasePlayer", "m_hActiveWeapon");
 	g_iNextSecondaryAttack	= FindSendPropInfo("CBaseCombatWeapon","m_flNextSecondaryAttack");
 
 	g_iVelocity = FindSendPropInfo("CBasePlayer", "m_vecVelocity[0]");
@@ -476,15 +481,18 @@ public OnPluginStart( )
 	COMMANDO_HEALTH = CreateConVar("talents_commando_health", "300", "How much health a commando should have");
 	ENGINEER_HEALTH = CreateConVar("talents_engineer_health", "150", "How much health a engineer should have");
 	BRAWLER_HEALTH = CreateConVar("talents_brawler_health", "600", "How much health a brawler should have");
-	
-	SOLDIER_ATTACK_RATE = CreateConVar("talents_soldier_fire_rate", "0.6666", "How fast the soldier should attack. Lower values = faster. Between 0.2 and 0.9", FCVAR_NONE|FCVAR_NOTIFY, true, 0.2, true, 0.9);
-	HookConVarChange(SOLDIER_ATTACK_RATE, Convar_Attack_Rate);	
-	g_Attack_Rate = 0.666;
 
+	SOLDIER_MELEE_ATTACK_RATE = CreateConVar("talents_soldier_melee_rate", "0.45", "The interval for soldier swinging melee weapon (clamped between 0.3 < 0.9)", FCVAR_NOTIFY, true, 0.3, true, 0.9);
+	HookConVarChange(SOLDIER_MELEE_ATTACK_RATE, Convar_Melee_Rate);	
+	g_flMeleeRate = 0.45;	
+	SOLDIER_ATTACK_RATE = CreateConVar("talents_soldier_attack_rate", "0.6666", "How fast the soldier should shoot with guns. Lower values = faster. Between 0.2 and 0.9", FCVAR_NONE|FCVAR_NOTIFY, true, 0.2, true, 0.9);
+	HookConVarChange(SOLDIER_ATTACK_RATE, Convar_Attack_Rate);	
+	g_flAttackRate = 0.666;
 	SOLDIER_SPEED = CreateConVar("talents_soldier_speed", "1.15", "How fast soldier should run. A value of 1.0 = normal speed");
 	SOLDIER_DAMAGE_REDUCE_RATIO = CreateConVar("talents_soldier_damage_reduce_ratio", "0.75", "Ratio for how much armor reduces damage for soldier");
 	SOLDIER_SHOVE_PENALTY = CreateConVar("talents_soldier_shove_penalty_enabled","0.0","Enables/Disables shove penalty for soldier. 0 = OFF, 1 = ON.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	SOLDIER_MAX_AIRSTRIKES = CreateConVar("talents_soldier_max_airstrikes","3.0","Number of tactical airstrikes per round. 0 = OFF", FCVAR_NOTIFY, true, 0.0, true, 16.0);
+
 
 	ATHLETE_JUMP_VEL = CreateConVar("talents_athlete_jump", "450.0", "How high a soldier should be able to jump. Make this higher to make them jump higher, or 0.0 for normal height");
 	ATHLETE_SPEED = CreateConVar("talents_athlete_speed", "1.20", "How fast athlete should run. A value of 1.0 = normal speed");
@@ -519,7 +527,7 @@ public OnPluginStart( )
 	COMMANDO_DAMAGE_SMG = CreateConVar("talents_commando_dmg_smg", "7.0", "How much bonus damage a Commando does with smg");
 	COMMANDO_RELOAD_RATIO = CreateConVar("talents_commando_reload_ratio", "0.5", "Ratio for how fast a Commando should be able to reload. Between 0.3 and 0.9",FCVAR_NONE|FCVAR_NOTIFY, true, 0.3, true, 0.9);
 	HookConVarChange(COMMANDO_RELOAD_RATIO, Convar_Reload_Rate);
-	g_Reload_Rate = 0.6;
+	g_flReloadRate = 0.5;
 
 	COMMANDO_ENABLE_STUMBLE_BLOCK = CreateConVar("talents_commando_enable_stumble_block", "1", "Enable blocking tank knockdowns for Commando. 0 = Disable, 1 = Enable");
 	COMMANDO_ENABLE_STOMPING = CreateConVar("talents_commando_enable_stomping", "1", "Enable stomping of downed infected  0 = Disable, 1 = Enable");
@@ -545,25 +553,33 @@ public OnPluginStart( )
 	parseAvailableBombs();
 }
 
-public Convar_Reload_Rate (Handle:convar, const String:oldValue[], const String:newValue[])
+void Convar_Reload_Rate (Handle:convar, const String:oldValue[], const String:newValue[])
 {
 	new Float:flF=StringToFloat(newValue);
-	if (flF<0.02)
-		flF=0.02;
+	if (flF<0.1)
+		flF=0.1;
 	else if (flF>0.9)
 		flF=0.9;
-	g_Reload_Rate = flF;
+	g_flReloadRate = flF;
 }
-public Convar_Attack_Rate (Handle:convar, const String:oldValue[], const String:newValue[])
+void Convar_Attack_Rate (Handle:convar, const String:oldValue[], const String:newValue[])
 {
 	new Float:flF=StringToFloat(newValue);
-	if (flF<0.02)
-		flF=0.02;
+	if (flF<0.1)
+		flF=0.1;
 	else if (flF>0.9)
 		flF=0.9;
-	g_Attack_Rate = flF;
+	g_flAttackRate = flF;
 }
-
+void Convar_Melee_Rate (Handle:convar, const String:oldValue[], const String:newValue[])
+{
+	new Float:flF=StringToFloat(newValue);
+	if (flF<0.1)
+		flF=0.1;
+	else if (flF>0.9)
+		flF=0.9;
+	g_flMeleeRate = flF;
+}
 public void OnPluginEnd()
 {
 	ResetPlugin();
@@ -583,7 +599,6 @@ public ResetClientVariables(client)
 	ClientData[client].SpecialSkill = SpecialSkill:No_Skill;
 	ClientData[client].LastDropTime = 0.0;
 	g_bInSaferoom[client] = false;
-	g_fSavedShoveTime[client] = 0.0;
 	g_bHide[client] = false; 
 }
 
@@ -887,11 +902,6 @@ public OnMapStart()
 
 	for (int i = 0; i < 2; i++)
 		PrecacheModel(g_sModels[i]);
-
-	for (int i = 0; i < MAXPLAYERS+1; i++) {
-		g_bHide[i] = false;
-		g_fSavedShoveTime[i] = 0.0;
-	}	
 }
 
 public void OnMapEnd()
@@ -1758,46 +1768,6 @@ public Native_GetPlayerClassName(Handle:plugin, numParams)
 // DLR menu
 ///////////////////////////////////////////////////////////////////////////////////
 
-stock void PrintDebug(int client, const char[] format, any ...)
-{
-	#if DEBUG || DEBUG_LOG
-	static char buffer[192];
-	
-	VFormat(buffer, sizeof(buffer), format, 2);
-	#if DEBUG_LOG
-	PrintToConsole(0, "[Debug] %s", buffer);
-	LogMessage("%s", buffer);	
-	#endif 
-
-	#else
-	//suppress "format" never used warning
-	if(format[0])
-		return;
-	else
-		return;
-	#endif
-}
-
-stock void PrintDebugAll(const char[] format, any ...)
-{
-	#if DEBUG || DEBUG_LOG
-	static char buffer[192];
-	VFormat(buffer, sizeof(buffer), format, 2);
-	#if DEBUG_LOG
-	PrintToConsole(0, "[Debug] %s", buffer);
-	LogMessage("%s", buffer);
-	#endif
-	#if DEBUG
-	PrintToChatAll("[Debug] %s", buffer);
-	#endif
-	#else
-	if(format[0])
-		return;
-	else
-		return;
-	#endif
-}
-
 public bool:isAdmin(client)
 {
 	if (client == 0 && GetUserAdmin(client) == INVALID_ADMIN_ID) { return false; }
@@ -2450,7 +2420,7 @@ public Event_RelCommandoClass(Handle:event, String:name[], bool:dontBroadcast)
 		);
 		#endif
 
-		new Float:fReloadRatio = g_Reload_Rate;
+		new Float:fReloadRatio = g_flReloadRate;
 		flNextTime_calc = (flNextPrimaryAttack - flGameTime) * fReloadRatio;
 
 		SetEntDataFloat(weapon, g_iPlaybackRate, 1.0 / fReloadRatio, true);
@@ -2489,26 +2459,26 @@ public Event_RelCommandoClass(Handle:event, String:name[], bool:dontBroadcast)
 			#if DEBUG
 				PrintDebugAll("Shotgun Class: %s", stClass);
 			#endif
-			WritePackFloat(hPack, g_fl_SpasS);
-			WritePackFloat(hPack, g_fl_SpasI);
-			WritePackFloat(hPack, g_fl_SpasE);
+			WritePackFloat(hPack, g_flShotgunSpasS);
+			WritePackFloat(hPack, g_flShotgunSpasI);
+			WritePackFloat(hPack, g_flShotgunSpasE);
 
 			CreateTimer(0.1, CommandoPumpShotReload, hPack);
 		}
 		else if (StrContains(bNetCl, "pumpshotgun", false) != -1)
 		{
 
-			WritePackFloat(hPack, g_fl_PumpS);
-			WritePackFloat(hPack, g_fl_PumpI);
-			WritePackFloat(hPack, g_fl_PumpE);
+			WritePackFloat(hPack, g_flPumpShotgunS);
+			WritePackFloat(hPack, g_flPumpShotgunI);
+			WritePackFloat(hPack, g_flPumpShotgunE);
 
 			CreateTimer(0.1, CommandoPumpShotReload, hPack);
 		}
 		else if (StrContains(bNetCl, "autoshotgun", false) != -1)
 		{
-			WritePackFloat(hPack, g_fl_AutoS);
-			WritePackFloat(hPack, g_fl_AutoI);
-			WritePackFloat(hPack, g_fl_AutoE);
+			WritePackFloat(hPack, g_flAutoShotgunS);
+			WritePackFloat(hPack, g_flAutoShotgunI);
+			WritePackFloat(hPack, g_flAutoShotgunE);
 
 			CreateTimer(0.1, CommandoPumpShotReload, hPack);
 		}
@@ -2562,7 +2532,7 @@ public Action:CommandoPumpShotReload(Handle:timer, Handle:hOldPack)
 	ResetPack(hOldPack);
 	new weapon = ReadPackCell(hOldPack);
 	new client = ReadPackCell(hOldPack);	
-	new Float:fReloadRatio = g_Reload_Rate;
+	new Float:fReloadRatio = g_flReloadRate;
 	new Float:start = ReadPackFloat(hOldPack);
 	new Float:insert = ReadPackFloat(hOldPack);
 	new Float:end = ReadPackFloat(hOldPack);
@@ -3079,7 +3049,7 @@ void DT_OnGameFrame()
 			PrintDebugAll("\x03DT after adjusted shot\n-pre, client \x01%i\x03; entid \x01%i\x03; enginetime\x01 %f\x03; NextTime_orig \x01 %f\x03; interval \x01%f",client,iActiveWeapon,flGameTime,flNextPrimaryAttack, flNextPrimaryAttack-flGameTime );
 			#endif
 
-			flNextTime_calc = ( flNextPrimaryAttack - flGameTime ) * g_Attack_Rate + flGameTime;
+			flNextTime_calc = ( flNextPrimaryAttack - flGameTime ) * g_flAttackRate + flGameTime;
 			g_fNextAttackTime[client] = flNextTime_calc;
 			SetEntDataFloat(iActiveWeapon, g_iNextPrimaryAttack, flNextTime_calc, true);
 			#if DEBUG
@@ -3133,7 +3103,7 @@ int MA_OnGameFrame()
 		if(GetClientTeam(iCid) != 2) continue;
 		if(ClientData[iCid].ChosenClass != SOLDIER) { continue;}
 
-		iEntid = GetEntDataEnt2(iCid, g_ActiveWeaponOffset);
+		iEntid = GetEntDataEnt2(iCid, g_hActiveWeaponOffset);
 
 		if (GetConVarBool(SOLDIER_SHOVE_PENALTY) == false )
 		{
@@ -3193,8 +3163,8 @@ int MA_OnGameFrame()
 		if (g_iMeleeEntityIndex[iCid] == iEntid && g_flNextMeleeAttackTime[iCid] < flNextPrimaryAttack)
 		{
 			//this is a calculation of when the next primary attack will be after applying double tap values
-			flNextTime_calc =  ( flNextPrimaryAttack - flGameTime ) * g_Attack_Rate + flGameTime;
-			//flNextTime_calc = flGameTime + 0.45 ;
+			//flNextTime_calc = ( flNextPrimaryAttack - flGameTime ) * g_flMeleeRate + flGameTime;
+			flNextTime_calc = flGameTime + g_flMeleeRate;
 			// flNextTime_calc = flGameTime + melee_speed[iCid] ;
 
 			//then we store the value
@@ -3203,7 +3173,7 @@ int MA_OnGameFrame()
 			//and finally adjust the value in the gun
 			SetEntDataFloat(iEntid, g_iNextPrimaryAttack, flNextTime_calc, true);
 			#if DEBUG
-			//PrintDebugAll("\x03-post, NextTime_calc \x01 %f\x03; new interval \x01%f",GetEntDataFloat(iEntid,g_iNextPrimaryAttack), GetEntDataFloat(iEntid,g_iNextPrimaryAttack	)-flGameTime );
+			PrintDebugAll("\x03-melee attack, original: \x01 %f\x03; new \x01%f",flNextPrimaryAttack, GetEntDataFloat(iEntid,g_iNextPrimaryAttack - flGameTime);
 			#endif
 			continue;
 		}
@@ -3454,7 +3424,7 @@ public Action:TimerCheckBombSensors(Handle:hTimer, Handle:hPack)
 					BombIndex[index] = false;
 					
 					if (GetConVarInt(SABOTEUR_BOMB_TYPES) == 1) {
-						PrintDebugAll("Detonating bomb extras for single bomb mode");
+						PrintDebugAll("Enabling single minetype mode");
 						CreateExplosion(pos, client);					
 					}
 					

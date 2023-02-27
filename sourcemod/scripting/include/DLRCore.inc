@@ -6,6 +6,8 @@
 #define DLRCore_version "1.0.0"
 #define DLRCORE_PLUGIN_NAME = "dlr_talents_2023"
 #define DLRCORE_PLUGIN_FILE = "dlr_talents.smx"
+#define PLUGIN_SKILL_NAME = ""
+
 
 /**
  * Get player classname
@@ -110,24 +112,10 @@ native void OnSpecialSkillFail(int client, char[] skillName, char[] reason);
  */
 native int RegisterDLRSkill(char[] skillName, int type);  
 
-
-
-stock function OnDLRAvailable() {
-
-	bool DLR_Available = LibraryExists("dlr_talents_2023");
-	int classId;
-	if (DLR_Available) {
-		classId = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
-	} else {
-		classId = -1;
-	}
-	return classId;
-}
-
 public SharedPlugin __pl_DLRCore = 
 {
-    name = DLRCORE_PLUGIN_NAME,
-    file = DLRCORE_PLUGIN_FILE,
+    name = "dlr_talents_2023",
+    file = "dlr_talents.smx",
 #if defined REQUIRE_PLUGIN
     required = 1,
 #else
@@ -180,13 +168,6 @@ stock KillAllClientTimers()
 
 /** CLASS SYSTEM **/
 
-enum struct playerClass {
-	int perkId
-	char className[32]
-	char classDescription[32]
-    playerClassProperties properties
-}
-
 enum struct playerClassProperties {
     float maxHealth
     float jumpVelocity
@@ -197,16 +178,11 @@ enum struct playerClassProperties {
     float tankStumbleBlock
 }
 
-enum struct skillSet {
-	int skillSetId
-	char skillSetName[32]
-	char skillSetDescription[128]
-	char skillISetdentifier[32]
-	int maxPlayers
-	int	skillSetType 
-	int action // 1 = Plugin, 2 = Internal command, 3 = perk, ran on round start and reset in end
-	char menuIdentifier[16]
-	skillAction[MAXPROPERTIES] actions
+enum struct playerClass {
+	int perkId
+	char className[32]
+	char classDescription[32]
+    playerClassProperties properties
 }
 
 enum struct skillAction {
@@ -214,8 +190,8 @@ enum struct skillAction {
 	int actionId
 	int actionType // 1 = Execute standard OnSpecialSKillUsed hooks // 2 = use OnCustomCommand hook // 3 = execute on startup	
 	int pluginName
-	char parameter[3];
-	char[2] bindToKey
+	char parameter[3]
+	char bindToKey[2]
 	int interval
 	float lastUsed
 	bool runInStartup
@@ -224,4 +200,58 @@ enum struct skillAction {
 	char announceText[128]
 }
 
+enum struct skillSet {
+	int skillSetId
+	char skillSetName[32]
+	char skillSetDescription[128]
+	char skillISetdentifier[32]
+	int maxPlayers
+	int	skillSetType 
+	char menuIdentifier[16]
+	int actions[16]
+}
+// Debug
 
+
+stock void PrintDebug(int client, const char[] format, any ...)
+{
+	#if DEBUG || DEBUG_LOG || DEBUG_TRACE
+	static char buffer[192];
+	
+	VFormat(buffer, sizeof(buffer), format, 2);
+	#if DEBUG_LOG
+	PrintToConsole(0, "[Debug] %s", buffer);
+	LogMessage("[Debug] %s", buffer);	
+	#endif 
+	#if DEBUG || DEBUG_TRACE
+	PrintToChat(client, "[Debug] %s", buffer);
+	#endif
+
+	#else
+	//suppress "format" never used warning
+	if(format[0])
+		return;
+	else
+		return;
+	#endif
+}
+
+stock void PrintDebugAll(const char[] format, any ...)
+{
+	#if DEBUG || DEBUG_LOG || DEBUG_TRACE
+	static char buffer[192];
+	VFormat(buffer, sizeof(buffer), format, 2);
+	#if DEBUG_LOG
+	PrintToConsole(0, "[Debug] %s", buffer);
+	LogMessage("%s", buffer);
+	#endif
+	#if DEBUG || DEBUG_TRACE
+	PrintToChatAll("[Debug] %s", buffer);
+	#endif
+	#else
+	if(format[0])
+		return;
+	else
+		return;
+	#endif
+}
