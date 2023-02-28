@@ -294,6 +294,7 @@ bool	bLMC_Available;
 	native void GetPlayerSkillName(int client, char[] skillName, int size);
 	native int FindSkillIdByName(char[] skillName);
 	native int RegisterDLRSkill(char[] skillName, int type);
+	#define DLR_PLUGIN_NAME = "dlr_talents"
 #endif
 
 bool	DLR_Available;
@@ -304,8 +305,6 @@ bool	DLR_Available;
 #define CONFIG_DATA				"data/l4d_grenades.cfg"
 #define GAMEDATA				"l4d_grenades"
 #define GLOW_COLOR				38655 // Glow Mode color: GetColor("255 150 0");
-
-
 
 // EFFECTS
 #define MODEL_BOUNDING			"models/props/cs_militia/silo_01.mdl"
@@ -699,32 +698,35 @@ public int OnCustomCommand(char[] name, int client, int entity, int type)
 	return 1;
 }
 
-public void DLR_OnPluginState(int pluginstate)
+public void DLR_OnPluginState(char[] plugin, int pluginstate)
 {
-	if( pluginstate == 1)
+
+	if(StrEqual(plugin,"dlr_talents") && pluginstate == 1)
 	{
 		SetConVarBool(g_hCvarAllow, true);
 		DLR_Available = true;	
 		g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
 
 	}
-	else if( pluginstate == 0)
+	else if( "dlr_talents" && pluginstate == 0)
 	{
 		SetConVarBool(g_hCvarAllow, false);
 		DLR_Available = false;
 	}
 }
 
-public void DLR_OnRoundState(int roundstate)
+public int DLR_OnRoundState(int roundstate)
 {
 
 	if( roundstate == 1 && g_bMapStarted == false )
 	{
 		g_bMapStarted = true;
+		return 1;
 	}
 	else if(roundstate == 0 && g_bMapStarted == true )
 	{
 		g_bMapStarted = false;
+		return 0;
 	}
 }
 
@@ -974,7 +976,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 public void OnAllPluginsLoaded()
 {
 	bLMC_Available = LibraryExists("LMCEDeathHandler");
-	DLR_Available = LibraryExists("dlr_talents_2023");
+	DLR_Available = LibraryExists("dlr_talents");
 
 	if (g_iClassID != -1) return;
 	
@@ -987,7 +989,7 @@ public void OnLibraryAdded(const char[] sName)
 		bLMC_Available = true;
 	else if( strcmp(sName, "left4dhooks") == 0 )
 		g_bLeft4DHooks = true;
-	else if( strcmp(sName, "dlr_talents_2023") == 0 )
+	else if( strcmp(sName, "dlr_talents") == 0 )
 		DLR_Available = true;	
 	else if( g_bLeft4Dead2 && strcmp(sName, "l4d2_airstrike") == 0 )
 	{
@@ -1003,7 +1005,7 @@ public void OnLibraryRemoved(const char[] sName)
 		bLMC_Available = false;
 	else if( strcmp(sName, "left4dhooks") == 0 )
 		g_bLeft4DHooks = false;
-	else if( strcmp(sName, "dlr_talents_2023") == 0 ) {
+	else if( strcmp(sName, "dlr_talents") == 0 ) {
 		DLR_Available = false;
 		g_iClassID = -1;
 	}
@@ -2249,8 +2251,6 @@ void ResetPlugin(bool all = false)
 		RemoveEntity(g_iEntityHurt);
 	}
 }
-
-
 
 // ====================================================================================================
 //					CHANGE MODE

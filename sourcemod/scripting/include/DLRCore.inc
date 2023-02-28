@@ -4,11 +4,18 @@
 #endif
 #define _DLRCore_included
 #define DLRCore_version "1.0.0"
-#define DLRCORE_PLUGIN_NAME = "dlr_talents_2023"
-#define DLRCORE_PLUGIN_FILE = "dlr_talents.smx"
-#define PLUGIN_SKILL_NAME = ""
-
-
+#define DLR_PLUGIN_NAME = "dlr_talents"
+#define DLR_PLUGIN_FILE = "dlr_talents.smx"
+stock int checkDlrPluginState(char[] pluginName, int type=0)
+{
+    #if defined PLUGIN_SKILL_NAME
+        bool libraryCheck = LibraryExists("dlr_talents");
+        if (libraryCheck == true) {
+            return RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
+        }
+    #endif
+        return -1;
+}
 /**
  * Get player classname
  *
@@ -26,7 +33,6 @@ native int GetPlayerClassName(int client, char[] skillName, int size);
  * @param size 		Size of the string
  * @return        	int
  */
-
 native int GetPlayerSkillName(int client, char[] skillName, int size);
 
 /**
@@ -36,6 +42,14 @@ native int GetPlayerSkillName(int client, char[] skillName, int size);
  * @return        ID || -1
  */
 native int FindSkillIdByName(char[] skillName);
+
+/**
+ * Get skill name by id
+ *
+ * @param skillId ID of the skill
+ * @return       void
+ */
+native void FindSkillNameById(int skillId, char[] skillName, int size);
 
 /**
  * Called when player changed class
@@ -62,7 +76,7 @@ forward OnSpecialSkillUsed(int iClient, int skill, int type);
  * @param state 	int value, 1=Started/0=Finished
  * @noreturn
  */
-forward DLR_OnRoundState(int state);
+forward DLR_OnRoundState(int roundstate);
 
 /**
  * Called when plugin becomes available
@@ -71,7 +85,7 @@ forward DLR_OnRoundState(int state);
  * @param state 	int value, 1=Available/0=Unloaded
  * @noreturn
  */
-forward DLR_OnPluginStateq(int state);
+forward void DLR_OnPluginState(char[] plugin, int pluginstate);
 
 /**
  * Called when plugin wants to execute custom command instead
@@ -112,9 +126,11 @@ native void OnSpecialSkillFail(int client, char[] skillName, char[] reason);
  */
 native int RegisterDLRSkill(char[] skillName, int type);  
 
+native int UnregisterDLRSkill(char[] skillName);  
+
 public SharedPlugin __pl_DLRCore = 
 {
-    name = "dlr_talents_2023",
+    name = "dlr_talents",
     file = "dlr_talents.smx",
 #if defined REQUIRE_PLUGIN
     required = 1,
@@ -131,6 +147,8 @@ public __pl_DLRCore_SetNTVOptional()
     MarkNativeAsOptional("OnSpecialSkillSuccess");
     MarkNativeAsOptional("RegisterDLRSkill");
     MarkNativeAsOptional("FindSkillIdByName");
+    MarkNativeAsOptional("FindSkillNameByName");
+    MarkNativeAsOptional("OnPluginStateChange");
 }
 #endif
 
@@ -209,49 +227,4 @@ enum struct skillSet {
 	int	skillSetType 
 	char menuIdentifier[16]
 	int actions[16]
-}
-// Debug
-
-
-stock void PrintDebug(int client, const char[] format, any ...)
-{
-	#if DEBUG || DEBUG_LOG || DEBUG_TRACE
-	static char buffer[192];
-	
-	VFormat(buffer, sizeof(buffer), format, 2);
-	#if DEBUG_LOG
-	PrintToConsole(0, "[Debug] %s", buffer);
-	LogMessage("[Debug] %s", buffer);	
-	#endif 
-	#if DEBUG || DEBUG_TRACE
-	PrintToChat(client, "[Debug] %s", buffer);
-	#endif
-
-	#else
-	//suppress "format" never used warning
-	if(format[0])
-		return;
-	else
-		return;
-	#endif
-}
-
-stock void PrintDebugAll(const char[] format, any ...)
-{
-	#if DEBUG || DEBUG_LOG || DEBUG_TRACE
-	static char buffer[192];
-	VFormat(buffer, sizeof(buffer), format, 2);
-	#if DEBUG_LOG
-	PrintToConsole(0, "[Debug] %s", buffer);
-	LogMessage("%s", buffer);
-	#endif
-	#if DEBUG || DEBUG_TRACE
-	PrintToChatAll("[Debug] %s", buffer);
-	#endif
-	#else
-	if(format[0])
-		return;
-	else
-		return;
-	#endif
 }
