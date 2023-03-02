@@ -1,4 +1,3 @@
-
 stock PrintToHud(char[] text) 
 {
 	static char buffer[64];
@@ -6,10 +5,12 @@ stock PrintToHud(char[] text)
 
 	AddMessageToHud(buffer);
 }
+
 stock deleteHUD(int pos) 
 {
 	DeleteHUD(view_as<hudPosition>(pos));
 }
+
 stock ClearHUD() 
 {
 	ClearMessageHud();
@@ -58,7 +59,7 @@ stock PrintToHudPosition(char[] text, int pos)
 			position = HUD_POSITION_MID_BOT;  
     }
 	
-	int flags = (HUD_FLAG_ALIGN_CENTER | HUD_FLAG_COUNTDOWN_WARN | HUD_FLAG_TEAM_SURVIVORS);
+	//int flags = (HUD_FLAG_ALIGN_CENTER | HUD_FLAG_COUNTDOWN_WARN | HUD_FLAG_TEAM_SURVIVORS);
 	//deleteHUD(position);
 	//SetupMessageHud(position, HUD_FLAG_ALIGN_CENTER | HUD_FLAG_TEAM_SURVIVORS | HUD_FLAG_COUNTDOWN_WARN);
 	AddMessageToHud(buffer);
@@ -83,5 +84,4 @@ stock setupHUD()
 	SetupHUD(HUD_POSITION_SCORE_3,  HUD_FLAG_ALIGN_LEFT | HUD_FLAG_NOBG | HUD_FLAG_TEAM_SURVIVORS,0.0, 0.0, 1.0, 1.0);
 	SetupHUD(HUD_POSITION_SCORE_4,  HUD_FLAG_ALIGN_LEFT | HUD_FLAG_NOBG | HUD_FLAG_TEAM_SURVIVORS,0.0, 0.0, 1.0, 1.0);
 	SetupHUD(MSG_HUD_POS, flags , 0.0, 0.0, 1.0, 1.0);
-
 }

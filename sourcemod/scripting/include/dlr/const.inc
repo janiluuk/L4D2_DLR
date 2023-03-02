@@ -1,8 +1,3 @@
-stock MENU_OPEN_TIME = view_as<int>(99999);
-#define MAXPROPERTIES			16										// Total data entries to read from a grenades config
-#define MAXCLASS				8	
-
-
 /** CLASS SYSTEM **/
 
 enum struct playerClassProperties {
@@ -37,6 +32,29 @@ enum struct skillAction {
 	char announceText[128]
 }
 
+enum struct Mine
+{
+    int index;
+    char bombName[32];
+    int bombIndex;
+	
+	void setItem(int number, int bombIndex) { 
+		this.index = number;
+		this.bombName = getBombName(bombIndex);
+		this.bombIndex = bombIndex;
+	}
+
+	char[] getItem() {
+		char temp[32];
+		temp = this.bombName;
+
+		if (this.index < 0 || StrEqual(temp, "")) return temp;
+		char text[32];
+		Format(text, sizeof(text), "%s", this.bombName);
+		return text;
+	}
+}
+
 enum struct skillSet {
 	int skillSetId
 	char skillSetName[32]
@@ -47,6 +65,54 @@ enum struct skillSet {
 	char menuIdentifier[16]
 	int actions[16]
 }
+
+enum ClassTypes {
+	NONE=0,
+	soldier,
+	athlete,
+	medic,
+	saboteur,
+	commando,
+	engineer,	
+	brawler, 
+	MAXCLASSES
+};
+
+enum SpecialSkill {
+	No_Skill = 0,
+	F18_airstrike, 
+	Berzerk,
+	Grenade,
+	Multiturret
+}
+
+enum SkillType {
+	On_Demand = 0,
+	Perk,
+	Constant
+}
+
+enum struct PlayerInfo 
+{
+	int SpecialsUsed;
+	float HideStartTime;
+	float HealStartTime;
+	int LastButtons;
+	ClassTypes ChosenClass;
+	float LastDropTime;
+	int SpecialDropInterval;
+	int SpecialLimit;
+	SpecialSkill SpecialSkill;			
+	char EquippedGun[64];
+}
+
+enum Water_Level
+{
+	WATER_LEVEL_NOT_IN_WATER = 0,
+	WATER_LEVEL_FEET_IN_WATER,
+	WATER_LEVEL_WAIST_IN_WATER,
+	WATER_LEVEL_HEAD_IN_WATER
+};
 
 stock const String:MENU_OPTIONS[][] =
 {
@@ -59,6 +125,7 @@ stock const String:MENU_OPTIONS[][] =
 	"Engineer",
 	"Brawler"
 };
+
 stock String:ClassTips[][] =
 {
 	", Is a noob who didnt pick a class.",
@@ -70,26 +137,6 @@ stock String:ClassTips[][] =
 	", He can drop auto turrets and ammo supplies.",
 	", He has lots of health."
 };
-//Player Related Variables
-stock int g_iPlayerSkill[MAXPLAYERS+1];
 
-stock int SESSION_DEBUG;
-//Class variables
-// What formatting string to use when printing to the chatbox
-#define PRINT_PREFIX 	"\x05[DLR] \x01" 
 
-/// SOUNDS AND OTHER
-/// PRECACHE DATA
-
-#define STOMP_SOUND_PATH		"player/survivor/hit/rifle_swing_hit_infected9.wav"
-#define SOUND_CLASS_SELECTED "ui/pickup_misc42.wav" /**< What sound to play when a class is selected. Do not include "sounds/" prefix. */
-#define SOUND_DROP_BOMB "ui/beep22.wav"
-#define SOUND_BUTTON2	"ui/menu_countdown.wav"
-#define AMMO_PILE "models/props/terror/ammo_stack.mdl"
-#define MODEL_INCEN	"models/props/terror/incendiary_ammo.mdl"
-#define MODEL_EXPLO	"models/props/terror/exploding_ammo.mdl"
-#define MODEL_SPRITE "models/sprites/glow01.spr"
-#define PARTICLE_DEFIB "item_defibrillator_body"
-#define PARTICLE_ELMOS "st_elmos_fire_cp0"
-#define MODEL_MINE "models/props_buildables/mine_02.mdl"
 

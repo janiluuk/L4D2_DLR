@@ -22,9 +22,7 @@
 #define DEBUG 0
 #define DEBUG_LOG 1
 #define DEBUG_TRACE 0
-
-// How long should the Class Select menu stay open?
-static bool:DEBUG_MODE = false;
+stock int DEBUG_MODE = 0;
 
 public Plugin:myinfo =
 {
@@ -41,18 +39,6 @@ public Plugin:myinfo =
 #include <jutils>
 #include <l4d2>
 
-/**
-* CONFIGURABLE VARIABLES
-* Feel free to change the following code-related values.
-*/
-/// MENU AND UI RELATED STUFF
-
-static char g_sModels[2][] =
-{
-	"models/props_swamp/parachute01.mdl",
-	"models/props/de_inferno/ceiling_fan_blade.mdl"
-};
-
 // ====================================================================================================
 //					L4D2 - Native
 // ====================================================================================================
@@ -65,66 +51,6 @@ native void F18_ShowAirstrike(float origin[3], float direction);
 
 public OnPluginStart( )
 {
-	// Api
-
-	g_hfwdOnPlayerClassChange = CreateGlobalForward("OnPlayerClassChange", ET_Ignore, Param_Cell, Param_Cell, Param_Cell);
-	g_hfwdOnSpecialSkillUsed = CreateGlobalForward("OnSpecialSkillUsed", ET_Ignore, Param_Cell, Param_Cell, Param_Cell);
-	g_hfwdOnCustomCommand = CreateGlobalForward("OnCustomCommand", ET_Ignore, Param_String, Param_Cell, Param_Cell, Param_Cell);
-	//Create a Class Selection forward
-	g_hOnSkillSelected = CreateGlobalForward("OnSkillSelected", ET_Event, Param_Cell, Param_Cell);	
-	g_hForwardPluginState = CreateGlobalForward("DLR_OnPluginState", ET_Ignore, Param_String, Param_Cell);
-	g_hForwardRoundState = CreateGlobalForward("DLR_OnRoundState", ET_Ignore, Param_Cell);
-
-	//Create menu and set properties
-	g_hSkillMenu = CreateMenu(DlrSkillMenuHandler);
-
-	//Create a Class Selection forward
-	SetMenuTitle(g_hSkillMenu, "Registered plugins");
-	SetMenuExitButton(g_hSkillMenu, true);
-	if (g_hSkillArray == INVALID_HANDLE)
-		g_hSkillArray = CreateArray(16);
-	
-	if (g_hSkillTypeArray == INVALID_HANDLE)
-		g_hSkillTypeArray = CreateArray(16);
-
-	// Offsets
-	g_iNextPrimaryAttack = FindSendPropInfo("CBaseCombatWeapon", "m_flNextPrimaryAttack");
-
-	g_hActiveWeapon = FindSendPropInfo("CBaseCombatCharacter", "m_hActiveWeapon");
-	g_flLaggedMovementValue = FindSendPropInfo("CTerrorPlayer", "m_flLaggedMovementValue");
-	g_iPlaybackRate = FindSendPropInfo("CBaseCombatWeapon", "m_flPlaybackRate");
-	g_iNextAttack = FindSendPropInfo("CTerrorPlayer", "m_flNextAttack");
-	g_iTimeWeaponIdle = FindSendPropInfo("CTerrorGun", "m_flTimeWeaponIdle");
-	g_reloadStartDuration = FindSendPropInfo("CBaseShotgun", "m_reloadStartDuration");
-	g_reloadInsertDuration = FindSendPropInfo("CBaseShotgun", "m_reloadInsertDuration");
-	g_reloadEndDuration = FindSendPropInfo("CBaseShotgun", "m_reloadEndDuration");
-	g_iReloadState = FindSendPropInfo("CBaseShotgun", "m_reloadState");
-	g_iVMStartTimeO = FindSendPropInfo("CTerrorViewModel","m_flLayerStartTime");
-	g_iViewModelO = FindSendPropInfo("CTerrorPlayer","m_hViewModel");
-
-	g_hActiveWeaponOffset = FindSendPropInfo("CBasePlayer", "m_hActiveWeapon");
-	g_iNextSecondaryAttack	= FindSendPropInfo("CBaseCombatWeapon","m_flNextSecondaryAttack");
-
-	g_iVelocity = FindSendPropInfo("CBasePlayer", "m_vecVelocity[0]");
-	g_iShovePenalty = FindSendPropInfo("CTerrorPlayer", "m_iShovePenalty");
-
-	// Hooks
-	HookEvent("player_spawn", Event_PlayerSpawn);
-	HookEvent("player_death", Event_PlayerDeath);
-	HookEvent("round_end", Event_RoundChange);
-	HookEvent("round_start_post_nav", Event_RoundChange);
-	HookEvent("round_start", Event_RoundStart,	EventHookMode_PostNoCopy);	
-	HookEvent("mission_lost", Event_RoundChange);
-	HookEvent("weapon_reload", Event_RelCommandoClass);
-	HookEvent("player_entered_checkpoint", Event_EnterSaferoom);
-	HookEvent("player_left_checkpoint", Event_LeftSaferoom);
-	HookEvent("player_team", Event_PlayerTeam);
-	HookEvent("player_left_start_area",Event_LeftStartArea);
-	HookEvent("heal_begin", Event_HealBegin, EventHookMode_Pre);
-	HookEvent("revive_begin", Event_ReviveBegin, EventHookMode_Pre);
-	HookEvent("weapon_fire", Event_WeaponFire);
-	HookEvent("server_cvar", Event_ServerCvar, EventHookMode_Pre);
-
 	// Concommands
 	RegConsoleCmd("sm_class", CmdClassMenu, "Shows the class selection menu");
 	RegConsoleCmd("sm_classinfo", CmdClassInfo, "Shows class descriptions");
@@ -143,13 +69,72 @@ public OnPluginStart( )
 	RegAdminCmd("sm_setvictim", Cmd_SetVictim, ADMFLAG_ROOT, "Set horde to attack player #");
 	RegAdminCmd("sm_debug", Command_Debug, ADMFLAG_GENERIC, "sm_debug [0 = Off|1 = PrintToChat|2 = LogToFile|3 = PrintToChat AND LogToFile]");
 
+	// Api
+
+	g_hfwdOnPlayerClassChange = CreateGlobalForward("OnPlayerClassChange", ET_Ignore, Param_Cell, Param_Cell, Param_Cell);
+	g_hfwdOnSpecialSkillUsed = CreateGlobalForward("OnSpecialSkillUsed", ET_Ignore, Param_Cell, Param_Cell, Param_Cell);
+	g_hfwdOnCustomCommand = CreateGlobalForward("OnCustomCommand", ET_Ignore, Param_String, Param_Cell, Param_Cell, Param_Cell);
+	//Create a Class Selection forward
+	g_hOnSkillSelected = CreateGlobalForward("OnSkillSelected", ET_Event, Param_Cell, Param_Cell);	
+	g_hForwardPluginState = CreateGlobalForward("DLR_OnPluginState", ET_Ignore, Param_String, Param_Cell);
+	g_hForwardRoundState = CreateGlobalForward("DLR_OnRoundState", ET_Ignore, Param_Cell);
+
+	//Create menu and set properties
+	g_hSkillMenu = CreateMenu(DlrSkillMenuHandler);
+	SetMenuTitle(g_hSkillMenu, "Registered plugins");
+	SetMenuExitButton(g_hSkillMenu, true);
+	//Create a Class Selection forward
+
+	if (g_hSkillArray == INVALID_HANDLE)
+		g_hSkillArray = CreateArray(16);
+	
+	if (g_hSkillTypeArray == INVALID_HANDLE)
+		g_hSkillTypeArray = CreateArray(16);
+
+	// Offsets
+	g_iNextPrimaryAttack = FindSendPropInfo("CBaseCombatWeapon", "m_flNextPrimaryAttack");
+	g_iActiveWeapon = FindSendPropInfo("CBaseCombatCharacter", "m_hActiveWeapon");
+	g_flLaggedMovementValue = FindSendPropInfo("CTerrorPlayer", "m_flLaggedMovementValue");
+	g_iPlaybackRate = FindSendPropInfo("CBaseCombatWeapon", "m_flPlaybackRate");
+	g_iNextAttack = FindSendPropInfo("CTerrorPlayer", "m_flNextAttack");
+	g_iTimeWeaponIdle = FindSendPropInfo("CTerrorGun", "m_flTimeWeaponIdle");
+	g_reloadStartDuration = FindSendPropInfo("CBaseShotgun", "m_reloadStartDuration");
+	g_reloadInsertDuration = FindSendPropInfo("CBaseShotgun", "m_reloadInsertDuration");
+	g_reloadEndDuration = FindSendPropInfo("CBaseShotgun", "m_reloadEndDuration");
+	g_iReloadState = FindSendPropInfo("CBaseShotgun", "m_reloadState");
+	g_iVMStartTimeO = FindSendPropInfo("CTerrorViewModel","m_flLayerStartTime");
+	g_iViewModelO = FindSendPropInfo("CTerrorPlayer","m_hViewModel");
+	g_iActiveWeaponOffset = FindSendPropInfo("CBasePlayer", "m_hActiveWeapon");
+	g_iNextSecondaryAttack	= FindSendPropInfo("CBaseCombatWeapon","m_flNextSecondaryAttack");
+	g_iVelocity = FindSendPropInfo("CBasePlayer", "m_vecVelocity[0]");
+	g_iShovePenalty = FindSendPropInfo("CTerrorPlayer", "m_iShovePenalty");
+	g_flMeleeRate = 0.45;	
+	g_flAttackRate = 0.666;
+	g_flReloadRate = 0.5;
+
+	// Hooks
+	HookEvent("player_spawn", Event_PlayerSpawn);
+	HookEvent("player_death", Event_PlayerDeath);
+	HookEvent("round_end", Event_RoundChange);
+	HookEvent("round_start_post_nav", Event_RoundChange);
+	HookEvent("round_start", Event_RoundStart,	EventHookMode_PostNoCopy);	
+	HookEvent("mission_lost", Event_RoundChange);
+	HookEvent("weapon_reload", Event_RelCommandoClass);
+	HookEvent("player_entered_checkpoint", Event_EnterSaferoom);
+	HookEvent("player_left_checkpoint", Event_LeftSaferoom);
+	HookEvent("player_team", Event_PlayerTeam);
+	HookEvent("player_left_start_area",Event_LeftStartArea);
+	HookEvent("heal_begin", Event_HealBegin, EventHookMode_Pre);
+	HookEvent("revive_begin", Event_ReviveBegin, EventHookMode_Pre);
+	HookEvent("weapon_fire", Event_WeaponFire);
+	HookEvent("server_cvar", Event_ServerCvar, EventHookMode_Pre);
 
 	// Convars
 	new Handle:hVersion = CreateConVar("talents_version", PLUGIN_VERSION, "Version of this release", FCVAR_NOTIFY|FCVAR_REPLICATED|FCVAR_DONTRECORD);
 	if(hVersion != INVALID_HANDLE)
 		SetConVarString(hVersion, PLUGIN_VERSION);
 	// Convars
-	pluginEnabled = CreateConVar("talents_enabled","1","Enables/Disables Plugin 0 = OFF, 1 = ON.", FCVAR_NOTIFY);
+	g_hPluginEnabled = CreateConVar("talents_enabled","1","Enables/Disables Plugin 0 = OFF, 1 = ON.", FCVAR_NOTIFY);
 
 	MAX_SOLDIER = CreateConVar("talents_soldier_max", "1", "Max number of soldiers");
 	MAX_ATHLETE = CreateConVar("talents_athelete_max", "1", "Max number of athletes");
@@ -170,15 +155,12 @@ public OnPluginStart( )
 
 	SOLDIER_MELEE_ATTACK_RATE = CreateConVar("talents_soldier_melee_rate", "0.45", "The interval for soldier swinging melee weapon (clamped between 0.3 < 0.9)", FCVAR_NOTIFY, true, 0.3, true, 0.9);
 	HookConVarChange(SOLDIER_MELEE_ATTACK_RATE, Convar_Melee_Rate);	
-	g_flMeleeRate = 0.45;	
 	SOLDIER_ATTACK_RATE = CreateConVar("talents_soldier_attack_rate", "0.6666", "How fast the soldier should shoot with guns. Lower values = faster. Between 0.2 and 0.9", FCVAR_NONE|FCVAR_NOTIFY, true, 0.2, true, 0.9);
 	HookConVarChange(SOLDIER_ATTACK_RATE, Convar_Attack_Rate);	
-	g_flAttackRate = 0.666;
 	SOLDIER_SPEED = CreateConVar("talents_soldier_speed", "1.15", "How fast soldier should run. A value of 1.0 = normal speed");
 	SOLDIER_DAMAGE_REDUCE_RATIO = CreateConVar("talents_soldier_damage_reduce_ratio", "0.75", "Ratio for how much armor reduces damage for soldier");
 	SOLDIER_SHOVE_PENALTY = CreateConVar("talents_soldier_shove_penalty_enabled","0.0","Enables/Disables shove penalty for soldier. 0 = OFF, 1 = ON.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	SOLDIER_MAX_AIRSTRIKES = CreateConVar("talents_soldier_max_airstrikes","3.0","Number of tactical airstrikes per round. 0 = OFF", FCVAR_NOTIFY, true, 0.0, true, 16.0);
-
 
 	ATHLETE_JUMP_VEL = CreateConVar("talents_athlete_jump", "450.0", "How high a soldier should be able to jump. Make this higher to make them jump higher, or 0.0 for normal height");
 	ATHLETE_SPEED = CreateConVar("talents_athlete_speed", "1.20", "How fast athlete should run. A value of 1.0 = normal speed");
@@ -213,8 +195,6 @@ public OnPluginStart( )
 	COMMANDO_DAMAGE_SMG = CreateConVar("talents_commando_dmg_smg", "7.0", "How much bonus damage a Commando does with smg");
 	COMMANDO_RELOAD_RATIO = CreateConVar("talents_commando_reload_ratio", "0.5", "Ratio for how fast a Commando should be able to reload. Between 0.3 and 0.9",FCVAR_NONE|FCVAR_NOTIFY, true, 0.3, true, 0.9);
 	HookConVarChange(COMMANDO_RELOAD_RATIO, Convar_Reload_Rate);
-	g_flReloadRate = 0.5;
-
 	COMMANDO_ENABLE_STUMBLE_BLOCK = CreateConVar("talents_commando_enable_stumble_block", "1", "Enable blocking tank knockdowns for Commando. 0 = Disable, 1 = Enable");
 	COMMANDO_ENABLE_STOMPING = CreateConVar("talents_commando_enable_stomping", "1", "Enable stomping of downed infected  0 = Disable, 1 = Enable");
 	COMMANDO_STOMPING_SLOWDOWN = CreateConVar("talents_commando_stomping_slowdown", "0", "Should movement slow down after stomping: 0 = Disable, 1 = Enable");
@@ -258,6 +238,37 @@ public ResetClientVariables(client)
 	g_bHide[client] = false; 
 }
 
+public ClearCache()
+{
+	g_iSoldierCount = 0;
+	for (new i = 1; i <= MaxClients; i++)
+	{
+		g_iSoldierIndex[i]= -1;
+		g_iEntityIndex[i] = -1;
+		g_fNextAttackTime[i]= -1.0;
+	}
+}
+
+public RebuildCache()
+{
+	ClearCache();
+
+	if (!IsServerProcessing())
+	return;
+	
+	for (new i = 1; i <= MaxClients; i++)
+	{
+		if (IsValidEntity(i) && IsClientInGame(i) && IsPlayerAlive(i) && GetClientTeam(i) == 2 && ClientData[i].ChosenClass == soldier)
+		{
+			g_iSoldierCount++;
+			g_iSoldierIndex[g_iSoldierCount] = i;
+			#if DEBUG
+			PrintToChatAll("\x03-registering \x01%N as Soldier",i);
+			#endif			
+		}
+	}
+}
+
 public void SetupClasses(client, class)
 {
 	if (!client
@@ -290,7 +301,7 @@ public void SetupClasses(client, class)
 		
 		case medic:
 		{
-			PrintHintText(client,"Hold CROUCH to heal others, Press SHIFT to drop medkits & supplies");
+			PrintHintText(client,"Hold CROUCH to heal others, Press SHIFT to drop medkits & supplies. Press MIDDLE button to throw healing grenade");
 			CreateTimer(GetConVarFloat(MEDIC_HEALTH_INTERVAL), TimerDetectHealthChanges, client, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 			ClientData[client].SpecialLimit = GetConVarInt(MEDIC_MAX_ITEMS);
 			MaxPossibleHP = GetConVarInt(MEDIC_HEALTH);
@@ -315,7 +326,7 @@ public void SetupClasses(client, class)
 				text = ", You're immune to Tank knockdowns";
 			} 
 
-			PrintHintText(client,"You have faster reload and cause more damage%s!", text);
+			PrintHintText(client,"You have faster reload and cause more damage%s!\nPress MIDDLE button to activate Berzerk mode!", text);
 			MaxPossibleHP = GetConVarInt(COMMANDO_HEALTH);
 		}
 		
@@ -328,8 +339,7 @@ public void SetupClasses(client, class)
 		
 		case saboteur:
 		{
-
-			PrintHintText(client,"Press SHIFT to drop mines! Hold CROUCH over 5 sec to go invisible");
+			PrintHintText(client,"Press SHIFT to drop mines! Hold CROUCH over 5 sec to go invisible.\nPress MIDDLE button to toggle Nightvision");
 			MaxPossibleHP = GetConVarInt(SABOTEUR_HEALTH);
 			ClientData[client].SpecialLimit = GetConVarInt(SABOTEUR_MAX_BOMBS);
 			ToggleNightVision(client);
@@ -493,34 +503,9 @@ public InitSkillArray()
     }
 }
 
-public Native_UnregisterSkill(Handle:plugin, numParams)
-{
-	int len;
-	GetNativeStringLength(1, len);
- 
-	if (len <= 0)
-	{
-		return -1;
-	}
-	char[] szSkillName = new char[len + 1];
-	GetNativeString(1, szSkillName, len + 1);
-	if (g_hSkillArray == INVALID_HANDLE) {
-		return -1;
-	}
-
-	int index = FindStringInArray(g_hSkillArray, szSkillName);	
-	if (index > -1) {
-		RemoveFromArray(g_hSkillArray, index);
-		ShiftArrayUp(g_hSkillArray, index);
-		return 1;
-	}
-	return 0;
-}
-
-// Register skill
 public Native_RegisterSkill(Handle:plugin, numParams)
 {
-	if (pluginEnabled == INVALID_HANDLE) 
+	if (g_hPluginEnabled == INVALID_HANDLE) 
 	{
 		PrintDebugAll("DLR plugin is not yet loading, queueing");
 	}
@@ -559,6 +544,29 @@ public Native_RegisterSkill(Handle:plugin, numParams)
 	return -1;
 }
 
+public Native_UnregisterSkill(Handle:plugin, numParams)
+{
+	int len;
+	GetNativeStringLength(1, len);
+ 
+	if (len <= 0)
+	{
+		return -1;
+	}
+	char[] szSkillName = new char[len + 1];
+	GetNativeString(1, szSkillName, len + 1);
+	if (g_hSkillArray == INVALID_HANDLE) {
+		return -1;
+	}
+
+	int index = FindStringInArray(g_hSkillArray, szSkillName);	
+	if (index > -1) {
+		RemoveFromArray(g_hSkillArray, index);
+		ShiftArrayUp(g_hSkillArray, index);
+		return 1;
+	}
+	return 0;
+}
 // ====================================================================================================
 //					L4D2 - F-18 AIRSTRIKE
 // ====================================================================================================
@@ -593,7 +601,7 @@ public void F18_OnPluginState(int pluginstate)
 	}
 }
 // ====================================================================================================
-//					DLR - Multiturret
+//					Native events
 // ====================================================================================================
 
 any Native_OnSpecialSkillSuccess(Handle plugin, int numParams)
@@ -665,13 +673,13 @@ public OnMapStart()
 	PrecacheSound(SOUND_NOISE, true);
 	PrecacheSound(SOUND_BUTTON2, true);
 
-
 	// Sprites
 	g_BeamSprite = PrecacheModel("materials/sprites/laserbeam.vmt");
 	g_HaloSprite = PrecacheModel("materials/sprites/glow01.vmt");
 	PrecacheModel(ENGINEER_MACHINE_GUN);
 	PrecacheModel(AMMO_PILE);
-
+	PrecacheModel(FAN_BLADE);
+	PrecacheModel(PARACHUTE);
 	// Particles
 	PrecacheParticle(EXPLOSION_PARTICLE);
 	PrecacheParticle(EXPLOSION_PARTICLE2);
@@ -702,9 +710,6 @@ public OnMapStart()
 		AcceptEntityInput(shake, "StartShake");
 		RemoveEdict(shake);
 	}
-
-	for (int i = 0; i < 2; i++)
-		PrecacheModel(g_sModels[i]);
 }
 
 public void OnMapEnd()
@@ -722,7 +727,7 @@ public void OnConfigsExecuted()
 
 public OnPluginReady() {
 	
-	if(g_PluginLoaded == false && GetConVarBool(pluginEnabled) == true) {
+	if(g_bPluginLoaded == false && GetConVarBool(g_hPluginEnabled) == true) {
 	
 		PrintDebugAll("Talents plugin is now ready");
 		Call_StartForward(g_hForwardPluginState);
@@ -730,16 +735,16 @@ public OnPluginReady() {
 		Call_PushString("dlr_talents");
 		Call_PushCell(1);
 		Call_Finish();
-		g_PluginLoaded = true;
+		g_bPluginLoaded = true;
 
 		if( g_bLateLoad == true )
 		{
 			g_bLateLoad = false;
 			OnRoundState(1);
 		}
-	} else if(g_PluginLoaded == true && GetConVarBool(pluginEnabled) == false) {
+	} else if(g_bPluginLoaded == true && GetConVarBool(g_hPluginEnabled) == false) {
 		PrintDebugAll("Talents plugin is disabled");
-		g_PluginLoaded = false;
+		g_bPluginLoaded = false;
 		ResetPlugin();
 		Call_StartForward(g_hForwardPluginState);
 		Call_PushString("dlr_talents");
@@ -747,6 +752,7 @@ public OnPluginReady() {
 		Call_Finish();
 	}
 }
+
 void ResetPlugin()
 {
 	RoundStarted=false;
@@ -755,7 +761,7 @@ void ResetPlugin()
 
 public OnClientPutInServer(client)
 {
-	if (!client || !IsValidEntity(client) || !IsClientInGame(client) || g_PluginLoaded == false)
+	if (!client || !IsValidEntity(client) || !IsClientInGame(client) || g_bPluginLoaded == false)
 	return;
 
 	ResetClientVariables(client);
@@ -812,18 +818,6 @@ public OnClientDisconnect(client)
 }
 
 // Inform other plugins.
-public void useSpecialSkill(int client, int type)
-{
-	int skill = g_iPlayerSkill[client];
-
-	if (g_iPlayerSkill[client] >= 0) {
-		Call_StartForward(g_hfwdOnSpecialSkillUsed);
-		Call_PushCell(client);
-		Call_PushCell(skill); 
-		Call_PushCell(type);		
-		Call_Finish();
-	}
-}	
 
 public void useCustomCommand(char[] pluginName, int client, int entity, int type )
 {
@@ -836,6 +830,19 @@ public void useCustomCommand(char[] pluginName, int client, int entity, int type
 	Call_PushCell(entity);
 	Call_PushCell(type);	
 	Call_Finish();
+}	
+
+public void useSpecialSkill(int client, int type)
+{
+	int skill = g_iPlayerSkill[client];
+
+	if (g_iPlayerSkill[client] >= 0) {
+		Call_StartForward(g_hfwdOnSpecialSkillUsed);
+		Call_PushCell(client);
+		Call_PushCell(skill); 
+		Call_PushCell(type);		
+		Call_Finish();
+	}
 }	
 
 public bool canUseSpecialSkill(client, char[] pendingMessage)
@@ -880,11 +887,10 @@ stock KillProgressBar(client)
 	SetEntPropFloat(client, Prop_Send, "m_flProgressBarDuration", 0.0);
 }
 
-new String:Gauge1[2] = "-";
-new String:Gauge3[2] = "#";
-
 public ShowBar(client, String:msg[], Float:pos, Float:max)
 {
+	new String:Gauge1[2] = "-";
+	new String:Gauge3[2] = "#";
 	new i;
 	new String:ChargeBar[100];
 	Format(ChargeBar, sizeof(ChargeBar), "");
@@ -901,37 +907,6 @@ public ShowBar(client, String:msg[], Float:pos, Float:max)
 	if(p>=0 && p<100)ChargeBar[p] = Gauge3[0]; 
 	/* Display gauge */
 	PrintHintText(client, "%s  %3.0f %\n<< %s >>", msg, GaugeNum, ChargeBar);
-}
-
-public ClearCache()
-{
-	g_iSoldierCount = 0;
-	for (new i = 1; i <= MaxClients; i++)
-	{
-		g_iSoldierIndex[i]= -1;
-		g_iEntityIndex[i] = -1;
-		g_fNextAttackTime[i]= -1.0;
-	}
-}
-
-public RebuildCache()
-{
-	ClearCache();
-
-	if (!IsServerProcessing())
-	return;
-	
-	for (new i = 1; i <= MaxClients; i++)
-	{
-		if (IsValidEntity(i) && IsClientInGame(i) && IsPlayerAlive(i) && GetClientTeam(i) == 2 && ClientData[i].ChosenClass == soldier)
-		{
-			g_iSoldierCount++;
-			g_iSoldierIndex[g_iSoldierCount] = i;
-			#if DEBUG
-			PrintToChatAll("\x03-registering \x01%N as Soldier",i);
-			#endif			
-		}
-	}
 }
 
 public Event_RoundChange(Handle:event, String:name[], bool:dontBroadcast)
@@ -959,24 +934,23 @@ public Event_RoundStart(Handle:event, String:name[], bool:dontBroadcast)
 
 public void OnRoundState(int roundstate)
 {
-	static int mystate;
+	static int dlrstate;
 
-	if( roundstate == 1 && mystate == 0 )
+	if( roundstate == 1 && dlrstate == 0 )
 	{
-		mystate = 1;
+		dlrstate = 1;
 		Call_StartForward(g_hForwardRoundState);
 		Call_PushCell(1);
 		Call_Finish();
 	}
-	else if( roundstate == 0 && mystate == 1 )
+	else if( roundstate == 0 && dlrstate == 1 )
 	{
-		mystate = 0;
+		dlrstate = 0;
 		Call_StartForward(g_hForwardRoundState);
 		Call_PushCell(0);
 		Call_Finish();
 	}
 }
-
 
 public Event_PlayerSpawn(Handle:hEvent, String:sName[], bool:bDontBroadcast)
 {
@@ -1044,7 +1018,6 @@ public Event_PlayerTeam(Handle:hEvent, String:sName[], bool:bDontBroadcast)
 ///////////////////////////////////////////////////////////////////////////////////
 // Class selections
 ///////////////////////////////////////////////////////////////////////////////////
-
 
 public int GetMaxWithClass( class ) {
 
@@ -1142,15 +1115,13 @@ public PlayerIdToSkillName(int client, char[] name, int size)
 	Format(name, iSize, "%s", buffer);
 }
 
-PlayerIdToClassName(int client, char[] name, int size)
+public PlayerIdToClassName(int client, char[] name, int size)
 {
 	if (!client ||  !IsClientInGame(client) || GetClientTeam(client) != 2) {
 		return;
 	}
 	Format(name, size, "%s", MENU_OPTIONS[ClientData[client].ChosenClass]);
 }
-
-
 
 ////////////////////
 /// Skill register 
@@ -1186,21 +1157,20 @@ public Native_GetPlayerSkillName(Handle:plugin, numParams)
 	return false;
 } 
 
-
 public UpgradeQuickHeal(client)
 {
 	if(ClientData[client].ChosenClass == medic)
-	SetConVarFloat(g_VarFirstAidDuration, FirstAidDuration * GetConVarFloat(MEDIC_HEAL_RATIO), false, false);
+	SetConVarFloat(g_flFirstAidDuration, FirstAidDuration * GetConVarFloat(MEDIC_HEAL_RATIO), false, false);
 	else
-	SetConVarFloat(g_VarFirstAidDuration, FirstAidDuration * 1.0, false, false);
+	SetConVarFloat(g_flFirstAidDuration, FirstAidDuration * 1.0, false, false);
 }
 
 public UpgradeQuickRevive(client)
 {
 	if(ClientData[client].ChosenClass == medic)
-	SetConVarFloat(g_VarReviveDuration, ReviveDuration * GetConVarFloat(MEDIC_REVIVE_RATIO), false, false);
+	SetConVarFloat(g_flReviveDuration, ReviveDuration * GetConVarFloat(MEDIC_REVIVE_RATIO), false, false);
 	else
-	SetConVarFloat(g_VarReviveDuration, ReviveDuration * 1.0, false, false);
+	SetConVarFloat(g_flReviveDuration, ReviveDuration * 1.0, false, false);
 }
 
 public setPlayerHealth(client, MaxPossibleHP)
@@ -1287,79 +1257,10 @@ stock SetClientTempHealth(client, iValue)
 	CreateTimer(0.1, TimerSetClientTempHealth, hPack, TIMER_FLAG_NO_MAPCHANGE);
 }
 
-public void CalculateMedicPlacePos(client, type)
-{
-	decl Float:vAng[3], Float:vPos[3], Float:endPos[3];
-	
-	GetClientEyeAngles(client, vAng);
-	GetClientEyePosition(client, vPos);
-
-	new Handle:trace = TR_TraceRayFilterEx(vPos, vAng, MASK_SHOT, RayType_Infinite, TraceFilter, client);
-
-	if (TR_DidHit(trace))
-	{
-		TR_GetEndPosition(endPos, trace);
-		CloseHandle(trace);
-		
-		if (GetVectorDistance(endPos, vPos) <= GetConVarFloat(MEDIC_MAX_BUILD_RANGE))
-		{
-			vAng[0] = 0.0;
-			vAng[2] = 0.0;
-			
-			switch(type) {
-				case 0: {
-					new entity = CreateEntityByName("weapon_defibrillator");
-					DispatchKeyValue(entity, "solid", "0");
-					DispatchKeyValue(entity, "disableshadows", "1");
-					DispatchSpawn(entity);
-					TeleportEntity(entity, endPos, NULL_VECTOR, NULL_VECTOR);
-					PrintHintText(client ,"%N deployed a defibrillator", client);
-
-					ClientData[client].SpecialsUsed++;
-				}
-				case 1:{
-					new entity = CreateEntityByName("weapon_first_aid_kit");
-					DispatchKeyValue(entity, "solid", "0");
-					DispatchSpawn(entity);
-					TeleportEntity(entity, endPos, NULL_VECTOR, NULL_VECTOR);
-					PrintHintText(client ,"%N deployed a medkit", client);
-
-					ClientData[client].SpecialsUsed++;
-				}
-				case 2: {
-					new entity = CreateEntityByName("weapon_adrenaline_spawn");
-					DispatchKeyValue(entity, "solid", "0");
-					DispatchKeyValue(entity, "disableshadows", "1");
-					TeleportEntity(entity, endPos, NULL_VECTOR, NULL_VECTOR);
-					DispatchSpawn(entity);
-					ClientData[client].SpecialsUsed++;
-
-				}
-				case 3: {
-					new pills = CreateEntityByName("weapon_pain_pills_spawn", -1);
-					DispatchKeyValue(pills, "solid", "6");
-					DispatchKeyValue(pills, "disableshadows", "1");
-					TeleportEntity(pills, endPos, NULL_VECTOR, NULL_VECTOR);
-					DispatchSpawn(pills);
-					ClientData[client].SpecialsUsed++;
-
-				}				
-				default: {
-					CloseHandle( trace );
-					return;
-				}
-			}
-		}
-		else
-		PrintToChat(client, "%sCould not place the item because you were looking too far away.", PRINT_PREFIX);
-	}
-	else
-	CloseHandle(trace);
-}
-
 //////////////////////////////////////////7
 // Health 
 ///////////////////////////////////////////
+
 public void Event_ServerCvar( Event hEvent, const char[] sName, bool bDontBroadcast ) 
 {
 	if ( !healthModEnabled.BoolValue ) return;
@@ -1382,8 +1283,8 @@ public ApplyHealthModifiers()
 {
 	FirstAidDuration = GetConVarFloat(FindConVar("first_aid_kit_use_duration"));
 	ReviveDuration = GetConVarFloat(FindConVar("survivor_revive_duration"));
-	g_VarFirstAidDuration = FindConVar("first_aid_kit_use_duration");
-	g_VarReviveDuration = FindConVar("survivor_revive_duration");
+	g_flFirstAidDuration = FindConVar("first_aid_kit_use_duration");
+	g_flReviveDuration = FindConVar("survivor_revive_duration");
 }
 
 public InitHealthModifiers()
@@ -1431,7 +1332,7 @@ public Event_RelCommandoClass(Handle:event, String:name[], bool:dontBroadcast)
 	if (ClientData[client].ChosenClass != commando)
 	return;
 	
-	int weapon = GetEntDataEnt2(client, g_hActiveWeapon);
+	int weapon = GetEntDataEnt2(client, g_iActiveWeapon);
 
 	if (!IsValidEntity(weapon))
 	return;
@@ -1764,7 +1665,6 @@ stock void SmashInfected(int zombie, int client)
 // Saboteur
 ///////////////////////////////////////////////////////////////////////////////////
 
-
 enum BombType {
 	Bomb = 0, 
 	Cluster, 
@@ -1950,7 +1850,6 @@ public Action L4D2_OnChooseVictim(int attacker, int &curTarget) {
 	return Plugin_Continue;
 }
 
-
 /*
 public Action Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast) {
 	int client = GetClientOfUserId(event.GetInt("userid"));
@@ -2010,7 +1909,6 @@ stock HookPlayer(client)
 ///////////////////////////////////////////////////////////////////////////////////
 // Soldier
 ///////////////////////////////////////////////////////////////////////////////////
-
 
 void Convar_Reload_Rate (Handle:convar, const String:oldValue[], const String:newValue[])
 {
@@ -2073,7 +1971,7 @@ void DT_OnGameFrame()
 		if (client <= 0) return;
 		if(ClientData[client].ChosenClass != soldier) continue;
 
-		iActiveWeapon = GetEntDataEnt2(client, g_hActiveWeapon);
+		iActiveWeapon = GetEntDataEnt2(client, g_iActiveWeapon);
 
 		if(iActiveWeapon <= 0) 
 		continue;
@@ -2155,7 +2053,7 @@ int MA_OnGameFrame()
 		if(GetClientTeam(iCid) != 2) continue;
 		if(ClientData[iCid].ChosenClass != soldier) { continue;}
 
-		iEntid = GetEntDataEnt2(iCid, g_hActiveWeaponOffset);
+		iEntid = GetEntDataEnt2(iCid, g_iActiveWeaponOffset);
 
 		if (GetConVarBool(SOLDIER_SHOVE_PENALTY) == false )
 		{
@@ -2515,17 +2413,12 @@ stock bool:IsClientOnLadder(client)
 	return false;
 }
 
-public bool getDebugMode() {
+public int getDebugMode() {
 	return DEBUG_MODE;
 }
-public setDebugMode(bool mode) {
+
+public setDebugMode(int mode) {
 	DEBUG_MODE=mode;
-}
-public setSessionDebug(int mode) {
-	SESSION_DEBUG=mode;
-}
-public getSessionDebug() {
-	return SESSION_DEBUG;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////
@@ -2604,7 +2497,7 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
 			return Plugin_Continue;
 
 			int iEntity = CreateEntityByName("prop_dynamic_override"); 
-			DispatchKeyValue(iEntity, "model", g_bLeft4Dead2 ? g_sModels[0] : g_sModels[1]);
+			DispatchKeyValue(iEntity, "model", g_bLeft4Dead2 ? PARACHUTE : FAN_BLADE);
 			DispatchSpawn(iEntity);
 			
 			SetEntityMoveType(iEntity, MOVETYPE_NOCLIP);

@@ -32,7 +32,7 @@ public Action:TimerThink(Handle:hTimer, any:client)
 		{
 			if (BombActive == true) {
 
-				if (iDropTime < GetConVarInt(SABOTEUR_BOMB_ACTIVATE)) {
+				if (iDropTime > 0 && iDropTime < GetConVarInt(SABOTEUR_BOMB_ACTIVATE)) {
 
 						PrintHintText(client, "Mine is arming in %i seconds", client, GetConVarInt(SABOTEUR_BOMB_ACTIVATE) - iDropTime);
 					
@@ -51,28 +51,26 @@ public Action:TimerThink(Handle:hTimer, any:client)
 			}
 			if (buttons & IN_DUCK)
 			{
-
-				float hidingTime = GetGameTime() - ClientData[client].HideStartTime;
-
-				if (hidingTime >= GetConVarFloat(SABOTEUR_INVISIBLE_TIME)) {
-					if (InvisibilityTimestamp != RoundToFloor(hidingTime) && InvisibilityHint == false) 
+				int hidingTime = RoundToFloor(GetGameTime() - ClientData[client].HideStartTime);
+				if (hidingTime >= GetConVarInt(SABOTEUR_INVISIBLE_TIME)) {
+					if (InvisibilityTimestamp != hidingTime && InvisibilityHint == false) 
 					{
 						SetEntDataFloat(client, g_flLaggedMovementValue, 1.8, true);
 
 						HidePlayer(client);
 
 						//SetEntityRenderFx(client, RENDERFX_PULSE_SLOW);
-						InvisibilityTimestamp = RoundToFloor(hidingTime);
+						InvisibilityTimestamp = hidingTime;
 						InvisibilityHint = true;
 
 					}
 				}
-				if (hidingTime < GetConVarFloat(SABOTEUR_INVISIBLE_TIME) && (RoundToFloor(hidingTime) > 2)){
+				if (hidingTime < GetConVarInt(SABOTEUR_INVISIBLE_TIME) && (hidingTime > 2)){
 					GlowPlayer(client, "Blue", FX:FxHologram);
 
-					if (InvisibilityTimestamp != RoundToFloor(hidingTime)) {
-						PrintHintText(client,"Becoming invisible in %i seconds", RoundToFloor(GetConVarFloat(SABOTEUR_INVISIBLE_TIME) - hidingTime));
-						InvisibilityTimestamp = RoundToFloor(hidingTime);
+					if (InvisibilityTimestamp != hidingTime) {
+						PrintHintText(client,"Becoming invisible in %i seconds", GetConVarInt(SABOTEUR_INVISIBLE_TIME) - hidingTime);
+						InvisibilityTimestamp = hidingTime;
 					}
 				}
 			}
@@ -118,7 +116,8 @@ public Action:TimerThink(Handle:hTimer, any:client)
 						useSpecialSkill(client, 1);
 						ClientData[client].LastDropTime = GetGameTime();
 					}
-			}	}
+				}	
+			}
 		}
 		case medic:
 		{
@@ -171,7 +170,6 @@ public Action:TimerThink(Handle:hTimer, any:client)
 			
 		case engineer:
 		{
-
 			if (buttons & IN_SPEED && RoundStarted == true)// && ClientData[client].SpecialsUsed < GetConVarInt(ENGINEER_MAX_BUILDS)) 
 			{	
 				if (CanDrop == false && (iDropTime < GetConVarInt(MINIMUM_DROP_INTERVAL))) {
@@ -187,6 +185,16 @@ public Action:TimerThink(Handle:hTimer, any:client)
 						PrintHintText(client ,"You're out of items (Max %i)", GetConVarInt(ENGINEER_MAX_BUILDS));
 					}
 				}					
+			}
+			else if (buttons & IN_ZOOM) {
+
+				char pendingMessage[128] = "Wait %i seconds to use shielding grenades again";
+				
+				if (canUseSpecialSkill(client, pendingMessage)) {
+					useCustomCommand("Grenades", client, -1, 8);
+					ClientData[client].LastDropTime = GetGameTime();
+				}
+
 			}
 		}
 		case soldier:
@@ -248,7 +256,6 @@ public Action:TimerSetClientTempHealth(Handle:hTimer, Handle:hPack)
 	SetEntPropFloat(client, Prop_Send, "m_healthBufferTime", GetGameTime());
 }
 
-
 public Action:GlowTimer(Handle:timer, Handle:pack)
 {
 	ResetPack(pack);
@@ -274,7 +281,6 @@ public Action:GlowTimer(Handle:timer, Handle:pack)
 
 	return Plugin_Stop;
 }
-
 
 public Action:TimerDetectHealthChanges(Handle:hTimer, any:client)
 {
@@ -618,7 +624,6 @@ public Action:TimerDeleteBombs(Handle:timer, Handle:pack)
 		int mine = ReadPackCell(pack);
 		WritePackCell(hPack, mine);
 		CloseHandle(pack);
-
 		CreateTimer(5.0, TimerDeleteBombs, hPack, TIMER_FLAG_NO_MAPCHANGE);		
 		return Plugin_Continue;
 	}
@@ -639,4 +644,3 @@ public Action Timer_Parachute( Handle timer, any iEntity)
 	}
 	return Plugin_Stop;
 }
-

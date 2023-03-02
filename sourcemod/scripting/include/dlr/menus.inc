@@ -1,5 +1,3 @@
-
-
 ///////////////////////////////////////////////////////////////////////////////////
 // Class menu
 ///////////////////////////////////////////////////////////////////////////////////
@@ -212,7 +210,7 @@ public void CalculateEngineerPlacePos(client, type)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////
-// Health modifiers & medic
+// Medic
 ///////////////////////////////////////////////////////////////////////////////////
 
 public bool:CreatePlayerMedicMenu(client)
@@ -253,61 +251,74 @@ public PanelHandler_SelectMedicItem(Handle:menu, MenuAction:action, client, para
 	}
 }
 
-public DlrSkillMenuHandler(Handle:hMenu, MenuAction:action, client, iSkillSelection)
+public void CalculateMedicPlacePos(client, type)
 {
-    if(action == MenuAction_Select)
-    {
-        /* Start Function Call */
-        Call_StartForward(g_hOnSkillSelected);
-        Call_PushCell(client);
-        Call_PushCell(iSkillSelection);        
-        Call_Finish();
-    }
-}
+	decl Float:vAng[3], Float:vPos[3], Float:endPos[3];
+	
+	GetClientEyeAngles(client, vAng);
+	GetClientEyePosition(client, vPos);
 
-public PanelHandler_DlrMenu(Handle:menu, MenuAction:action, client, param)
-{
-	switch (action)
+	new Handle:trace = TR_TraceRayFilterEx(vPos, vAng, MASK_SHOT, RayType_Infinite, TraceFilter, client);
+
+	if (TR_DidHit(trace))
 	{
-		case MenuAction_Select:
+		TR_GetEndPosition(endPos, trace);
+		CloseHandle(trace);
+		
+		if (GetVectorDistance(endPos, vPos) <= GetConVarFloat(MEDIC_MAX_BUILD_RANGE))
 		{
-			if( param == 1)
-			{
-				PrintHintText(client,"Debug mode is %s",  (getDebugMode() == true) ? "ON" : "OFF");
-			}
-			if (param == 2) 
-			{
-				disableInfected = (disableInfected == true) ? false : true;
+			vAng[0] = 0.0;
+			vAng[2] = 0.0;
+			
+			switch(type) {
+				case 0: {
+					new entity = CreateEntityByName("weapon_defibrillator");
+					DispatchKeyValue(entity, "solid", "0");
+					DispatchKeyValue(entity, "disableshadows", "1");
+					DispatchSpawn(entity);
+					TeleportEntity(entity, endPos, NULL_VECTOR, NULL_VECTOR);
+					PrintHintText(client ,"%N deployed a defibrillator", client);
 
-				if (disableInfected == true) {
-					SetConVarInt(FindConVar("director_no_bosses"), 1);
-					SetConVarInt(FindConVar("director_no_mobs"), 1);
-					SetConVarInt(FindConVar("z_common_limit"), 0);
-					SetConVarInt(FindConVar("z_boomer_limit"), 0);
-					SetConVarInt(FindConVar("z_charger_limit"), 0);
-					SetConVarInt(FindConVar("z_hunter_limit"), 0);
-					SetConVarInt(FindConVar("z_jockey_limit"), 0);
-					SetConVarInt(FindConVar("z_smoker_limit"), 0);
-					SetConVarInt(FindConVar("z_spitter_limit"), 0);
-				} else {
-					ResetConVar(FindConVar("director_no_bosses"));
-					ResetConVar(FindConVar("director_no_mobs"));
-					ResetConVar(FindConVar("z_common_limit"));
-					ResetConVar(FindConVar("z_boomer_limit"));
-					ResetConVar(FindConVar("z_charger_limit"));
-					ResetConVar(FindConVar("z_hunter_limit"));
-					ResetConVar(FindConVar("z_jockey_limit"));
-					ResetConVar(FindConVar("z_smoker_limit"));
-					ResetConVar(FindConVar("z_spitter_limit"));  
+					ClientData[client].SpecialsUsed++;
 				}
-				PrintHintText(client,"Infected are now %s", disableInfected ? "DISABLED" : "ENABLED");
-			}
-			if( param == 3)
-			{
-			        DisplayMenu(g_hSkillMenu, client, MENU_TIME_FOREVER);
+				case 1:{
+					new entity = CreateEntityByName("weapon_first_aid_kit");
+					DispatchKeyValue(entity, "solid", "0");
+					DispatchSpawn(entity);
+					TeleportEntity(entity, endPos, NULL_VECTOR, NULL_VECTOR);
+					PrintHintText(client ,"%N deployed a medkit", client);
+
+					ClientData[client].SpecialsUsed++;
+				}
+				case 2: {
+					new entity = CreateEntityByName("weapon_adrenaline_spawn");
+					DispatchKeyValue(entity, "solid", "0");
+					DispatchKeyValue(entity, "disableshadows", "1");
+					TeleportEntity(entity, endPos, NULL_VECTOR, NULL_VECTOR);
+					DispatchSpawn(entity);
+					ClientData[client].SpecialsUsed++;
+
+				}
+				case 3: {
+					new pills = CreateEntityByName("weapon_pain_pills_spawn", -1);
+					DispatchKeyValue(pills, "solid", "6");
+					DispatchKeyValue(pills, "disableshadows", "1");
+					TeleportEntity(pills, endPos, NULL_VECTOR, NULL_VECTOR);
+					DispatchSpawn(pills);
+					ClientData[client].SpecialsUsed++;
+
+				}				
+				default: {
+					CloseHandle( trace );
+					return;
+				}
 			}
 		}
+		else
+		PrintToChat(client, "%sCould not place the item because you were looking too far away.", PRINT_PREFIX);
 	}
+	else
+	CloseHandle(trace);
 }
 
 //////////////////////////
@@ -373,3 +384,217 @@ public bool:isAdmin(client)
 	else { return true; }
 }
 
+public PanelHandler_DlrMenu(Handle:menu, MenuAction:action, client, param)
+{
+	switch (action)
+	{
+		case MenuAction_Select:
+		{
+			if( param == 1)
+			{
+				PrintHintText(client,"Debug mode is %s",  (getDebugMode() > 0) ? "ON" : "OFF");
+			}
+			if (param == 2) 
+			{
+				disableInfected = (disableInfected == true) ? false : true;
+
+				if (disableInfected == true) {
+					SetConVarInt(FindConVar("director_no_bosses"), 1);
+					SetConVarInt(FindConVar("director_no_mobs"), 1);
+					SetConVarInt(FindConVar("z_common_limit"), 0);
+					SetConVarInt(FindConVar("z_boomer_limit"), 0);
+					SetConVarInt(FindConVar("z_charger_limit"), 0);
+					SetConVarInt(FindConVar("z_hunter_limit"), 0);
+					SetConVarInt(FindConVar("z_jockey_limit"), 0);
+					SetConVarInt(FindConVar("z_smoker_limit"), 0);
+					SetConVarInt(FindConVar("z_spitter_limit"), 0);
+				} else {
+					ResetConVar(FindConVar("director_no_bosses"));
+					ResetConVar(FindConVar("director_no_mobs"));
+					ResetConVar(FindConVar("z_common_limit"));
+					ResetConVar(FindConVar("z_boomer_limit"));
+					ResetConVar(FindConVar("z_charger_limit"));
+					ResetConVar(FindConVar("z_hunter_limit"));
+					ResetConVar(FindConVar("z_jockey_limit"));
+					ResetConVar(FindConVar("z_smoker_limit"));
+					ResetConVar(FindConVar("z_spitter_limit"));  
+				}
+				PrintHintText(client,"Infected are now %s", disableInfected ? "DISABLED" : "ENABLED");
+			}
+			if( param == 3)
+			{
+			        DisplayMenu(g_hSkillMenu, client, MENU_TIME_FOREVER);
+			}
+		}
+	}
+}
+
+public DlrSkillMenuHandler(Handle:hMenu, MenuAction:action, client, iSkillSelection)
+{
+    if(action == MenuAction_Select)
+    {
+        /* Start Function Call */
+        Call_StartForward(g_hOnSkillSelected);
+        Call_PushCell(client);
+        Call_PushCell(iSkillSelection);        
+        Call_Finish();
+    }
+}
+
+// Format very top level admin menu entry
+public Admin_TopMainMenu(Handle:topmenu, TopMenuAction:action, TopMenuObject:object_id, param, String:buffer[], maxlength) {
+
+	switch (action)
+	{
+		case TopMenuAction_DisplayTitle, TopMenuAction_DisplayOption:
+		{
+			Format(buffer, maxlength, "DLR Settings");
+		}
+	}
+}
+
+public OnAdminMenuReady(Handle:topmenu) {
+	
+	// Check ..
+	if (topmenu == hTopMenu) return;
+		
+	// We save the handle
+	hTopMenu = topmenu;
+
+	new TopMenuObject:debug_menu = AddToTopMenu(hTopMenu, "DlrDebugMenu", TopMenuObject_Category, Admin_TopMainMenu, INVALID_TOPMENUOBJECT); 
+	
+	// now we add the function ...
+	if (debug_menu != INVALID_TOPMENUOBJECT)
+	{
+		
+		AddToTopMenu(hTopMenu, "debugpanel", TopMenuObject_Item, Admin_TopMenuHandler, debug_menu, "debugpanel", ADMFLAG_GENERIC, "1");
+		AddToTopMenu(hTopMenu, "dlrmenu", TopMenuObject_Item, Admin_TopMenuHandler, debug_menu, "dlrmenu", ADMFLAG_GENERIC, "2");
+		AddToTopMenu(hTopMenu, "players", TopMenuObject_Item, Admin_TopMenuHandler, debug_menu, "players", ADMFLAG_GENERIC, "3");						
+	}
+}
+
+new String:CommandText[][] = {
+"Debugging Options",
+"Tools",
+"Players",
+"Skills",
+"Plugins"
+};
+
+// Handle the switch menu items (switch player/swap players)
+public Admin_TopMenuHandler(Handle:topmenu, TopMenuAction:action, TopMenuObject:object_id, param, String:buffer[], maxlength) {
+	
+	new String:mnuinfo[MAX_NAME_LENGTH];
+	GetTopMenuInfoString(topmenu, object_id, mnuinfo, sizeof(mnuinfo));
+	
+	new index = StringToInt(mnuinfo);
+	
+	switch(action)
+	{
+		case TopMenuAction_DisplayOption:
+		{
+			Format(buffer, maxlength, CommandText[index]);
+		}
+		case TopMenuAction_SelectOption:
+		{
+			if (index == 0) { ShowDebugMenu(param); }
+			else if (index == 1) { ShowDebugMenu(param); } 
+			else if (index == 2) { CreateDlrMenu(param); }
+			/**else if (index == 3) { Command_SwapTeams(param, 0); }	
+			else if (index == 4) { Command_PauseGame(param, 0); }	
+			else if (index == 5) { Command_UnpauseGame(param, 0); }	
+			
+			else if (index == 6) { ShowCurrTeamPanel(param, 0); }
+			else if (index == 7) { ShowLastRoundTeamPanel(param, 0); }	*/
+			else if (index == 0) { (param); }	
+		}			
+	}
+}
+
+public Action:CmdDlrMenu(client, args)
+{
+	if (isAdmin(client)) 
+		CreateDlrMenu(client);
+}
+
+public CreateDlrMenu(client) {
+
+	if (!client)
+	return false;
+	
+	new Handle:hPanel;
+	
+	if((hPanel = CreatePanel()) == INVALID_HANDLE)
+	{
+		LogError("Cannot create hPanel on DlrMenu");
+		return false;
+	}
+	
+	SetPanelTitle(hPanel, "Functions:");
+	DrawPanelItem(hPanel, "Toggle Debug Messages");
+	DrawPanelItem(hPanel, "Toggle infected");
+	DrawPanelItem(hPanel, "List registered skills");
+	DrawPanelText(hPanel, " ");
+	DrawPanelItem(hPanel, "Exit");
+	SendPanelToClient(hPanel, client, PanelHandler_DlrMenu, MENU_OPEN_TIME);
+	CloseHandle(hPanel);
+	
+	return true;
+}
+
+stock ShowDebugMenu(client) {
+
+	new Handle:menu = CreateMenu(Admin_MnuHdlr_DebugOpts);	
+	
+	decl String:title[100];
+	Format(title, sizeof(title), "Debugging Options");
+	
+	SetMenuTitle(menu, title);
+	
+	decl String:name[64];
+	
+	Format(name, sizeof(name),  "Debugging Off"); 
+	AddMenuItem(menu, "0", name); 
+			
+	Format(name, sizeof(name),  "Print Debug Info to Chat"); 
+	AddMenuItem(menu, "1", name); 
+
+	Format(name, sizeof(name),  "Log Debug Info to File"); 
+	AddMenuItem(menu, "2", name); 	
+	
+	Format(name, sizeof(name),  "Print Trace Debug Info to Chat"); 
+	AddMenuItem(menu, "3", name); 	
+	DisplayMenu(menu, client, MENU_TIME_FOREVER);
+}
+
+public Admin_MnuHdlr_DebugOpts(Handle:menu, MenuAction:action, param1, param2) {
+
+	switch (action)
+	{
+		case MenuAction_End:
+		{
+			CloseHandle(menu);
+		}
+		case MenuAction_Cancel:
+		{
+			if (param2 == MenuCancel_ExitBack && hTopMenu != INVALID_HANDLE)
+			{
+				DisplayTopMenu(hTopMenu, param1, TopMenuPosition_LastCategory);
+			}
+		}
+		case MenuAction_Select:
+		{
+			decl String:info[32];
+				
+			GetMenuItem(menu, param2, info, sizeof(info));
+			new debugopt = StringToInt(info);
+			
+			if (debugopt < 0) debugopt = 0;
+			if (debugopt > 2) debugopt = 2;
+			bool debugMode = debugopt > 0 ? true : false;
+			setDebugMode(debugMode);
+
+			PrintToChatAll("Server Debugging has been set to: %d.", getDebugMode());
+		}
+	}
+}

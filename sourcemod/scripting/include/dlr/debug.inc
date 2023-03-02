@@ -1,13 +1,12 @@
-
 #include <adminmenu>
 
 stock void PrintDebug(int client, const char[] format, any ...)
 {
-	if (getSessionDebug() >= 1) {
+	if (getDebugMode() >= 1) {
 		static char buffer[192];
 		VFormat(buffer, sizeof(buffer), format, 2);		
 		PrintToChat(client, "[Debug] %s", buffer);
-		if (getSessionDebug() == 2) {
+		if (getDebugMode() == 2) {
 			PrintToConsole(0, "[Debug] %s", buffer);
 			LogMessage("%s", buffer);
 		}
@@ -37,11 +36,11 @@ stock void PrintDebug(int client, const char[] format, any ...)
 
 stock void PrintDebugAll(const char[] format, any ...)
 {
-	if (getSessionDebug() >= 1) {
+	if (getDebugMode() >= 1) {
 		static char buffer[192];
 		VFormat(buffer, sizeof(buffer), format, 2);		
 		PrintToChatAll("[Debug] %s", buffer);
-		if (getSessionDebug() == 2) {
+		if (getDebugMode() == 2) {
 			PrintToConsole(0, "[Debug] %s", buffer);
 			LogMessage("%s", buffer);
 		}
@@ -65,28 +64,3 @@ stock void PrintDebugAll(const char[] format, any ...)
 		return;
 	#endif
 }
-
-
-
-public OnAdminMenuReady(Handle:topmenu) {
-	
-	
-	// Check ..
-	if (topmenu == hTopMenu) return;
-		
-	// We save the handle
-	hTopMenu = topmenu;
-
-	new TopMenuObject:debug_menu = AddToTopMenu(hTopMenu, "DlrDebugMenu", TopMenuObject_Category, Admin_TopDebugMenu, INVALID_TOPMENUOBJECT); 
-	
-	// now we add the function ...
-	if (debug_menu != INVALID_TOPMENUOBJECT)
-	{
-		
-		AddToTopMenu(hTopMenu, "debugpanel", TopMenuObject_Item, Admin_TopMenuHandler, debug_menu, "debugpanel", ADMFLAG_GENERIC, "1");
-			
-	}
-}
-
-
-
