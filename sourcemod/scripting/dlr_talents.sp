@@ -72,7 +72,7 @@ public OnPluginStart( )
 	g_hfwdOnCustomCommand = CreateGlobalForward("OnCustomCommand", ET_Ignore, Param_String, Param_Cell, Param_Cell, Param_Cell);
 	//Create a Class Selection forward
 	g_hOnSkillSelected = CreateGlobalForward("OnSkillSelected", ET_Event, Param_Cell, Param_Cell);	
-	g_hForwardPluginState = CreateGlobalForward("DLR_OnPluginState", ET_Ignore, Param_Cell, Param_Cell);
+	g_hForwardPluginState = CreateGlobalForward("DLR_OnPluginState", ET_Ignore, Param_String, Param_Cell);
 	g_hForwardRoundState = CreateGlobalForward("DLR_OnRoundState", ET_Ignore, Param_Cell);
 
 	//Create menu and set properties
@@ -134,7 +134,12 @@ public OnPluginStart( )
 	RegAdminCmd("sm_dlr_plugins", CmdPlugins, ADMFLAG_ROOT, "List plugins");	
 	RegAdminCmd("sm_yay", GrenadeCommand, ADMFLAG_ROOT, "Test grenades");
 	RegAdminCmd("sm_hud", Cmd_PrintToHUD, ADMFLAG_ROOT, "Test HUD");
-	RegAdminCmd("sm_hudclear", Cmd_ClearHUD, ADMFLAG_ROOT, "Clear HUD");
+	RegAdminCmd("sm_hud_clear", Cmd_ClearHUD, ADMFLAG_ROOT, "Clear HUD");
+	RegAdminCmd("sm_hud_delete", Cmd_DeleteHUD, ADMFLAG_ROOT, "Delete HUD");
+	RegAdminCmd("sm_hud_close", Cmd_CloseHUD, ADMFLAG_ROOT, "Delete HUD");
+	RegAdminCmd("sm_hud_get", Cmd_GetHud, ADMFLAG_ROOT, "Delete HUD");
+	RegAdminCmd("sm_hud_set", Cmd_SetHud, ADMFLAG_ROOT, "Delete HUD");
+	RegAdminCmd("sm_hud_setup", Cmd_SetupHud, ADMFLAG_ROOT, "Delete HUD");
 	RegAdminCmd("sm_setvictim", Cmd_SetVictim, ADMFLAG_ROOT, "Set horde to attack player #");
 	RegAdminCmd("sm_debug", Command_Debug, ADMFLAG_GENERIC, "sm_debug [0 = Off|1 = PrintToChat|2 = LogToFile|3 = PrintToChat AND LogToFile]");
 
@@ -191,7 +196,7 @@ public OnPluginStart( )
 	SABOTEUR_BOMB_ACTIVATE = CreateConVar("talents_saboteur_bomb_activate", "5.0", "How long before the dropped bomb becomes sensitive to motion");
 	SABOTEUR_BOMB_RADIUS = CreateConVar("talents_saboteur_bomb_radius", "128.0", "Radius of bomb motion detection");
 	SABOTEUR_MAX_BOMBS = CreateConVar("talents_saboteur_max_bombs", "5", "How many bombs a saboteur can drop per round");
-	SABOTEUR_BOMB_TYPES = CreateConVar("talents_saboteur_bomb_types", "1", "Define max 7 mine types to use. (2,10,5,15,12,16,9 are nice combo) 1=Bomb, 2=Cluster, 3=Firework, 4=Smoke, 5=Black Hole, 6=Flashbang, 7=Shield, 8=Tesla, 9=Chemical, 10=Freeze, 11=Medic, 12=Vaporizer, 13=Extinguisher, 14=Glow, 15=Anti-Gravity, 16=Fire Cluster, 17=Bullets, 18=Flak, 19=Airstrike, 20=Weapon");
+	SABOTEUR_BOMB_TYPES = CreateConVar("talents_saboteur_bomb_types", "2,10,5,15,12,16,9", "Define max 7 mine types to use. (2,10,5,15,12,16,9 are nice combo) 1=Bomb, 2=Cluster, 3=Firework, 4=Smoke, 5=Black Hole, 6=Flashbang, 7=Shield, 8=Tesla, 9=Chemical, 10=Freeze, 11=Medic, 12=Vaporizer, 13=Extinguisher, 14=Glow, 15=Anti-Gravity, 16=Fire Cluster, 17=Bullets, 18=Flak, 19=Airstrike, 20=Weapon");
 	SABOTEUR_BOMB_DAMAGE_SURV = CreateConVar("talents_saboteur_bomb_dmg_surv", "0", "How much damage a bomb does to survivors");
 	SABOTEUR_BOMB_DAMAGE_INF = CreateConVar("talents_saboteur_bomb_dmg_inf", "1500", "How much damage a bomb does to infected");
 	SABOTEUR_BOMB_POWER = CreateConVar("talents_saboteur_bomb_power", "2.0", "How much blast power a bomb has. Higher values will throw survivors farther away");
@@ -232,8 +237,7 @@ public OnPluginStart( )
 	AutoExecConfig(true, "talents");
 	ApplyHealthModifiers();
 	parseAvailableBombs();
-	setupHUD();
-
+	
 	if (LibraryExists("adminmenu") && ((hTopMenu = GetAdminTopMenu()) != INVALID_HANDLE))
 	{
 		OnAdminMenuReady(hTopMenu);
@@ -723,7 +727,7 @@ public OnPluginReady() {
 		PrintDebugAll("Talents plugin is now ready");
 		Call_StartForward(g_hForwardPluginState);
 
-		Call_PushString(PLUGIN_IDENTIFIER);
+		Call_PushString("dlr_talents");
 		Call_PushCell(1);
 		Call_Finish();
 		g_PluginLoaded = true;
@@ -738,7 +742,7 @@ public OnPluginReady() {
 		g_PluginLoaded = false;
 		ResetPlugin();
 		Call_StartForward(g_hForwardPluginState);
-		Call_PushString(PLUGIN_IDENTIFIER);
+		Call_PushString("dlr_talents");
 		Call_PushCell(0);
 		Call_Finish();
 	}
@@ -815,7 +819,7 @@ public void useSpecialSkill(int client, int type)
 	if (g_iPlayerSkill[client] >= 0) {
 		Call_StartForward(g_hfwdOnSpecialSkillUsed);
 		Call_PushCell(client);
-		Call_PushCell(skill);
+		Call_PushCell(skill); 
 		Call_PushCell(type);		
 		Call_Finish();
 	}
@@ -1828,6 +1832,8 @@ public parseAvailableBombs()
 	GetConVarString(SABOTEUR_BOMB_TYPES, bombs, sizeof(bombs));
 
 	int amount = ExplodeString(bombs, ",", buffers, sizeof(buffers), sizeof(buffers[]));
+	PrintDebugAll("Found %i amount of mines from bombs: %s ",amount, bombs);
+
 	if (amount == 1) {
 
 		g_AvailableBombs[0].setItem(0, StringToInt(buffers[0]));
@@ -1863,6 +1869,7 @@ public void CalculateSaboteurPlacePos(client, int value)
 			vAng[0] = 0.0;
 			vAng[2] = 0.0;
 			DropBomb(client, value);
+			PrintDebugAll("%N dropped a mine with index of %i to %f %f %f" , client, value, vPos[0], vPos[1], vPos[2]);			
 			ClientData[client].SpecialsUsed++;
 			ClientData[client].LastDropTime = GetGameTime();				
 		} else {
@@ -1890,9 +1897,11 @@ public void ToggleNightVision(client)
 			{					
 				char netclass[128];
 				GetEntityNetClass(iWeapon, netclass, sizeof(netclass));
+				PrintDebug(client, "Toggling nightvision!");
 				SetEntProp(client, Prop_Send, "m_bNightVisionOn", !GetEntProp(client, Prop_Send, "m_bNightVisionOn"));
-				SetEntProp(client, Prop_Send, "m_bHasNightVision", !GetEntProp(client, Prop_Send, "m_bNightVisionOn"));
-
+				SetEntProp(client, Prop_Send, "m_bHasNightVision", !GetEntProp(client, Prop_Send, "m_bHasNightVision"));
+				if (!GetEntProp(client, Prop_Send, "m_bHasNightVision"))
+				return;
 				if(FindSendPropInfo(netclass, "m_upgradeBitVec") < 1)
 				return; // This weapon does not support laser upgrade
 
@@ -1914,7 +1923,6 @@ public Action L4D2_OnChooseVictim(int attacker, int &curTarget) {
 	if(class != L4D2Infected_Tank) {
 		int existingTarget = GetClientOfUserId(b_attackerTarget[attacker]);
 		if(existingTarget > 0) {
-			curTarget = existingTarget;
 			return Plugin_Changed;
 		}
 

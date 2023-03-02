@@ -687,11 +687,11 @@ public int OnCustomCommand(char[] name, int client, int entity, int type)
 	}
 	bool projectile = false;
 	
-	if (entity == 0 || !IsValidEntity(entity)) {
+	if (entity <= 0 || !IsValidEntity(entity)) {
 		projectile = true;
 	}
 	#if DEBUG
-//	PrintToChat(client, "%N ignited entity (%s) %i with type %i ", client, name, entity, type);
+	PrintToChat(client, "%N ignited entity (%s) %i with type %i ", client, name, entity, type);
 	#endif
 
 	DoSpawn(client, type, projectile, entity);
@@ -848,6 +848,8 @@ public void OnPluginStart()
 	// ====================================================================================================
 	RegAdminCmd("sm_grenade",			Cmd_Grenade, 	ADMFLAG_ROOT, "Opens a menu to choose the current grenades mode. Force change with args, usage: sm_grenade [type: 1 - 20]");
 	RegAdminCmd("sm_grenade_reload",	Cmd_Reload,		ADMFLAG_ROOT, "Reloads the settings config.");
+	RegAdminCmd("sm_grenade_ent",		Cmd_DoFX,		ADMFLAG_ROOT, "Spawn explosion on entity");
+
 	RegAdminCmd("sm_grenade_spawn",		Cmd_SpawnSpawn,	ADMFLAG_ROOT, "Spawn grenade explosions: <type: 1 - 20>");
 	RegAdminCmd("sm_grenade_throw",		Cmd_SpawnThrow,	ADMFLAG_ROOT, "Spawn grenade projectile: <type: 1 - 20>");
 
@@ -1037,7 +1039,37 @@ Action Cmd_SpawnThrow(int client, int args)
 	DoSpawnCommand(client, args, true);
 	return Plugin_Handled;
 }
+Action Cmd_DoFX(int client, int args)
+{
+	// Validate
+	if( !client )
+	{
+		ReplyToCommand(client, "Command can only be used %s", IsDedicatedServer() ? "in game on a dedicated server." : "in chat on a Listen server.");
+		return;
+	}
 
+	if( args != 2 )
+	{
+		ReplyToCommand(client, "Usage: sm_grenade_env <entityid> <type>  <1=Bomb, 2=Cluster, 3=Firework, 4=Smoke, 5=Black Hole, 6=Flashbang, 7=Shield, 8=Tesla, 9=Chemical, 10=Freeze, 11=Medic, 12=Vaporizer, 13=Extinguisher, 14=Glow, 15=Anti-Gravity, 16=Fire Cluster, 17=Bullets, 18=Flak, 19=Airstrike, 20=Weapon>");
+		return;
+	}
+
+	// Index
+	char sTemp[4];
+	GetCmdArg(1, sTemp, sizeof(sTemp));
+	int ent = StringToInt(sTemp);
+	// Index
+	if (!IsValidEntity(ent)) {
+		ReplyToCommand(client, "invalid entity %i", ent);
+		return ;
+	}
+	GetCmdArg(2, sTemp, sizeof(sTemp));
+	int index = StringToInt(sTemp);
+	
+	DoPrjEffects(ent, index);
+
+	return ;
+}
 Action Cmd_SpawnSpawn(int client, int args)
 {
 	DoSpawnCommand(client, args, false);
@@ -1100,6 +1132,7 @@ void DoSpawnCommand(int client, int args, bool projectile)
 			TeleportEntity(entity, vPos, NULL_VECTOR, vDir);
 			SetEntPropVector(entity, Prop_Send, "m_vInitialVelocity", vDir);
 		} else {
+
 			SetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity", client);	// Store owner			
 			TeleportEntity(entity, vPos, NULL_VECTOR, NULL_VECTOR);
 		}
@@ -1123,13 +1156,14 @@ int DoSpawn(int client, int index, bool projectile, int ent=-1)
 		return 0;
 	}
 
+	PrintToChat(client, "throwing with index %i, ent %i", index, ent);
+
 	int entity = CreateEntityByName("pipe_bomb_projectile");
 	if( entity != -1 )
 	{
 		SetEntPropEnt(entity, Prop_Send, "m_hThrower", client);		// Store owner
 		SetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity", client);	// Store owner
 		SetEntPropVector(entity, Prop_Send, "m_vInitialVelocity", view_as<float>({ 0.0, 0.0, 1.0 }));
-		SetEntityModel(entity, MODEL_MINE);
 		g_GrenadeType[entity] = index;								// Store mode type
 		g_iClientGrenadeType[client] = index;
 
@@ -1152,12 +1186,18 @@ int DoSpawn(int client, int index, bool projectile, int ent=-1)
 			TeleportEntity(entity, vPos, NULL_VECTOR, vDir);
 			SetEntPropVector(entity, Prop_Send, "m_vInitialVelocity", vDir);
 		} else {
+			if (!IsValidEntity(ent)){
+				PrintToChat(client, "Invalid reference %i !!", ent );
+					return -1;
+				}
 			GetEntPropVector(ent, Prop_Send, "m_vecOrigin", vPos);
-			SetEntPropEnt(ent, Prop_Send, "m_hOwnerEntity", client);	// Store owner
+			SetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity", client);
+			SetEntPropVector(entity, Prop_Send, "m_vInitialVelocity", view_as<float>({ 0.0, 0.0, 1.0 }));
+				// Store owner
 			TeleportEntity(entity, vPos, NULL_VECTOR, NULL_VECTOR);
+			PrintToChat(client, "Moving entity %i to position %f %f %f. Old entity: %i", entity, vPos[0],vPos[1],vPos[2], ent);
 		}
 		DispatchSpawn(entity);
-
 		static char translation[256];
 		Format(translation, sizeof(translation), "GrenadeMod_Title_%d", index);
 	//	PrintToChat(client, "\x04\x05Created: \x04%T", translation, client);

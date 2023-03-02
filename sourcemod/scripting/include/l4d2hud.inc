@@ -118,9 +118,9 @@ void SetupHUD(hudPosition position, int flags, float x, float y, float w, float 
         Format(buffer, sizeof(buffer), "flags = %s,", buffer);
     }
 
-
+    
     int id = view_as<int>(position);
-    Format(huds[id], 1024, "SMHud%d <- { Fields = { players = { slot = g_ModeScript.HUD_%s, dataval = \"%%s\", %s name = \"smhud%d\" } } }; HUDSetLayout( SMHud%d ); HUDPlace( g_ModeScript.HUD_%s, %f, %f, %f, %f )", id, hudPositions[id], buffer, id, id, hudPositions[id], x, y, w, h);
+    Format(huds[id], 1024, "SMHud%d <- { Fields = { players = { slot = g_ModeScript.HUD_%s, staticstring = \"Players:\", special = HUD_SPECIAL_COOLDOWN, dataval = \"%%s\", %s name = \"smhud%d\" } } }; HUDSetLayout( SMHud%d ); HUDPlace( g_ModeScript.HUD_%s, %f, %f, %f, %f )", id, hudPositions[id], buffer, id, id, hudPositions[id], x, y, w, h);
     L4D2_RunScript(huds[id], "");
 }
 
@@ -158,9 +158,12 @@ hudPosition MSG_HUD_POS;
 
 char messages[MAX_MESSAGES][MAX_MESSAGE_LENGTH];
 char lastMsgFull[];
+bool isEnabled;
+
 int msgExpiresTime;
 Handle msgTimer;
 void Timer_ProcessMessages(Handle h) {
+    if (isEnabled == false) return Plugin_Stop;
     if(GetGameTime() > msgExpiresTime) {
         messages.Erase(0);
         msgExpiresTime = GetGameTime() + MESSAGE_DURATION;
@@ -170,6 +173,7 @@ void Timer_ProcessMessages(Handle h) {
         ImplodeStrings(messages, MAX_MESSAGES, "\\n", buffer, sizeof(buffer));
     }
     SetHUDText(MSG_HUD_POS, buffer);
+    return Plugin_Continue;
 }
 void SetupMessageHud(hudPosition position, int flags) {
 
@@ -180,6 +184,10 @@ void SetupMessageHud(hudPosition position, int flags) {
     }
 
     SetupHUD(MSG_HUD_POS, flags , 0.0, 0.0, 1.0, 1.0);
+    if (this.hudEnabled == true && msgTimer != null) {
+        KillTimer(msgTimer);
+    }
+
     msgTimer = CreateTimer(MESSAGE_UPDATE_INTERVAL, Timer_ProcessMessages, _, TIMER_REPEAT);
 }
 
@@ -190,7 +198,6 @@ void CloseMessageHud() {
 }
 //TODO: Replace repeat timer, just use one-time delay, only add one
 //Internally process and print all messages
-
 
 //Adds a message to the message queue
 void AddMessageToHud(const char msg[MAX_MESSAGE_LENGTH]) {

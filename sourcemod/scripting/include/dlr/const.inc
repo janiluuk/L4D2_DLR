@@ -1,5 +1,53 @@
-
 stock MENU_OPEN_TIME = view_as<int>(99999);
+#define MAXPROPERTIES			16										// Total data entries to read from a grenades config
+#define MAXCLASS				8	
+
+
+/** CLASS SYSTEM **/
+
+enum struct playerClassProperties {
+    float maxHealth
+    float jumpVelocity
+    float attackDamage
+    float attackRate
+    float armorRate
+    float healingRate
+    float tankStumbleBlock
+}
+
+enum struct playerClass {
+	int perkId
+	char className[32]
+	char classDescription[32]
+    playerClassProperties properties
+}
+
+enum struct skillAction {
+	int client
+	int actionId
+	int actionType // 1 = Execute standard OnSpecialSKillUsed hooks // 2 = use OnCustomCommand hook // 3 = execute on startup	
+	int pluginName
+	char parameter[3]
+	char bindToKey[2]
+	int interval
+	float lastUsed
+	bool runInStartup
+	char successText[128]
+	char failureText[128]
+	char announceText[128]
+}
+
+enum struct skillSet {
+	int skillSetId
+	char skillSetName[32]
+	char skillSetDescription[128]
+	char skillISetdentifier[32]
+	int maxPlayers
+	int	skillSetType 
+	char menuIdentifier[16]
+	int actions[16]
+}
+
 stock const String:MENU_OPTIONS[][] =
 {
 	"None",

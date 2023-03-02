@@ -135,6 +135,7 @@ public Action:TimerThink(Handle:hTimer, any:client)
 					}
 				}
 				else if (CanDrop == false && (iDropTime < GetConVarInt(MINIMUM_DROP_INTERVAL))) {
+					if (!(ClientData[client].LastButtons & IN_SPEED))					
 					PrintHintText(client ,"Wait %i seconds to deploy", (GetConVarInt(MINIMUM_DROP_INTERVAL) - iDropTime));
 				}
 
@@ -143,11 +144,10 @@ public Action:TimerThink(Handle:hTimer, any:client)
 			if (buttons & IN_ZOOM) {
 
 				char pendingMessage[128] = "Wait %i seconds to use healing grenades again";
-
+				
 				if (canUseSpecialSkill(client, pendingMessage)) {
-					g_bAirstrikeValid = false;
-					useSpecialSkill(client, 11);
-					useCustomCommand("Grenades", client, -1, 11);
+					useSpecialSkill(client, 12);
+					useCustomCommand("Grenades", client, -1, 12);
 					ClientData[client].LastDropTime = GetGameTime();
 				}
 
@@ -456,7 +456,7 @@ public Action:TimerCheckBombSensors(Handle:hTimer, Handle:hPack)
 					PrintHintTextToAll("%N's mine detonated!", owner);
 		
 
-					PrintDebugAll("Detonating Grenade type: %s", getBombName(bombType-1));
+					PrintDebugAll("Detonating Mine type: %s", getBombName(bombType));
 
 					useCustomCommand("Grenades", owner, entity, bombType);					
 					
