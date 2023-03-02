@@ -1156,7 +1156,7 @@ int DoSpawn(int client, int index, bool projectile, int ent=-1)
 		return 0;
 	}
 
-	PrintToChat(client, "throwing with index %i, ent %i", index, ent);
+//	PrintToChat(client, "throwing with index %i, ent %i", index, ent);
 
 	int entity = CreateEntityByName("pipe_bomb_projectile");
 	if( entity != -1 )
@@ -1187,7 +1187,7 @@ int DoSpawn(int client, int index, bool projectile, int ent=-1)
 			SetEntPropVector(entity, Prop_Send, "m_vInitialVelocity", vDir);
 		} else {
 			if (!IsValidEntity(ent)){
-				PrintToChat(client, "Invalid reference %i !!", ent );
+			//	PrintToChat(client, "Invalid reference %i !!", ent );
 					return -1;
 				}
 			GetEntPropVector(ent, Prop_Send, "m_vecOrigin", vPos);
@@ -1195,7 +1195,7 @@ int DoSpawn(int client, int index, bool projectile, int ent=-1)
 			SetEntPropVector(entity, Prop_Send, "m_vInitialVelocity", view_as<float>({ 0.0, 0.0, 1.0 }));
 				// Store owner
 			TeleportEntity(entity, vPos, NULL_VECTOR, NULL_VECTOR);
-			PrintToChat(client, "Moving entity %i to position %f %f %f. Old entity: %i", entity, vPos[0],vPos[1],vPos[2], ent);
+			//PrintToChat(client, "Moving entity %i to position %f %f %f. Old entity: %i", entity, vPos[0],vPos[1],vPos[2], ent);
 		}
 		DispatchSpawn(entity);
 		static char translation[256];
@@ -1250,7 +1250,7 @@ Action Cmd_Grenade(int client, int args)
 					Format(translation, sizeof(translation), "%T %T", "GrenadeMod_Mode", client, translation, client);
 					ReplaceColors(translation, sizeof(translation));
 					#if DEBUG
-					PrintToChat(client, translation);
+					//PrintToChat(client, translation);
 					#endif
 				}
 			}
