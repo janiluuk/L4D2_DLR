@@ -17,7 +17,7 @@ stock ClearHUD()
 }
 
 stock SetupHud(hudPosition pos, int flags, float xpos, float ypos, float width, float height) {
-	SetupMessageHud(pos, flags, xpos, ypos, width, height);
+	SetupHUD(pos, flags, xpos, ypos, width, height);
 }
 
 stock PrintToHudPosition(char[] text, int pos)
@@ -59,11 +59,12 @@ stock PrintToHudPosition(char[] text, int pos)
 			position = HUD_POSITION_MID_BOT;  
     }
 	
-	//int flags = (HUD_FLAG_ALIGN_CENTER | HUD_FLAG_COUNTDOWN_WARN | HUD_FLAG_TEAM_SURVIVORS);
+	int flags = (HUD_FLAG_ALIGN_CENTER | HUD_FLAG_COUNTDOWN_WARN | HUD_FLAG_TEAM_SURVIVORS);
 	//deleteHUD(position);
 	//SetupMessageHud(position, HUD_FLAG_ALIGN_CENTER | HUD_FLAG_TEAM_SURVIVORS | HUD_FLAG_COUNTDOWN_WARN);
+	SetupMessageHud(position, flags);
 	AddMessageToHud(buffer);
-	SetHUDText(position, buffer);
+
 }
 
 stock setupHUD()

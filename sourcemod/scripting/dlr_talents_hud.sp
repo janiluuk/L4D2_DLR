@@ -413,9 +413,9 @@ public void OnPluginStart()
     g_hCvar_pain_pills_decay_rate = FindConVar("pain_pills_decay_rate");
 
     CreateConVar("l4d2_scripted_hud_version", PLUGIN_VERSION, PLUGIN_DESCRIPTION, CVAR_FLAGS_PLUGIN_VERSION);
-    g_hCvar_Enabled          = CreateConVar("l4d2_scripted_hud_enable", "1", "Enable/Disable the plugin.\n0 = Disable, 1 = Enable.", CVAR_FLAGS, true, 0.0, true, 1.0);
-    g_hCvar_UpdateInterval   = CreateConVar("l4d2_scripted_hud_update_interval", "0.1", "Interval in seconds to update the HUD.", CVAR_FLAGS, true, 0.1);
-    g_hCvar_HUD1_Text        = CreateConVar("l4d2_scripted_hud_hud1_text", "HUD 1 TEXT", "The text you want to display in the HUD.\nNote: When cvar is empty \"\", plugin will use the predefined HUD text set in the code, check GetHUD*_Text functions.", CVAR_FLAGS);
+    g_hCvar_Enabled          = CreateConVar("l4d2_scripted_hud_enable", "0", "Enable/Disable the plugin.\n0 = Disable, 1 = Enable.", CVAR_FLAGS, true, 0.0, true, 1.0);
+    g_hCvar_UpdateInterval   = CreateConVar("l4d2_scripted_hud_update_interval", "0.3", "Interval in seconds to update the HUD.", CVAR_FLAGS, true, 0.1);
+    g_hCvar_HUD1_Text        = CreateConVar("l4d2_scripted_hud_hud1_text", "", "The text you want to display in the HUD.\nNote: When cvar is empty \"\", plugin will use the predefined HUD text set in the code, check GetHUD*_Text functions.", CVAR_FLAGS);
     g_hCvar_HUD1_TextAlign   = CreateConVar("l4d2_scripted_hud_hud1_text_align", "1", "Aligns the text horizontally.\n1 = LEFT, 2 = CENTER, 3 = RIGHT.", CVAR_FLAGS, true, 1.0, true, 3.0);
     g_hCvar_HUD1_BlinkTank   = CreateConVar("l4d2_scripted_hud_hud1_blink_tank", "1", "Makes the text blink from white to red while a tank is alive.\n0 = OFF, 1 = ON.", CVAR_FLAGS, true, 0.0, true, 1.0);
     g_hCvar_HUD1_Blink       = CreateConVar("l4d2_scripted_hud_hud1_blink", "0", "Makes the text blink from white to red.\n0 = OFF, 1 = ON.", CVAR_FLAGS, true, 0.0, true, 1.0);
@@ -438,7 +438,7 @@ public void OnPluginStart()
     g_hCvar_HUD1_Height      = CreateConVar("l4d2_scripted_hud_hud1_height", "0.026", "Text area Height.", CVAR_FLAGS, true, 0.0, true, 2.0);
     g_hCvar_HUD2_Text        = CreateConVar("l4d2_scripted_hud_hud2_text", "", "The text you want to display in the HUD.\nNote: When cvar is empty \"\", plugin will use the predefined HUD text set in the code, check GetHUD*_Text functions.", CVAR_FLAGS);
     g_hCvar_HUD2_TextAlign   = CreateConVar("l4d2_scripted_hud_hud2_text_align", "1", "Aligns the text horizontally.\n1 = LEFT, 2 = CENTER, 3 = RIGHT.", CVAR_FLAGS, true, 1.0, true, 3.0);
-    g_hCvar_HUD2_BlinkTank   = CreateConVar("l4d2_scripted_hud_hud2_blink_tank", "1", "Makes the text blink from white to red while a tank is alive.\n0 = OFF, 1 = ON.", CVAR_FLAGS, true, 0.0, true, 1.0);
+    g_hCvar_HUD2_BlinkTank   = CreateConVar("l4d2_scripted_hud_hud2_blink_tank", "0", "Makes the text blink from white to red while a tank is alive.\n0 = OFF, 1 = ON.", CVAR_FLAGS, true, 0.0, true, 1.0);
     g_hCvar_HUD2_Blink       = CreateConVar("l4d2_scripted_hud_hud2_blink", "0", "Makes the text blink from white to red.\n0 = OFF, 1 = ON.", CVAR_FLAGS, true, 0.0, true, 1.0);
     g_hCvar_HUD2_Beep        = CreateConVar("l4d2_scripted_hud_hud2_beep", "0", "Makes the text play a beep sound while blinking.\n0 = OFF, 1 = ON. Note: the blink cvar must be \"1\" to play the beep sound.", CVAR_FLAGS, true, 0.0, true, 1.0);
     g_hCvar_HUD2_Visible     = CreateConVar("l4d2_scripted_hud_hud2_visible", "1", "Makes the text visible.\n0 = OFF, 1 = ON.", CVAR_FLAGS, true, 0.0, true, 1.0);
@@ -459,7 +459,7 @@ public void OnPluginStart()
     g_hCvar_HUD2_Height      = CreateConVar("l4d2_scripted_hud_hud2_height", "0.026", "Text area Height.", CVAR_FLAGS, true, 0.0, true, 2.0);
     g_hCvar_HUD3_Text        = CreateConVar("l4d2_scripted_hud_hud3_text", "", "The text you want to display in the HUD.\nNote: When cvar is empty \"\", plugin will use the predefined HUD text set in the code, check GetHUD*_Text functions.", CVAR_FLAGS);
     g_hCvar_HUD3_TextAlign   = CreateConVar("l4d2_scripted_hud_hud3_text_align", "1", "Aligns the text horizontally.\n1 = LEFT, 2 = CENTER, 3 = RIGHT.", CVAR_FLAGS, true, 1.0, true, 3.0);
-    g_hCvar_HUD3_BlinkTank   = CreateConVar("l4d2_scripted_hud_hud3_blink_tank", "1", "Makes the text blink from white to red while a tank is alive.\n0 = OFF, 1 = ON.", CVAR_FLAGS, true, 0.0, true, 1.0);
+    g_hCvar_HUD3_BlinkTank   = CreateConVar("l4d2_scripted_hud_hud3_blink_tank", "0", "Makes the text blink from white to red while a tank is alive.\n0 = OFF, 1 = ON.", CVAR_FLAGS, true, 0.0, true, 1.0);
     g_hCvar_HUD3_Blink       = CreateConVar("l4d2_scripted_hud_hud3_blink", "0", "Makes the text blink from white to red.\n0 = OFF, 1 = ON.", CVAR_FLAGS, true, 0.0, true, 1.0);
     g_hCvar_HUD3_Beep        = CreateConVar("l4d2_scripted_hud_hud3_beep", "0", "Makes the text play a beep sound while blinking.\n0 = OFF, 1 = ON. Note: the blink cvar must be \"1\" to play the beep sound.", CVAR_FLAGS, true, 0.0, true, 1.0);
     g_hCvar_HUD3_Visible     = CreateConVar("l4d2_scripted_hud_hud3_visible", "1", "Makes the text visible.\n0 = OFF, 1 = ON.", CVAR_FLAGS, true, 0.0, true, 1.0);
@@ -480,7 +480,7 @@ public void OnPluginStart()
     g_hCvar_HUD3_Height      = CreateConVar("l4d2_scripted_hud_hud3_height", "0.026", "Text area Height.", CVAR_FLAGS, true, 0.0, true, 2.0);
     g_hCvar_HUD4_Text        = CreateConVar("l4d2_scripted_hud_hud4_text", "", "The text you want to display in the HUD.\nNote: When cvar is empty \"\", plugin will use the predefined HUD text set in the code, check GetHUD*_Text functions.", CVAR_FLAGS);
     g_hCvar_HUD4_TextAlign   = CreateConVar("l4d2_scripted_hud_hud4_text_align", "1", "Aligns the text horizontally.\n1 = LEFT, 2 = CENTER, 3 = RIGHT.", CVAR_FLAGS, true, 1.0, true, 3.0);
-    g_hCvar_HUD4_BlinkTank   = CreateConVar("l4d2_scripted_hud_hud4_blink_tank", "1", "Makes the text blink from white to red while a tank is alive.\n0 = OFF, 1 = ON.", CVAR_FLAGS, true, 0.0, true, 1.0);
+    g_hCvar_HUD4_BlinkTank   = CreateConVar("l4d2_scripted_hud_hud4_blink_tank", "0", "Makes the text blink from white to red while a tank is alive.\n0 = OFF, 1 = ON.", CVAR_FLAGS, true, 0.0, true, 1.0);
     g_hCvar_HUD4_Blink       = CreateConVar("l4d2_scripted_hud_hud4_blink", "0", "Makes the text blink from white to red.\n0 = OFF, 1 = ON.", CVAR_FLAGS, true, 0.0, true, 1.0);
     g_hCvar_HUD4_Beep        = CreateConVar("l4d2_scripted_hud_hud4_beep", "0", "Makes the text play a beep sound while blinking.\n0 = OFF, 1 = ON. Note: the blink cvar must be \"1\" to play the beep sound.", CVAR_FLAGS, true, 0.0, true, 1.0);
     g_hCvar_HUD4_Visible     = CreateConVar("l4d2_scripted_hud_hud4_visible", "1", "Makes the text visible.\n0 = OFF, 1 = ON.", CVAR_FLAGS, true, 0.0, true, 1.0);

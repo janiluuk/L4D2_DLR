@@ -461,15 +461,15 @@ public OnAdminMenuReady(Handle:topmenu) {
 	// We save the handle
 	hTopMenu = topmenu;
 
-	new TopMenuObject:debug_menu = AddToTopMenu(hTopMenu, "DlrDebugMenu", TopMenuObject_Category, Admin_TopMainMenu, INVALID_TOPMENUOBJECT); 
+	new TopMenuObject:dlr_menu = AddToTopMenu(hTopMenu, "DlrDebugMenu", TopMenuObject_Category, Admin_TopMainMenu, INVALID_TOPMENUOBJECT); 
 	
 	// now we add the function ...
-	if (debug_menu != INVALID_TOPMENUOBJECT)
+	if (dlr_menu != INVALID_TOPMENUOBJECT)
 	{
 		
-		AddToTopMenu(hTopMenu, "debugpanel", TopMenuObject_Item, Admin_TopMenuHandler, debug_menu, "debugpanel", ADMFLAG_GENERIC, "1");
-		AddToTopMenu(hTopMenu, "dlrmenu", TopMenuObject_Item, Admin_TopMenuHandler, debug_menu, "dlrmenu", ADMFLAG_GENERIC, "2");
-		AddToTopMenu(hTopMenu, "players", TopMenuObject_Item, Admin_TopMenuHandler, debug_menu, "players", ADMFLAG_GENERIC, "3");						
+		AddToTopMenu(hTopMenu, "dlrdebug", TopMenuObject_Item, Admin_MainMenu, dlr_menu, "dlrdebug", ADMFLAG_GENERIC, "0");
+		AddToTopMenu(hTopMenu, "dlrmenu", TopMenuObject_Item, Admin_MainMenu, dlr_menu, "dlrmenu", ADMFLAG_GENERIC, "1");
+		AddToTopMenu(hTopMenu, "dlrplayers", TopMenuObject_Item, Admin_MainMenu, dlr_menu, "dlrplayers", ADMFLAG_GENERIC, "2");						
 	}
 }
 
@@ -482,7 +482,7 @@ new String:CommandText[][] = {
 };
 
 // Handle the switch menu items (switch player/swap players)
-public Admin_TopMenuHandler(Handle:topmenu, TopMenuAction:action, TopMenuObject:object_id, param, String:buffer[], maxlength) {
+public Admin_MainMenu(Handle:topmenu, TopMenuAction:action, TopMenuObject:object_id, param, String:buffer[], maxlength) {
 	
 	new String:mnuinfo[MAX_NAME_LENGTH];
 	GetTopMenuInfoString(topmenu, object_id, mnuinfo, sizeof(mnuinfo));
@@ -567,6 +567,34 @@ stock ShowDebugMenu(client) {
 	DisplayMenu(menu, client, MENU_TIME_FOREVER);
 }
 
+stock ShowDLRMenu(client) {
+
+	new Handle:menu = CreateMenu(Admin_MnuHdlr_DlrOpts);	
+	
+	decl String:title[100];
+	Format(title, sizeof(title), "DLR Settings");
+	
+	SetMenuTitle(menu, title);
+	
+	decl String:name[64];
+	
+	Format(name, sizeof(name),  "Toggle Debug Messages"); 
+	AddMenuItem(menu, "0", name); 
+			
+	Format(name, sizeof(name),  "Toggle infected"); 
+	AddMenuItem(menu, "1", name); 
+
+	Format(name, sizeof(name),  "List skills"); 
+	AddMenuItem(menu, "2", name); 	
+	
+	Format(name, sizeof(name),  "List classes"); 
+	AddMenuItem(menu, "3", name); 
+
+	Format(name, sizeof(name),  "Show HUD"); 
+	AddMenuItem(menu, "4", name); 
+
+	DisplayMenu(menu, client, MENU_TIME_FOREVER);
+}
 public Admin_MnuHdlr_DebugOpts(Handle:menu, MenuAction:action, param1, param2) {
 
 	switch (action)
@@ -595,6 +623,70 @@ public Admin_MnuHdlr_DebugOpts(Handle:menu, MenuAction:action, param1, param2) {
 			setDebugMode(debugMode);
 
 			PrintToChatAll("Server Debugging has been set to: %d.", getDebugMode());
+		}
+	}
+}
+
+public Admin_MnuHdlr_DlrOpts(Handle:menu, MenuAction:action, param1, param2) {
+
+	switch (action)
+	{
+		case MenuAction_End:
+		{
+			CloseHandle(menu);
+		}
+		case MenuAction_Cancel:
+		{
+			if (param2 == MenuCancel_ExitBack && hTopMenu != INVALID_HANDLE)
+			{
+				DisplayTopMenu(hTopMenu, param1, TopMenuPosition_LastCategory);
+			}
+		}
+		case MenuAction_Select:
+		{
+			if( param2 == 1)
+			{
+				PrintHintText(param1,"Debug mode is %s",  (getDebugMode() > 0) ? "ON" : "OFF");
+			}
+			if (param2 == 2) 
+			{
+				disableInfected = (disableInfected == true) ? false : true;
+
+				if (disableInfected == true) {
+					SetConVarInt(FindConVar("director_no_bosses"), 1);
+					SetConVarInt(FindConVar("director_no_mobs"), 1);
+					SetConVarInt(FindConVar("z_common_limit"), 0);
+					SetConVarInt(FindConVar("z_boomer_limit"), 0);
+					SetConVarInt(FindConVar("z_charger_limit"), 0);
+					SetConVarInt(FindConVar("z_hunter_limit"), 0);
+					SetConVarInt(FindConVar("z_jockey_limit"), 0);
+					SetConVarInt(FindConVar("z_smoker_limit"), 0);
+					SetConVarInt(FindConVar("z_spitter_limit"), 0);
+				} else {
+					ResetConVar(FindConVar("director_no_bosses"));
+					ResetConVar(FindConVar("director_no_mobs"));
+					ResetConVar(FindConVar("z_common_limit"));
+					ResetConVar(FindConVar("z_boomer_limit"));
+					ResetConVar(FindConVar("z_charger_limit"));
+					ResetConVar(FindConVar("z_hunter_limit"));
+					ResetConVar(FindConVar("z_jockey_limit"));
+					ResetConVar(FindConVar("z_smoker_limit"));
+					ResetConVar(FindConVar("z_spitter_limit"));  
+				}
+				PrintHintText(param1,"Infected are now %s", disableInfected ? "DISABLED" : "ENABLED");
+			}
+			if( param2 == 3)
+			{
+			        DisplayMenu(g_hSkillMenu, param1, MENU_TIME_FOREVER);
+			}
+			if( param2 == 4)
+			{
+			        DisplayMenu(g_hSkillMenu, param1, MENU_TIME_FOREVER);
+			}
+			if( param2 == 5)
+			{
+			        DisplayMenu(g_hSkillMenu, param1, MENU_TIME_FOREVER);
+			}
 		}
 	}
 }

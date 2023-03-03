@@ -53,7 +53,7 @@ public OnPluginStart( )
 {
 	// Concommands
 	RegConsoleCmd("sm_class", CmdClassMenu, "Shows the class selection menu");
-	RegConsoleCmd("sm_classinfo", CmdClassInfo, "Shows class descriptions");
+	RegConsoleCmd("sm_classinfo", CmdClassInfo, "Shows clClearMessagesass descriptions");
 	RegConsoleCmd("sm_classes", CmdClasses, "Shows class descriptions");
 	RegAdminCmd("sm_dlrm", CmdDlrMenu, ADMFLAG_ROOT, "Debug & Manage");
 	RegAdminCmd("sm_hide", HideCommand, ADMFLAG_ROOT, "Hide player");
@@ -1261,7 +1261,7 @@ stock SetClientTempHealth(client, iValue)
 // Health 
 ///////////////////////////////////////////
 
-public void Event_ServerCvar( Event hEvent, const char[] sName, bool bDontBroadcast ) 
+public void Event_ServerCvar( Event hEvent, const char[] sNamel, bool bDontBroadcast ) 
 {
 	if ( !healthModEnabled.BoolValue ) return;
 	

@@ -146,7 +146,7 @@ public Action:TimerThink(Handle:hTimer, any:client)
 				
 				if (canUseSpecialSkill(client, pendingMessage)) {
 					useSpecialSkill(client, 12);
-					useCustomCommand("Grenades", client, -1, 12);
+					useCustomCommand("Grenades", client, -1, 11);
 					ClientData[client].LastDropTime = GetGameTime();
 				}
 
@@ -191,7 +191,7 @@ public Action:TimerThink(Handle:hTimer, any:client)
 				char pendingMessage[128] = "Wait %i seconds to use shielding grenades again";
 				
 				if (canUseSpecialSkill(client, pendingMessage)) {
-					useCustomCommand("Grenades", client, -1, 8);
+					useCustomCommand("Grenades", client, -1, 7);
 					ClientData[client].LastDropTime = GetGameTime();
 				}
 

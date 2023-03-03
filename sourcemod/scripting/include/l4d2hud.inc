@@ -104,7 +104,7 @@ void SetupHUD(hudPosition position, int flags, float x, float y, float w, float 
 
 
         char flagBuffer[16];
-        for(int i = 0; i < flagStrings.Length; i++) {
+        for(int i = 0; i < sizeof(flagStrings); i++) {
             flagStrings.GetString(i, flagBuffer, sizeof(flagBuffer));
             PrintToServer("flag[%d] = %s", i, flagBuffer);
             if(i == flagStrings.Length - 1) {
@@ -124,7 +124,7 @@ void SetupHUD(hudPosition position, int flags, float x, float y, float w, float 
     L4D2_RunScript(huds[id], "");
 }
 
-void SetHUDText(hudPosition position, hudFlag format, any ...) {
+void SetHUDText(hudPosition position, char[] format, any ...) {
     if(huds[view_as<int>(position)][0] == '\0') {
         ThrowError("HUD at position was not setup.");
     }
@@ -139,7 +139,8 @@ bool IsHUDSetup(hudPosition position) {
 }
 
 void DeleteHUD(hudPosition position) {
-    L4D2_RunVScript("SMHud%d <- { Fields = { } }; HUDSetLayout(SMHud%d); HUDPlace( g_ModeScript.HUD_%s, 0.0, 0.0, 0.0, 0.0 ); g_ModeScript", view_as<int>(position), view_as<int>(position), hudPositions[positions]);
+    int pos = view_as<int>(position);
+    L4D2_RunVScript("SMHud%d <- { Fields = { } }; HUDSetLayout(SMHud%d); HUDPlace( g_ModeScript.HUD_%s, 0.0, 0.0, 0.0, 0.0 ); g_ModeScript", view_as<int>(position), view_as<int>(position), hudPositions[pos]);
     huds[view_as<int>(position)][0] = '\0';
 }
 
@@ -157,25 +158,25 @@ void GetHUDFormatString(hudPosition position, char[] buffer, int buffersize) {
 hudPosition MSG_HUD_POS; 
 
 char messages[MAX_MESSAGES][MAX_MESSAGE_LENGTH];
-char lastMsgFull[];
+char lastMsgFull[1023];
 bool isEnabled;
 
 int msgExpiresTime;
 Handle msgTimer;
-void Timer_ProcessMessages(Handle h) {
+public Action:Timer_ProcessMessages(Handle h) {
     if (isEnabled == false) return Plugin_Stop;
     if(GetGameTime() > msgExpiresTime) {
-        messages.Erase(0);
+        messages[0][0] = '\0';
         msgExpiresTime = GetGameTime() + MESSAGE_DURATION;
     }
     char buffer[MAX_HUD_LENGTH];
-    for(int i = 0; i < messages.Length; i++) {
+    for(int i = 0; i < sizeof(messages); i++) {
         ImplodeStrings(messages, MAX_MESSAGES, "\\n", buffer, sizeof(buffer));
     }
     SetHUDText(MSG_HUD_POS, buffer);
     return Plugin_Continue;
 }
-void SetupMessageHud(hudPosition position, int flags) {
+void SetupMessageHud(hudPosition position, int flags, float xpos=0.0, float ypos=0.0, float width=1.0, float height=1.0) {
 
     MSG_HUD_POS = position;
     int defaultFlags = HUD_FLAG_ALIGN_LEFT | HUD_FLAG_NOBG | HUD_FLAG_TEAM_SURVIVORS;
@@ -183,18 +184,19 @@ void SetupMessageHud(hudPosition position, int flags) {
         flags = defaultFlags;
     }
 
-    SetupHUD(MSG_HUD_POS, flags , 0.0, 0.0, 1.0, 1.0);
-    if (this.hudEnabled == true && msgTimer != null) {
+    SetupHUD(MSG_HUD_POS, flags , xpos, ypos, width, height);
+    if (isEnabled == true && msgTimer != null) {
         KillTimer(msgTimer);
     }
+    isEnabled = true;
 
-    msgTimer = CreateTimer(MESSAGE_UPDATE_INTERVAL, Timer_ProcessMessages, _, TIMER_REPEAT);
+    msgTimer = CreateTimer(MESSAGE_UPDATE_INTERVAL, Timer_ProcessMessages, flags, TIMER_REPEAT);
 }
 
 void CloseMessageHud() {
     if(msgTimer != null)
         CloseHandle(msgTimer);
-    ClearMessages();
+    ClearMessageHud();
 }
 //TODO: Replace repeat timer, just use one-time delay, only add one
 //Internally process and print all messages
@@ -212,7 +214,17 @@ void ClearMessageHud() {
         messages[i][0] = '\0';
     }
 }
-
+int getCurrentHud() {
+    return MSG_HUD_POS;
+}
+void setCurrentHud(pos) {
+    MSG_HUD_POS = view_as<hudPosition>(pos);
+}
+void DeleteAllHUD(){
+    ClearMessageHud();
+    CloseMessageHud();
+    isEnabled = false;
+}
 stock void L4D2_RunVScript(const char[] sCode, any ...) {
 	static int iScriptLogic = INVALID_ENT_REFERENCE;
 	if(iScriptLogic == INVALID_ENT_REFERENCE || !IsValidEntity(iScriptLogic)) {

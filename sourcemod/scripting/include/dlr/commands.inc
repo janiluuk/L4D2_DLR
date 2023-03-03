@@ -131,8 +131,7 @@ public Action Cmd_SetupHud(int client, int args) {
 		SetupMessageHud(view_as<hudPosition>(StringToInt(arg1)), StringToInt(arg2), StringToFloat(arg3), StringToFloat(arg4), StringToFloat(arg5),StringToFloat(arg6));
 
 
-		setCurrentHud(view_as<hudPosition>(StringToInt(arg1)));
-		ReplyToCommand(client, "Set current HUD to %i", arg1);
+		ReplyToCommand(client, "HUD has been setup");
 	}
 
 	return Plugin_Handled;
