@@ -969,6 +969,8 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	MarkNativeAsOptional("F18_ShowAirstrike");
 	MarkNativeAsOptional("OnCustomCommand");	
 	MarkNativeAsOptional("DLR_OnRoundState");	
+	MarkNativeAsOptional("OnSpecialSkillFail");	
+	MarkNativeAsOptional("OnSpecialSkillSuccess");	
 	MarkNativeAsOptional("DLR_OnPluginState");	
 	g_bLateLoad = late;
 
@@ -1202,6 +1204,8 @@ int DoSpawn(int client, int index, bool projectile, int ent=-1)
 		Format(translation, sizeof(translation), "GrenadeMod_Title_%d", index);
 	//	PrintToChat(client, "\x04\x05Created: \x04%T", translation, client);
 	}
+
+	OnSpecialSkillSuccess(client, PLUGIN_SKILL_NAME);
 	return entity;
 }
 

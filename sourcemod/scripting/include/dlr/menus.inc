@@ -88,7 +88,7 @@ public PanelHandler_SelectClass(Handle:menu, MenuAction:action, client, param)
 				RebuildCache();
 				if(view_as<int>(OldClass) == 0)
 				{
-					PrintToChatAll("\x04%N\x01 is a \x05%s\x01%s",client,MENU_OPTIONS[param],ClassTips);
+					PrintToChatAll("\x04%N\x01 is a \x05%s\x01%s",client,MENU_OPTIONS[param],ClassTips[param]);
 				}	
 				else
 				{

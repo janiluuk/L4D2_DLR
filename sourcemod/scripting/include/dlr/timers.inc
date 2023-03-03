@@ -110,11 +110,14 @@ public Action:TimerThink(Handle:hTimer, any:client)
 			if (buttons & IN_ZOOM) {
 
 				if (!(ClientData[client].LastButtons & IN_ZOOM)) {
-					char pendingMessage[128] = "Wait for %i seconds to activate berzerk-mode again";
+					char pendingMessage[128] = "Wait for %i seconds to activate berzerk mode again";
 
 					if (canUseSpecialSkill(client, pendingMessage)) {
 						useSpecialSkill(client, 1);
+						PrintHintText(client ,"You activated berzerk mode!");
+
 						ClientData[client].LastDropTime = GetGameTime();
+
 					}
 				}	
 			}
@@ -146,7 +149,7 @@ public Action:TimerThink(Handle:hTimer, any:client)
 				
 				if (canUseSpecialSkill(client, pendingMessage)) {
 					useSpecialSkill(client, 12);
-					useCustomCommand("Grenades", client, -1, 11);
+					useCustomCommand("Grenades", client, -1, 12);
 					ClientData[client].LastDropTime = GetGameTime();
 				}
 
@@ -156,7 +159,7 @@ public Action:TimerThink(Handle:hTimer, any:client)
 			{
 				SetEntDataFloat(client, g_flLaggedMovementValue, 1.7, true);
 
-				if ((GetGameTime() - ClientData[client].HealStartTime) >= 2.5) {
+				if ((GetGameTime() - ClientData[client].HealStartTime) >= 3.0) {
 					if (MedicHint == false) {
 						PrintHintTextToAll("%N is healing everyone around him!", client);
 						MedicHint = true;
@@ -188,10 +191,12 @@ public Action:TimerThink(Handle:hTimer, any:client)
 			}
 			else if (buttons & IN_ZOOM) {
 
-				char pendingMessage[128] = "Wait %i seconds to use shielding grenades again";
+				char pendingMessage[128] = "Wait %i seconds to use shield grenades again";
 				
 				if (canUseSpecialSkill(client, pendingMessage)) {
 					useCustomCommand("Grenades", client, -1, 7);
+					PrintHintText(client ,"You threw a protective shield (Max %i)", GetConVarInt(ENGINEER_MAX_BUILDS));
+
 					ClientData[client].LastDropTime = GetGameTime();
 				}
 

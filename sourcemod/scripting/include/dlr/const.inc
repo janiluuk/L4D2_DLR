@@ -128,11 +128,11 @@ stock const String:MENU_OPTIONS[][] =
 
 stock String:ClassTips[][] =
 {
-	", Is a noob who didnt pick a class.",
+	", vanilla flavoured hero who didnt need any class.",
 	", He can shoot fast, takes less damage and moves faster.",
-	", He can Jump high.",
-	", He can heal his team by crouching, heal and revive faster and drop supplies. ",
-	", He is invisible while hes crouched and drops mines",
+	", He can Jump high",
+	", He can heal his nearby team, heal and revive others faster and drop supplies. ",
+	", He's invisible while crouched, drops mines and has nightvision.",
 	", He does loads of damage and has fast reload.",
 	", He can drop auto turrets and ammo supplies.",
 	", He has lots of health."
