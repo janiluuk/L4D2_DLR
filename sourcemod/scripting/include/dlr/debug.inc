@@ -1,4 +1,3 @@
-#include <adminmenu>
 
 stock void PrintDebug(int client, const char[] format, any ...)
 {
