@@ -4,14 +4,14 @@ This is anniversary update for the infamous DLR mode for Left 4 Dead 2. Original
 
 ## Changes:
 
-### Generic
+## Generic
 
 - Sourcemod 11 compatible
 - Rewrite for internal variable structure, variable naming and lot of faulty logic
 - Plugin support, adding new features should be a matter of implementing hooks to a plugin you want to add.
 - Underlying code has been separated into maintainable parts.
 
-### Gameplay
+## Gameplay
 
 - Modular perk system that eventually replaces current hardcoded functionality.
 - Negative effect perks
@@ -28,15 +28,13 @@ This is anniversary update for the infamous DLR mode for Left 4 Dead 2. Original
 - Invisibility rewrite, it never really worked properly before.
 - Debug modes, dedicated admin menu and useful tools
 
-### Class changes
+## Class changes
 
 - Soldier has faster moving speed and takes less damage.
 - Soldier melee rate is ninja level.
 - Soldier can order airstrikes. (Requires included example plugin)
-
 - Athlete has faster moving speed and a parachute. configurable.
 - Athlete can do jump karate kicks to knock othes down.
-
 - Commando reload rate actually works now.
 - Commando has berzerk mode available, stay out of that guys way during it.
 - Commando damage modifiers are configurable per weapon, default one is used for rest.
@@ -49,9 +47,7 @@ This is anniversary update for the infamous DLR mode for Left 4 Dead 2. Original
 - Announcement to other players when healing spot is active.
 - Players get notified when theyre being healed.
 - Players healed by medic have special glow
-
 - Default health for players without class configurable. Menu does not spam you if you don't choose a class.
-
 - Engineer spawns ready-to-use upgrade packs instead of deployable boxes.
 - Engineer now spawns 2 different types of turrets. 8 different ammo types for various situations. 
 - Engineer can spawn protective shield 
@@ -62,7 +58,6 @@ This is anniversary update for the infamous DLR mode for Left 4 Dead 2. Original
 - "Single turret mode" enables oldschool mode.
 Requires plugin included with test version.
 - Engineer, medic and saboteur get countdown for next deployment when trying to deploy too early
-
 - Saboteur moves faster when crouched and shows visibility status.
 - Saboteur has visual effect on turning invisible and specific glow.
 - Saboteur has nightvision.
@@ -74,8 +69,6 @@ Requires plugin included with test version.
 - Notifications on placing mines.
 - Warnings for players that go near armed mine
 - Countdown notification before mine becoming armed.
-
-
 
 ## Roadmap
 - Cleaner UI, menu option to turn hint texts off. Common HUD component which manages, prioritizes and combines the hint texts properly.
@@ -210,16 +203,9 @@ public void DLR_OnPluginState(int pluginstate)
     ....
 }
 
-public void DLR_OnRoundState(int roundstate)
-{
-	// Implement optional actions on round state change
-     ....
-}
-
 public void OnPluginStart()
 {
 ....
-
 	if (DLR_Available) {
 		g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME);
 }
@@ -231,15 +217,20 @@ public void OnSpecialSkillUsed(int iClient, int skill)
 		CMD_MainMenu(iClient, 0);
 	}
 }
-
-// Alternative way to cal
-public void OnCustomCommand(int iClient, int skill)
+public void OnSpecialSkillSuccess(int iClient, int skill)
 {
 	if (skill == FindSkillIdByName(PLUGIN_SKILL_NAME) {
 
 		CMD_MainMenu(iClient, 0);
 	}
 }
+public void OnSpecialSkillFail(int iClient, int skill, char[] reason)
+{
+	if (skill == FindSkillIdByName(PLUGIN_SKILL_NAME) {
+		CMD_MainMenu(iClient, 0);
+	}
+}
+
 
 ```
 
