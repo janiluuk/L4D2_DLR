@@ -128,6 +128,7 @@ public Plugin myinfo =
 	native void GetPlayerSkillName(int client, char[] skillName, int size);
 	native int FindSkillIdByName(char[] skillName);
 	native int RegisterDLRSkill(char[] skillName, int type);
+	#define DLR_PLUGIN_NAME	"dlr_talents"
 #endif
 /****************************************************/
 
@@ -362,6 +363,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	MarkNativeAsOptional("OnPlayerClassChange");
 	MarkNativeAsOptional("GetPlayerSkillName");	
 	MarkNativeAsOptional("RegisterDLRSkill");
+	MarkNativeAsOptional("DLR_OnPluginState");	
 
 	return APLRes_Success;
 }
@@ -392,17 +394,34 @@ public int OnSpecialSkillUsed(int iClient, int skill, int type)
 public void OnAllPluginsLoaded()
 {
 	bLMC_Available = LibraryExists("LMCEDeathHandler");
-	DLR_Available = LibraryExists("dlr_talents_2023");
-	if (DLR_Available) {
+	DLR_Available = LibraryExists("dlr_talents");
+
+	if (g_iClassID != -1) return;
+	g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
+ 
+}
+
+public void DLR_OnPluginState(char[] plugin, int pluginstate)
+{
+	if( pluginstate == 1)
+	{
+		SetConVarBool(hCvar_Machine_Enabled, true);
 		g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
-	} 
+	}
+	else if( pluginstate == 0)
+	{
+		SetConVarBool(hCvar_Machine_Enabled, false);
+		if (g_iClassID > -1) {
+			g_iClassID = -1;
+		}
+	}
 }
 
 public void OnLibraryAdded(const char[] sName)
 {
 	if(StrEqual(sName, "LMCEDeathHandler"))
 		bLMC_Available = true;
-	if(StrEqual(sName, "dlr_talents_2023"))
+	if(StrEqual(sName, "dlr_talents"))
 		DLR_Available = true;		
 }
 
@@ -410,7 +429,7 @@ public void OnLibraryRemoved(const char[] sName)
 {
 	if(StrEqual(sName, "LMCEDeathHandler"))
 		bLMC_Available = false;
-	if(StrEqual(sName, "dlr_talents_2023"))
+	if(StrEqual(sName, "dlr_talents"))
 		DLR_Available = false;	
 }
 
@@ -570,6 +589,7 @@ public void OnPluginStart()
 //	HookEvent("finale_vehicle_incoming", Event_FinaleVehicleInComing, EventHookMode_PostNoCopy); // L4D2
 
 	if (DLR_Available) {
+
 		g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
 	} else {
 		g_iClassID = -1;

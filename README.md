@@ -2,37 +2,71 @@
 
 This is anniversary update for the infamous DLR mode for Left 4 Dead 2. Original is from 2013
 
-Changes:
+## Changes:
+
+### Generic
+
 - Sourcemod 11 compatible
-- Rewrite for internal variable structure, variable naming and functionality.
-- Plugin support, adding new features should be a matter of including the plugin and adding hook to it.
-- Soldier has faster moving speed and takes less damage. Default melee penalty is disabled by default config. Configurable. 
+- Rewrite for internal variable structure, variable naming and lot of faulty logic
+- Plugin support, adding new features should be a matter of implementing hooks to a plugin you want to add.
+- Underlying code has been separated into maintainable parts.
+
+### Gameplay
+
+- Modular perk system that eventually replaces current hardcoded functionality.
+- Negative effect perks
+- Each plugin can be flexibly configured as one or many perks that users can acquire through player class
+- Combo support enables chained perk execution
+- Keybinding support
+- New playerclasses can be easily generated and configured
+- Class based custom skins!
+- New HUD interface, accomodates essential info, alerts, killcounter etc. Disabled by default.
+- Includes modifiers for adrenaline/pills/revive/heal durations.
+- Classes get notification if out of supplies.
+- More helpful class descriptions and help system.
+- Gun reload glitches fixed
+- Invisibility rewrite, it never really worked properly before.
+- Debug modes, dedicated admin menu and useful tools
+
+### Class changes
+
+- Soldier has faster moving speed and takes less damage.
+- Soldier melee rate is ninja level.
 - Soldier can order airstrikes. (Requires included example plugin)
+
 - Athlete has faster moving speed and a parachute. configurable.
+- Athlete can do jump karate kicks to knock othes down.
+
 - Commando reload rate actually works now.
-- New user interface, more minimalistic HUD that gets less on your way. In test use on EU servers)
+- Commando has berzerk mode available, stay out of that guys way during it.
 - Commando damage modifiers are configurable per weapon, default one is used for rest.
-- Commando is immune to knockdowns
+- Commando is immune to tank knockdowns
 - Commando can stomp downed infected
+
 - Medic has more options to spawn. Has faster healing and revival times.
 - Medic moves faster when in healing mode (crouched)
-- Includes modifiers for adrenaline/pills/revive/heal durations in the config. disable with "talents_health_modifiers_enabled" 
+- Medic can throw healing orbs
 - Announcement to other players when healing spot is active.
 - Players get notified when theyre being healed.
 - Players healed by medic have special glow
+
 - Default health for players without class configurable. Menu does not spam you if you don't choose a class.
+
 - Engineer spawns ready-to-use upgrade packs instead of deployable boxes.
 - Engineer now spawns 2 different types of turrets. 8 different ammo types for various situations. 
+- Engineer can spawn protective shield 
+- Engineer can now barricade open doors & windows. 
 - Turrets are smarter and bit more devastating. By default they can be blown up by infected.
 - Turrets have now more helpful notifications.
 - Turrets are by default non-blocking.
 - "Single turret mode" enables oldschool mode.
-- Engineer can now barricade open doors & windows. Requires plugin included with test version.
+Requires plugin included with test version.
 - Engineer, medic and saboteur get countdown for next deployment when trying to deploy too early
+
 - Saboteur moves faster when crouched and shows visibility status.
 - Saboteur has visual effect on turning invisible and specific glow.
-- Saboteur has nightvision
-- Redefine visual effect for mines, and actually leave a visible mine. 
+- Saboteur has nightvision.
+- Redefined visual look and feedback with mines
 - Saboteur has 20 different types of mines with cool effects. You can assign 7 of them at one time. Antigravity, blackhole, freeze, vaporizer and many more. (Needs included grenades plugin example)
 - Mines do less damage to survivors. Standing really close to the mine can still incap.
 - Mines do more damage to infected, 1500hp. Some edge over tank
@@ -40,15 +74,10 @@ Changes:
 - Notifications on placing mines.
 - Warnings for players that go near armed mine
 - Countdown notification before mine becoming armed.
-- Engineer, medic and saboteur get notification if out of supplies.
-- More helpful class descriptions and help system.
-- Internal turret system fixed
-- Gun reload glitches fixed
-- Invisibility rewrite, it never really worked properly before.
-- Wipe out all infected from admin menu
-- Debug mode for admins. You can test the registered skills straight from menu
 
-Roadmap
+
+
+## Roadmap
 - Cleaner UI, menu option to turn hint texts off. Common HUD component which manages, prioritizes and combines the hint texts properly.
 - Integrate game instructor UI to be utilized for counters, and other live indicators. 
 - Random Game modes: Melee only rounds, Jockey race. Horror movie mode with pitch black lights, common infected disabled and can only do damage by not seen by player.
@@ -63,18 +92,19 @@ Roadmap
 - Incap players can struggle with attacker on shared progressbar. if indicator goes back to zero, player is freed.
 - When incapacitated without supplies and you have kit available, ask survivor if want to consume it.
 - Revamp infected skills to match the added ones for survivors;
-    - Infected can bite survivors, after defined about of time player turns into a witch for 30 seconds. If the witch gets killed, player gets killed, otherwise transform back to playable character.
-    - Charger can drop survivor and continue running
-    - Hunter can use boost for ultra long jumps. 
-    - Jockey can make player shoot others with FF damage while riding. 
-    - Smoker can shove opponent to any direction when pinned, e.g throw out of window.
-    - Hunter can masquerade as survivor for 30 second time (Using LMC)
-    - More suggestions welcome!
+- Infected can bite survivors, after defined about of time player turns into a witch for 30 seconds. If the witch gets killed, player gets killed, otherwise transform back to playable character.
+- Charger can drop survivor and continue running
+- Hunter can use boost for ultra long jumps. 
+- Jockey can make player shoot others with FF damage while riding. 
+- Smoker can shove opponent to any direction when pinned, e.g throw out of window.
+- Hunter can masquerade as survivor for 30 second time (Using LMC)
+- More suggestions welcome!
 
 
 See https://forums.alliedmods.net/showthread.php?t=273312 for more info
 
 ## Adding a plugin
+
 Adding new plugin requires including DLRCore.sp file, and implementing following methods:
 ```
 /**
@@ -96,27 +126,6 @@ forward OnPlayerClassChange(client, className, previousClass);
  */
 forward OnSpecialSkillUsed(client, skillName);  
 
-/**
- * Called when player uses special skill. 
- * Plugin should react to this to initiate the skill, then call either or OnSpecialSkillFail / OnSpecialSkillSuccess
- * @param skillName         The client index of the player playing tetris.
- * @param skillId     Assign ID to this var
- * @noreturn
- */
-forward FindSkillIdByName(skillName, skillId);  
-
-``` 
-
-Native methods that are available:
-
-```
-/**
- * Get player classname
- *
- * @param client  Client index.
- * @return        Classname
- */
-native int:GetPlayerClassName(client);
 
 /**
  * Called when player has successfully used special skill. 
@@ -147,8 +156,32 @@ native void OnSpecialSkillFail(int client, char[] skillName, char[] reason);
  * @noreturn
  */
 native int RegisterDLRSkill(char[] skillName);  
+
 ``` 
-# Plugin file changes
+
+Native helper methods that are available:
+
+```
+
+/**
+ * Called when player uses special skill. 
+ * Plugin should react to this to initiate the skill, then call either or OnSpecialSkillFail / OnSpecialSkillSuccess
+ * @param skillName         The client index of the player playing tetris.
+ * @param skillId     Assign ID to this var
+ * @noreturn
+ */
+forward FindSkillIdByName(skillName, skillId);  
+
+/**
+ * Get player classname
+ *
+ * @param client  Client index.
+ * @return        Classname
+ */
+native int:GetPlayerClassName(client);
+
+``` 
+
 Add DLRCore.sp in your include folder and make sure you have dlr_talents.smx available.
 Include this in the plugin file header that you want to implement
 

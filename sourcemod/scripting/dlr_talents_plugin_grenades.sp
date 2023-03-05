@@ -294,6 +294,7 @@ bool	bLMC_Available;
 	native void GetPlayerSkillName(int client, char[] skillName, int size);
 	native int FindSkillIdByName(char[] skillName);
 	native int RegisterDLRSkill(char[] skillName, int type);
+	#define DLR_PLUGIN_NAME = "dlr_talents"
 #endif
 
 bool	DLR_Available;
@@ -304,8 +305,6 @@ bool	DLR_Available;
 #define CONFIG_DATA				"data/l4d_grenades.cfg"
 #define GAMEDATA				"l4d_grenades"
 #define GLOW_COLOR				38655 // Glow Mode color: GetColor("255 150 0");
-
-
 
 // EFFECTS
 #define MODEL_BOUNDING			"models/props/cs_militia/silo_01.mdl"
@@ -688,53 +687,46 @@ public int OnCustomCommand(char[] name, int client, int entity, int type)
 	}
 	bool projectile = false;
 	
-	if (entity == 0 || !IsValidEntity(entity)) {
+	if (entity <= 0 || !IsValidEntity(entity)) {
 		projectile = true;
 	}
 	#if DEBUG
-//	PrintToChat(client, "%N ignited entity (%s) %i with type %i ", client, name, entity, type);
+	PrintToChat(client, "%N ignited entity (%s) %i with type %i ", client, name, entity, type);
 	#endif
 
 	DoSpawn(client, type, projectile, entity);
 	return 1;
 }
 
-public void DLR_OnPluginState(int pluginstate)
+public void DLR_OnPluginState(char[] plugin, int pluginstate)
 {
-	static int mystate;
 
-	if( pluginstate == 1 && mystate == 0 )
+	if(StrEqual(plugin,"dlr_talents") && pluginstate == 1)
 	{
 		SetConVarBool(g_hCvarAllow, true);
-		mystate = 1;
 		DLR_Available = true;	
-		if (g_iClassID == -1) {
-			g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
-		}
+		g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
 
 	}
-	else if( pluginstate == 0 && mystate == 1 )
+	else if( "dlr_talents" && pluginstate == 0)
 	{
 		SetConVarBool(g_hCvarAllow, false);
-		mystate = 0;
 		DLR_Available = false;
-		if (g_iClassID > -1) {
-			g_iClassID = -1;
-
-		}
 	}
 }
 
-public void DLR_OnRoundState(int roundstate)
+public int DLR_OnRoundState(int roundstate)
 {
 
 	if( roundstate == 1 && g_bMapStarted == false )
 	{
 		g_bMapStarted = true;
+		return 1;
 	}
 	else if(roundstate == 0 && g_bMapStarted == true )
 	{
 		g_bMapStarted = false;
+		return 0;
 	}
 }
 
@@ -856,6 +848,8 @@ public void OnPluginStart()
 	// ====================================================================================================
 	RegAdminCmd("sm_grenade",			Cmd_Grenade, 	ADMFLAG_ROOT, "Opens a menu to choose the current grenades mode. Force change with args, usage: sm_grenade [type: 1 - 20]");
 	RegAdminCmd("sm_grenade_reload",	Cmd_Reload,		ADMFLAG_ROOT, "Reloads the settings config.");
+	RegAdminCmd("sm_grenade_ent",		Cmd_DoFX,		ADMFLAG_ROOT, "Spawn explosion on entity");
+
 	RegAdminCmd("sm_grenade_spawn",		Cmd_SpawnSpawn,	ADMFLAG_ROOT, "Spawn grenade explosions: <type: 1 - 20>");
 	RegAdminCmd("sm_grenade_throw",		Cmd_SpawnThrow,	ADMFLAG_ROOT, "Spawn grenade projectile: <type: 1 - 20>");
 
@@ -884,11 +878,14 @@ public void OnPluginStart()
 		LoadDataConfig();
 		IsAllowed();
 	}
-
+	if (DLR_Available == true) {
+		g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
+	}
 	g_iClassTank = g_bLeft4Dead2 ? 8 : 5;
 
 	if( g_bLeft4Dead2 )
 		g_hAlAcid = new ArrayList();
+
 }
 
 // ====================================================================================================
@@ -972,6 +969,8 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	MarkNativeAsOptional("F18_ShowAirstrike");
 	MarkNativeAsOptional("OnCustomCommand");	
 	MarkNativeAsOptional("DLR_OnRoundState");	
+	MarkNativeAsOptional("OnSpecialSkillFail");	
+	MarkNativeAsOptional("OnSpecialSkillSuccess");	
 	MarkNativeAsOptional("DLR_OnPluginState");	
 	g_bLateLoad = late;
 
@@ -981,6 +980,11 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 public void OnAllPluginsLoaded()
 {
 	bLMC_Available = LibraryExists("LMCEDeathHandler");
+	DLR_Available = LibraryExists("dlr_talents");
+
+	if (g_iClassID != -1) return;
+	
+	g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);	
 }
 
 public void OnLibraryAdded(const char[] sName)
@@ -989,8 +993,8 @@ public void OnLibraryAdded(const char[] sName)
 		bLMC_Available = true;
 	else if( strcmp(sName, "left4dhooks") == 0 )
 		g_bLeft4DHooks = true;
-	else if( strcmp(sName, "dlr_talents_2023") == 0 )
-		DLR_Available = true;		
+	else if( strcmp(sName, "dlr_talents") == 0 )
+		DLR_Available = true;	
 	else if( g_bLeft4Dead2 && strcmp(sName, "l4d2_airstrike") == 0 )
 	{
 		g_bAirstrike = true;
@@ -1005,7 +1009,7 @@ public void OnLibraryRemoved(const char[] sName)
 		bLMC_Available = false;
 	else if( strcmp(sName, "left4dhooks") == 0 )
 		g_bLeft4DHooks = false;
-	else if( strcmp(sName, "dlr_talents_2023") == 0 ) {
+	else if( strcmp(sName, "dlr_talents") == 0 ) {
 		DLR_Available = false;
 		g_iClassID = -1;
 	}
@@ -1015,6 +1019,8 @@ public void OnLibraryRemoved(const char[] sName)
 
 public void OnPluginEnd()
 {
+	g_iClassID = -1;
+
 	ResetPlugin(true);
 }
 // ====================================================================================================
@@ -1035,7 +1041,37 @@ Action Cmd_SpawnThrow(int client, int args)
 	DoSpawnCommand(client, args, true);
 	return Plugin_Handled;
 }
+Action Cmd_DoFX(int client, int args)
+{
+	// Validate
+	if( !client )
+	{
+		ReplyToCommand(client, "Command can only be used %s", IsDedicatedServer() ? "in game on a dedicated server." : "in chat on a Listen server.");
+		return;
+	}
 
+	if( args != 2 )
+	{
+		ReplyToCommand(client, "Usage: sm_grenade_env <entityid> <type>  <1=Bomb, 2=Cluster, 3=Firework, 4=Smoke, 5=Black Hole, 6=Flashbang, 7=Shield, 8=Tesla, 9=Chemical, 10=Freeze, 11=Medic, 12=Vaporizer, 13=Extinguisher, 14=Glow, 15=Anti-Gravity, 16=Fire Cluster, 17=Bullets, 18=Flak, 19=Airstrike, 20=Weapon>");
+		return;
+	}
+
+	// Index
+	char sTemp[4];
+	GetCmdArg(1, sTemp, sizeof(sTemp));
+	int ent = StringToInt(sTemp);
+	// Index
+	if (!IsValidEntity(ent)) {
+		ReplyToCommand(client, "invalid entity %i", ent);
+		return ;
+	}
+	GetCmdArg(2, sTemp, sizeof(sTemp));
+	int index = StringToInt(sTemp);
+	
+	DoPrjEffects(ent, index);
+
+	return ;
+}
 Action Cmd_SpawnSpawn(int client, int args)
 {
 	DoSpawnCommand(client, args, false);
@@ -1098,6 +1134,7 @@ void DoSpawnCommand(int client, int args, bool projectile)
 			TeleportEntity(entity, vPos, NULL_VECTOR, vDir);
 			SetEntPropVector(entity, Prop_Send, "m_vInitialVelocity", vDir);
 		} else {
+
 			SetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity", client);	// Store owner			
 			TeleportEntity(entity, vPos, NULL_VECTOR, NULL_VECTOR);
 		}
@@ -1121,13 +1158,14 @@ int DoSpawn(int client, int index, bool projectile, int ent=-1)
 		return 0;
 	}
 
+//	PrintToChat(client, "throwing with index %i, ent %i", index, ent);
+
 	int entity = CreateEntityByName("pipe_bomb_projectile");
 	if( entity != -1 )
 	{
 		SetEntPropEnt(entity, Prop_Send, "m_hThrower", client);		// Store owner
 		SetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity", client);	// Store owner
 		SetEntPropVector(entity, Prop_Send, "m_vInitialVelocity", view_as<float>({ 0.0, 0.0, 1.0 }));
-		SetEntityModel(entity, MODEL_MINE);
 		g_GrenadeType[entity] = index;								// Store mode type
 		g_iClientGrenadeType[client] = index;
 
@@ -1150,16 +1188,24 @@ int DoSpawn(int client, int index, bool projectile, int ent=-1)
 			TeleportEntity(entity, vPos, NULL_VECTOR, vDir);
 			SetEntPropVector(entity, Prop_Send, "m_vInitialVelocity", vDir);
 		} else {
+			if (!IsValidEntity(ent)){
+			//	PrintToChat(client, "Invalid reference %i !!", ent );
+					return -1;
+				}
 			GetEntPropVector(ent, Prop_Send, "m_vecOrigin", vPos);
-			SetEntPropEnt(ent, Prop_Send, "m_hOwnerEntity", client);	// Store owner
+			SetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity", client);
+			SetEntPropVector(entity, Prop_Send, "m_vInitialVelocity", view_as<float>({ 0.0, 0.0, 1.0 }));
+				// Store owner
 			TeleportEntity(entity, vPos, NULL_VECTOR, NULL_VECTOR);
+			//PrintToChat(client, "Moving entity %i to position %f %f %f. Old entity: %i", entity, vPos[0],vPos[1],vPos[2], ent);
 		}
 		DispatchSpawn(entity);
-
 		static char translation[256];
 		Format(translation, sizeof(translation), "GrenadeMod_Title_%d", index);
 	//	PrintToChat(client, "\x04\x05Created: \x04%T", translation, client);
 	}
+
+	OnSpecialSkillSuccess(client, PLUGIN_SKILL_NAME);
 	return entity;
 }
 
@@ -1208,7 +1254,7 @@ Action Cmd_Grenade(int client, int args)
 					Format(translation, sizeof(translation), "%T %T", "GrenadeMod_Mode", client, translation, client);
 					ReplaceColors(translation, sizeof(translation));
 					#if DEBUG
-					PrintToChat(client, translation);
+					//PrintToChat(client, translation);
 					#endif
 				}
 			}
@@ -1716,6 +1762,7 @@ public void OnMapStart()
 	// LOAD CONFIG
 	if( g_bLateLoad )
 	{
+
 		g_bLateLoad = false; // No double load from lateload
 	} else {
 		LoadDataConfig();
@@ -2248,8 +2295,6 @@ void ResetPlugin(bool all = false)
 		RemoveEntity(g_iEntityHurt);
 	}
 }
-
-
 
 // ====================================================================================================
 //					CHANGE MODE

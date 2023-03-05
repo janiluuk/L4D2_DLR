@@ -213,6 +213,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	MarkNativeAsOptional("OnSpecialSkillFail");	
 	MarkNativeAsOptional("OnSpecialSkillSuccess");		
 	MarkNativeAsOptional("OnPlayerClassChange");
+	MarkNativeAsOptional("DLR_OnPluginState");	
 	MarkNativeAsOptional("GetPlayerSkillName");	
 	MarkNativeAsOptional("RegisterDLRSkill");
 
@@ -223,17 +224,14 @@ public void OnAllPluginsLoaded()
 {
 	if (g_iClassID != -1) return;
 
-	DLR_Available = LibraryExists("dlr_talents_2023");
-	if (DLR_Available) {
-		g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
-	} 
+	DLR_Available = LibraryExists("dlr_talents");
+	g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
 }
 
 public int OnSpecialSkillUsed(int iClient, int skill, int type)
 {
 	char szSkillName[32];
 	GetPlayerSkillName(iClient, szSkillName, sizeof(szSkillName));
-
 	if (StrEqual(szSkillName,PLUGIN_SKILL_NAME))
 	{
 		float vPos[3], vAng[3];
@@ -300,10 +298,33 @@ public void OnLibraryAdded(const char[] name)
 	if( strcmp(name, "l4d2_airstrike.triggers") == 0 )
 		g_bPluginTrigger = true;
 
-	if(StrEqual(name, "dlr_talents_2023")) {
+	if(StrEqual(name, "dlr_talents")) {
 		DLR_Available = true;	
 		if (g_iClassID < 0)	
-		g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
+			g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
+	}
+}
+
+public void DLR_OnPluginState(char[] plugin, int pluginstate)
+{
+	static int dlrstate;
+
+	if( StrEqual(plugin, "dlr_talents") && pluginstate == 1 && dlrstate == 0 )
+	{
+		SetConVarBool(g_hCvarAllow, true);
+		dlrstate = 1;
+		if (g_iClassID == -1) {
+			g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
+		}
+
+	}
+	else if(StrEqual(plugin, "dlr_talents") && pluginstate == 0 && dlrstate == 1 )
+	{
+		SetConVarBool(g_hCvarAllow, false);
+		dlrstate = 0;
+		if (g_iClassID > -1) {
+			g_iClassID = -1;
+		}
 	}
 }
 
@@ -370,8 +391,6 @@ void ResetPlugin()
 	g_iRoundStart = 0;
 	g_iPlayerSpawn = 0;
 }
-
-
 
 // ====================================================================================================
 //					CVARS
@@ -516,8 +535,6 @@ void OnGamemode(const char[] output, int caller, int activator, float delay)
 	else if( strcmp(output, "OnScavenge") == 0 )
 		g_iCurrentMode = 8;
 }
-
-
 
 // ====================================================================================================
 //					EVENTS
