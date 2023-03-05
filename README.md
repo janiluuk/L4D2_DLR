@@ -40,7 +40,6 @@ This is anniversary update for the infamous DLR mode for Left 4 Dead 2. Original
 - Commando damage modifiers are configurable per weapon, default one is used for rest.
 - Commando is immune to tank knockdowns
 - Commando can stomp downed infected
-
 - Medic has more options to spawn. Has faster healing and revival times.
 - Medic moves faster when in healing mode (crouched)
 - Medic can throw healing orbs
@@ -56,13 +55,13 @@ This is anniversary update for the infamous DLR mode for Left 4 Dead 2. Original
 - Turrets have now more helpful notifications.
 - Turrets are by default non-blocking.
 - "Single turret mode" enables oldschool mode.
-Requires plugin included with test version.
 - Engineer, medic and saboteur get countdown for next deployment when trying to deploy too early
 - Saboteur moves faster when crouched and shows visibility status.
 - Saboteur has visual effect on turning invisible and specific glow.
 - Saboteur has nightvision.
 - Redefined visual look and feedback with mines
-- Saboteur has 20 different types of mines with cool effects. You can assign 7 of them at one time. Antigravity, blackhole, freeze, vaporizer and many more. (Needs included grenades plugin example)
+- Saboteur has 20 different types of mines with cool effects. You can assign 7 of them at one time. 
+- New types of mines include Antigravity, blackhole, freeze, vaporizer and many more. (Needs included grenades plugin example)
 - Mines do less damage to survivors. Standing really close to the mine can still incap.
 - Mines do more damage to infected, 1500hp. Some edge over tank
 - Mines glow now so players know to avoid the spot or lure someone to it.
