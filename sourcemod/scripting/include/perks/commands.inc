@@ -496,13 +496,19 @@ public Action Command_MarkPendingPerk(int client, int args) {
 }
 
 public Action Command_PerkMenu(int client, int args) {
-	ReplyToCommand(client, "sm_perksl [player(s)] - Lists all the active perks on players. Will show flag names if a player is specified.");
-	ReplyToCommand(client, "sm_perksm - Lists all available perks & descriptions");
-	ReplyToCommand(client, "sm_perksr <player(s)> - Resets target users' of any active perks");
-	ReplyToCommand(client, "sm_perksa [player] [class] - Apply a perk on a player, with optional shortcut to player and/or class");
+	ReplyToCommand(client, "sm_perks_list [player(s)] - Lists all the active perks on players. Will show flag names if a player is specified.");
+	ReplyToCommand(client, "sm_perks_modes - Lists all available perks & descriptions");
+	ReplyToCommand(client, "sm_perks_reset <player(s)> - Resets target users' of any active perks");
+	ReplyToCommand(client, "sm_perks_apply [player] [class] - Apply a perk on a player, with optional shortcut to player and/or class");
 	ReplyToCommand(client, "sm_perks - Shows this text");
+	ReplyToCommand(client, "sm_perks_combo - Applies predefined combinations of perks");	
+	ReplyToCommand(client, "sm_stagger - Stagger a player");	
+	ReplyToCommand(client, "sm_inface - Spawns a special that targets them, right in their face.");	
+	ReplyToCommand(client, "sm_bots_attack - Instructs all bots to attack a player until they have X health.");
+	ReplyToCommand(client, "sm_bots_insta - Spawns a special that targets them, close to them.");			
 	ReplyToCommand(client, "sm_punish - Will apply a punishment to the last crescendo/event activator");
 	ReplyToCommand(client, "sm_mark - Marks the user to be banned on disconnect, prevents their FF.");
+	ReplyToCommand(client, "sm_scharge - Auto Smart charge");
 	return Plugin_Handled;
 }
 

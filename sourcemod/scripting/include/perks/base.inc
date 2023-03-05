@@ -456,7 +456,7 @@ void DisablePerk(int client, const char[] perk) {
 public void SetClass(const char[] newClass) {
     classID = classes.FindString(newClass);
     if(classID == -1)
-        classes = classes.PushString(newClass);
+        classID = classes.PushString(newClass);
 }
 void GetClass(int class, char[] buffer, int size) {
     classes.GetString(class, buffer, size);

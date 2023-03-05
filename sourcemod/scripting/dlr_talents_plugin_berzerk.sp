@@ -784,11 +784,7 @@ public int OnSpecialSkillUsed(int iClient, int skill, int type)
 
 public void OnAllPluginsLoaded()
 {
-	DLR_Available = LibraryExists("dlr_talents");
-
-	if (g_iClassID != -1) return;
-	g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
- 
+	DLR_Available = LibraryExists("dlr_talents"); 
 }
 
 public void DLR_OnPluginState(char[] plugin, int pluginstate)

@@ -1,3 +1,5 @@
+ConVar sb_stop;
+bool g_bNB;
 ///////////////////////////////////////////////////////////////////////////////////
 // Class menu
 ///////////////////////////////////////////////////////////////////////////////////
@@ -392,6 +394,7 @@ public PanelHandler_DlrMenu(Handle:menu, MenuAction:action, client, param)
 		{
 			if( param == 1)
 			{
+				setDebugMode(!(getDebugMode() > 0));
 				PrintHintText(client,"Debug mode is %s",  (getDebugMode() > 0) ? "ON" : "OFF");
 			}
 			if (param == 2) 
@@ -497,11 +500,11 @@ public Admin_MainMenu(Handle:topmenu, TopMenuAction:action, TopMenuObject:object
 		}
 		case TopMenuAction_SelectOption:
 		{
-			if (index == 0) { ShowDebugMenu(param); }
-			else if (index == 1) { ShowDebugMenu(param); } 
+			if (index == 0) {ShowDLRMenu(param); }
+			else if (index == 1) {  } 
 			else if (index == 2) { CreateDlrMenu(param); }
-			/**else if (index == 3) { Command_SwapTeams(param, 0); }	
-			else if (index == 4) { Command_PauseGame(param, 0); }	
+			else if (index == 3) { ShowDebugMenu(param); }	
+			/**else if (index == 4) { Command_PauseGame(param, 0); }	
 			else if (index == 5) { Command_UnpauseGame(param, 0); }	
 			
 			else if (index == 6) { ShowCurrTeamPanel(param, 0); }
@@ -533,6 +536,7 @@ public CreateDlrMenu(client) {
 	SetPanelTitle(hPanel, "Functions:");
 	DrawPanelItem(hPanel, "Toggle Debug Messages");
 	DrawPanelItem(hPanel, "Toggle infected");
+	DrawPanelItem(hPanel, "Halt everyone");
 	DrawPanelItem(hPanel, "List registered skills");
 	DrawPanelText(hPanel, " ");
 	DrawPanelItem(hPanel, "Exit");
@@ -540,91 +544,6 @@ public CreateDlrMenu(client) {
 	CloseHandle(hPanel);
 	
 	return true;
-}
-
-stock ShowDebugMenu(client) {
-
-	new Handle:menu = CreateMenu(Admin_MnuHdlr_DebugOpts);	
-	
-	decl String:title[100];
-	Format(title, sizeof(title), "Debugging Options");
-	
-	SetMenuTitle(menu, title);
-	
-	decl String:name[64];
-	
-	Format(name, sizeof(name),  "Debugging Off"); 
-	AddMenuItem(menu, "0", name); 
-			
-	Format(name, sizeof(name),  "Print Debug Info to Chat"); 
-	AddMenuItem(menu, "1", name); 
-
-	Format(name, sizeof(name),  "Log Debug Info to File"); 
-	AddMenuItem(menu, "2", name); 	
-	
-	Format(name, sizeof(name),  "Print Trace Debug Info to Chat"); 
-	AddMenuItem(menu, "3", name); 	
-	DisplayMenu(menu, client, MENU_TIME_FOREVER);
-}
-
-stock ShowDLRMenu(client) {
-
-	new Handle:menu = CreateMenu(Admin_MnuHdlr_DlrOpts);	
-	
-	decl String:title[100];
-	Format(title, sizeof(title), "DLR Settings");
-	
-	SetMenuTitle(menu, title);
-	
-	decl String:name[64];
-	
-	Format(name, sizeof(name),  "Toggle Debug Messages"); 
-	AddMenuItem(menu, "0", name); 
-			
-	Format(name, sizeof(name),  "Toggle infected"); 
-	AddMenuItem(menu, "1", name); 
-
-	Format(name, sizeof(name),  "List skills"); 
-	AddMenuItem(menu, "2", name); 	
-	
-	Format(name, sizeof(name),  "List classes"); 
-	AddMenuItem(menu, "3", name); 
-
-	Format(name, sizeof(name),  "Show HUD"); 
-	AddMenuItem(menu, "4", name); 
-
-	DisplayMenu(menu, client, MENU_TIME_FOREVER);
-}
-public Admin_MnuHdlr_DebugOpts(Handle:menu, MenuAction:action, param1, param2) {
-
-	switch (action)
-	{
-		case MenuAction_End:
-		{
-			CloseHandle(menu);
-		}
-		case MenuAction_Cancel:
-		{
-			if (param2 == MenuCancel_ExitBack && hTopMenu != INVALID_HANDLE)
-			{
-				DisplayTopMenu(hTopMenu, param1, TopMenuPosition_LastCategory);
-			}
-		}
-		case MenuAction_Select:
-		{
-			decl String:info[32];
-				
-			GetMenuItem(menu, param2, info, sizeof(info));
-			new debugopt = StringToInt(info);
-			
-			if (debugopt < 0) debugopt = 0;
-			if (debugopt > 2) debugopt = 2;
-			bool debugMode = debugopt > 0 ? true : false;
-			setDebugMode(debugMode);
-
-			PrintToChatAll("Server Debugging has been set to: %d.", getDebugMode());
-		}
-	}
 }
 
 public Admin_MnuHdlr_DlrOpts(Handle:menu, MenuAction:action, param1, param2) {
@@ -681,12 +600,129 @@ public Admin_MnuHdlr_DlrOpts(Handle:menu, MenuAction:action, param1, param2) {
 			}
 			if( param2 == 4)
 			{
-			        DisplayMenu(g_hSkillMenu, param1, MENU_TIME_FOREVER);
+				sb_stop = FindConVar("sb_stop");
+				if( sb_stop.IntValue == 1 )
+				{
+					ExecuteCheatCommand("sb_stop", "0");
+					if( param1 > 0) PrintHintText(param1, "\x04Players are no more halted.\x01");
+				}
+				else
+				{
+					ExecuteCheatCommand("sb_stop", "1");
+					if( param1 > 0) PrintHintText(param1, "\x04Players are now halted\x01");
+				}
+			
 			}
 			if( param2 == 5)
 			{
-			        DisplayMenu(g_hSkillMenu, param1, MENU_TIME_FOREVER);
+				if( g_bNB ) {
+					if( param1 > 0) PrintHintText(param1, "\x04Game characters are no more halted.\x01");
+					ExecuteCheatCommand("nb_stop", "0");
+				}
+				else
+				{
+				if( param1 > 0) PrintHintText(param1, "\x04All game characters are now halted.\x01");
+					ExecuteCheatCommand("nb_stop", "1");	
+				}
+				g_bNB = !g_bNB;
 			}
 		}
 	}
+}
+
+stock ShowDebugMenu(client) {
+
+	new Handle:menu = CreateMenu(Admin_MnuHdlr_DebugOpts);	
+	
+	decl String:title[100];
+	Format(title, sizeof(title), "Debugging Options");
+	
+	SetMenuTitle(menu, title);
+	
+	decl String:name[64];
+	
+	Format(name, sizeof(name),  "Debugging Off"); 
+	AddMenuItem(menu, "0", name); 
+			
+	Format(name, sizeof(name),  "Print Debug Info to Chat"); 
+	AddMenuItem(menu, "1", name); 
+
+	Format(name, sizeof(name),  "Log Debug Info to File"); 
+	AddMenuItem(menu, "2", name); 	
+	
+	Format(name, sizeof(name),  "Print Trace Debug Info to Chat"); 
+	AddMenuItem(menu, "3", name); 	
+	DisplayMenu(menu, client, MENU_TIME_FOREVER);
+}
+
+stock ShowDLRMenu(client) {
+
+	new Handle:menu = CreateMenu(Admin_MnuHdlr_DlrOpts);	
+	
+	decl String:title[100];
+	Format(title, sizeof(title), "DLR Settings");
+	
+	SetMenuTitle(menu, title);
+	
+	decl String:name[64];
+	
+	Format(name, sizeof(name),  "Toggle Debug Messages"); 
+	AddMenuItem(menu, "0", name); 
+			
+	Format(name, sizeof(name),  "Toggle infected"); 
+	AddMenuItem(menu, "1", name); 
+
+	Format(name, sizeof(name),  "List skills"); 
+	AddMenuItem(menu, "2", name); 	
+
+	Format(name, sizeof(name),  "Halt players"); 
+	AddMenuItem(menu, "3", name); 
+	
+	Format(name, sizeof(name),  "Halt everyone"); 
+	AddMenuItem(menu, "4", name); 
+
+	Format(name, sizeof(name),  "Show HUD"); 
+	AddMenuItem(menu, "5", name); 
+
+	DisplayMenu(menu, client, MENU_TIME_FOREVER);
+}
+public Admin_MnuHdlr_DebugOpts(Handle:menu, MenuAction:action, param1, param2) {
+
+	switch (action)
+	{
+		case MenuAction_End:
+		{
+			CloseHandle(menu);
+		}
+		case MenuAction_Cancel:
+		{
+			if (param2 == MenuCancel_ExitBack && hTopMenu != INVALID_HANDLE)
+			{
+				DisplayTopMenu(hTopMenu, param1, TopMenuPosition_LastCategory);
+			}
+		}
+		case MenuAction_Select:
+		{
+			decl String:info[32];
+				
+			GetMenuItem(menu, param2, info, sizeof(info));
+			new debugopt = StringToInt(info);
+			
+			if (debugopt < 0) debugopt = 0;
+			if (debugopt > 2) debugopt = 2;
+			bool debugMode = debugopt > 0 ? true : false;
+			setDebugMode(debugMode);
+
+			PrintToChatAll("Server Debugging has been set to: %d.", getDebugMode());
+		}
+	}
+}
+
+void ExecuteCheatCommand(const char[] command, const char[] value = "")
+{
+	int flags = GetCommandFlags(command);
+	SetCommandFlags(command, flags & ~FCVAR_CHEAT); // Remove cheat flag
+	ServerCommand("%s %s", command, value);
+	ServerExecute();
+	SetCommandFlags(command, flags);
 }

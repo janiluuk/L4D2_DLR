@@ -123,11 +123,11 @@ void LoadPhrases() {
 	ArrayList phrases = new ArrayList(ByteCountToCells(MAX_PHRASE_LENGTH));
 
 	char sPath[PLATFORM_MAX_PATH];
-	BuildPath(Path_SM, sPath, sizeof(sPath), "data/ftt_phrases.cfg");
+	BuildPath(Path_SM, sPath, sizeof(sPath), "data/perks_phrases.cfg");
 
 	if(!FileExists(sPath) || !kv.ImportFromFile(sPath)) {
 		delete kv;
-		PrintToServer("[DLR] Could not load phrase list from data/ftt_phrases.cfg");
+		PrintToServer("[DLR] Could not load phrase list from data/perks_phrases.cfg");
 		return;
 	}
 	static char word[32];

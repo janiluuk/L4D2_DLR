@@ -61,7 +61,7 @@ public void OnPluginStart() {
 	g_spSpawnQueue = new ArrayList(sizeof(SpecialSpawnRequest));
 
 	// Witch target overwrite stuff:
-	GameData data = new GameData("feedtheperks");
+	GameData data = new GameData("dlr_talents_perks");
 	StartPrepSDKCall(SDKCall_Raw);
 	PrepSDKCall_SetFromConf(data, SDKConf_Signature, "WitchAttack::WitchAttack");
 	PrepSDKCall_AddParameter(SDKType_CBaseEntity, SDKPass_Pointer, VDECODE_FLAG_ALLOWNULL | VDECODE_FLAG_ALLOWWORLD);
@@ -84,15 +84,15 @@ public void OnPluginStart() {
 	if(hBotReverseFFDefend.IntValue > 0) hSbFriendlyFire.BoolValue = true;
 	hBotReverseFFDefend.AddChangeHook(Change_BotDefend);
 
-	RegAdminCmd("sm_perkl",  Command_ListThePerks, ADMFLAG_GENERIC, "Lists all the perks currently ingame.");
-	RegAdminCmd("sm_perkm",  Command_ListModes,     ADMFLAG_KICK, "Lists all the perk modes and their description");
-	RegAdminCmd("sm_perkr",  Command_ResetUser, 	  ADMFLAG_GENERIC, "Resets user of any perk effects.");
-	RegAdminCmd("sm_perka",  Command_ApplyUser,     ADMFLAG_KICK, "Apply a perk mod to a player, or shows menu if no parameters.");
-	RegAdminCmd("sm_perkas", Command_ApplyUserSilent,  ADMFLAG_ROOT, "Apply a perk mod to a player, or shows menu if no parameters.");
+	RegAdminCmd("sm_perks_list",  Command_ListThePerks, ADMFLAG_GENERIC, "Lists all the perks currently ingame.");
+	RegAdminCmd("sm_perks_modes",  Command_ListModes,     ADMFLAG_KICK, "Lists all the perk modes and their description");
+	RegAdminCmd("sm_perks_reset",  Command_ResetUser, 	  ADMFLAG_GENERIC, "Resets user of any perk effects.");
+	RegAdminCmd("sm_perks_apply",  Command_ApplyUser,     ADMFLAG_KICK, "Apply a perk mod to a player, or shows menu if no parameters.");
+	RegAdminCmd("sm_perks_apply_silent", Command_ApplyUserSilent,  ADMFLAG_ROOT, "Apply a perk mod to a player, or shows menu if no parameters.");
 	RegAdminCmd("sm_perks",  Command_PerkMenu, ADMFLAG_GENERIC, "Opens a list that shows all the commands");
 	RegAdminCmd("sm_mark", Command_MarkPendingPerk, ADMFLAG_KICK, "Marks a player as to be banned on disconnect");
-	RegAdminCmd("sm_perkp",  Command_CrescendoPerk, ADMFLAG_KICK, "Applies a manual punish on the last crescendo activator");
-	RegAdminCmd("sm_perkc",  Command_ApplyComboPerks, ADMFLAG_KICK, "Applies predefined combinations of perks");
+	RegAdminCmd("sm_perks_crescendo",  Command_CrescendoPerk, ADMFLAG_KICK, "Applies a manual punish on the last crescendo activator");
+	RegAdminCmd("sm_perks_combo",  Command_ApplyComboPerks, ADMFLAG_KICK, "Applies predefined combinations of perks");
 	#if defined _actions_included
 	RegAdminCmd("sm_witch_attack", Command_WitchAttack, ADMFLAG_BAN, "Makes all witches target a player");
 	#endif
