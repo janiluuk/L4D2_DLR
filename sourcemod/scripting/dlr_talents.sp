@@ -1868,6 +1868,9 @@ public void OnClientDisconnect(int client) {
 stock DisableAllUpgrades(client)
 {
 	if (client > 0 && client <= 16 && IsValidEntity(client) && !IsFakeClient(client) && IsClientInGame(client) && GetClientTeam(client) == 2) {
+
+		SetEntPropFloat(client, Prop_Send, "m_flLaggedMovementValue", 1.0);
+
 		int iWeapon = GetPlayerWeaponSlot(client, 0); // Get primary weapon
 		if(iWeapon > 0 && IsValidEdict(iWeapon) && IsValidEntity(iWeapon))
 		{	
@@ -1880,6 +1883,7 @@ stock DisableAllUpgrades(client)
 			SetEntProp(client, Prop_Send, "m_bHasNightVision", 0, 4);
 		}
 	}
+
 }
 
 stock UnhookPlayer(client)
