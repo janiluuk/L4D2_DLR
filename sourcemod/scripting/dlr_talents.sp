@@ -16,7 +16,7 @@
 */
 
 #define PLUGIN_NAME "Talents Plugin 2023 anniversary edition"
-#define PLUGIN_VERSION "1.7b"
+#define PLUGIN_VERSION "1.71b"
 #define PLUGIN_IDENTIFIER "dlr_talents"
 #pragma semicolon 1
 #define DEBUG 0
@@ -35,7 +35,7 @@ public Plugin:myinfo =
 
 #include <adminmenu>
 #include <l4d2hud>
-#include <dlr>
+#include <talents>
 #include <jutils>
 #include <l4d2>
 
@@ -301,7 +301,7 @@ public void SetupClasses(client, class)
 		
 		case medic:
 		{
-			PrintHintText(client,"Hold CROUCH to heal others, Press SHIFT to drop medkits & supplies. Press MIDDLE button to throw healing grenade");
+			PrintHintText(client,"Hold CROUCH to heal others. Press SHIFT to drop medkits & supplies.\nPress MIDDLE button to throw healing grenade");
 			CreateTimer(GetConVarFloat(MEDIC_HEALTH_INTERVAL), TimerDetectHealthChanges, client, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 			ClientData[client].SpecialLimit = GetConVarInt(MEDIC_MAX_ITEMS);
 			MaxPossibleHP = GetConVarInt(MEDIC_HEALTH);
@@ -858,7 +858,7 @@ public bool canUseSpecialSkill(client, char[] pendingMessage)
 	int iDropTime = RoundToFloor(fCanDropTime);
 
 	if (IsPlayerInSaferoom(client) || IsInEndingSaferoom(client)) {
-			PrintHintText(client, "Cannot deploy inside safe areas");
+			PrintHintText(client, "Cannot deploy here");
 			return false;
 	}
 	else if (CanDrop == false)
@@ -867,8 +867,11 @@ public bool canUseSpecialSkill(client, char[] pendingMessage)
 		PrintHintText(client, pendMsg );
 		return false;
 	} else if (ClientData[client].SpecialsUsed >= ClientData[client].SpecialLimit) {
-		Format(outOfMsg, sizeof(outOfMsg), "You're out of supplies! (Max %d / round)", ClientData[client].SpecialLimit);
-		PrintHintText(client, outOfMsg);
+		int limit = ClientData[client].SpecialLimit;
+		if (limit > 0) {
+			Format(outOfMsg, sizeof(outOfMsg), "You're out of supplies! (Max %d / round)", ClientData[client].SpecialLimit);
+			PrintHintText(client, outOfMsg);
+		}
 		return false;
 	} 
 
@@ -962,8 +965,9 @@ public Event_PlayerSpawn(Handle:hEvent, String:sName[], bool:bDontBroadcast)
 		
 		if (GetClientTeam(client) == 2)
 		{
+			int userid = GetClientUserId(client);
 			CreateTimer(0.3, TimerLoadClient, client, TIMER_FLAG_NO_MAPCHANGE);
-			CreateTimer(0.1, TimerThink, client, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+			CreateTimer(0.1, TimerThink, userid, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 			
 			if (LastClassConfirmed[client] != 0)
 				ClientData[client].ChosenClass = view_as<ClassTypes>(LastClassConfirmed[client]);
@@ -1263,7 +1267,7 @@ stock SetClientTempHealth(client, iValue)
 
 public void Event_ServerCvar( Event hEvent, const char[] sNamel, bool bDontBroadcast ) 
 {
-	if ( !healthModEnabled.BoolValue ) return;
+	if (GetConVarBool(healthModEnabled) == false) return;
 	
 	InitHealthModifiers();
 }

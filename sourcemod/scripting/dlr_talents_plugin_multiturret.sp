@@ -514,7 +514,7 @@ public void OnPluginStart()
 	hCvar_MachineBlocking 	 		= CreateConVar("l4d_machine_blocking", 				"0", 		"If enabled, turrets are solid entities instead of walk-through. \n0 = Disabled.\n1 = Enabled.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	hCvar_MachineGlowRange 			= CreateConVar("l4d_machine_glow_range", 			"3.0",		"Sets the amount of glow the turret produces", FCVAR_NOTIFY, true, 0.0, true, 100.0);
  	hCvar_MachineBetrayChance 		= CreateConVar("l4d_machine_betray_chance", 		"20.0",		"Sets the probability of being betrayed by machine guns", FCVAR_NOTIFY, true, 0.0, true, 100.0);
-	hCvar_MachineLimit 				= CreateConVar("l4d_machine_limit", 				"3", 		"Maximum turrets per user.", FCVAR_NOTIFY, true, 1.0, true, 16.0);
+	hCvar_MachineLimit 				= CreateConVar("l4d_machine_limit", 				"2", 		"Maximum 50 cal guns per user.", FCVAR_NOTIFY, true, 1.0, true, 16.0);
 	hCvar_MachineLimitGatling		= CreateConVar("l4d_machine_gatling_limit", 		"1", 		"Maximum amount of gatling guns per user", FCVAR_NOTIFY, true, 1.0, true, float(MAX_EACHPLAYER));	
 	hCvar_MachineMaxAllowed 		= CreateConVar("l4d_machine_max_allowed", 			"8", 		"Maximum total amount of turrets per game", FCVAR_NOTIFY, true, 1.0, true, float(MAX_ALLOWED));
 	hCvar_MachineEnableDamage		= CreateConVar("l4d_machine_enable_damage", 		"1", 		"Enable damage for turret from attacks",  FCVAR_NOTIFY, true, 0.0, true, 1.0);
@@ -674,6 +674,11 @@ void GetConVar()
 	TrimString(sCvar_MachineSpecialAllowed);
 //	ReplaceString(sCvar_MachineSpecialAllowed, sizeof sCvar_MachineSpecialAllowed, " ", "", false);
 	
+
+	if (bCvar_Machine_SingleTurretMode == true) {
+		iCvar_MachineLimit = 1;
+		iCvar_MachineLimitGatling = 1;
+	}
 	if(StrContains(sCvar_MachineSpecialAllowed, "Basic") >= 0) 
 		bBasicAllowed = true;
 	else 
@@ -1238,12 +1243,15 @@ void PrintUserSelection(int client, const int iMachineGunModel, const int iSpeci
 		Format(sSpecialType, sizeof sSpecialType, "'Blue'%T", "Type Freeze", client);
 	else if(iSpecialType == TYPE_NAUSEATING)
 		Format(sSpecialType, sizeof sSpecialType, "'Green'%T", "Type Nauseating", client);
-	if (iSpecialType < 0) {
+	if (iSpecialType <= 0) {
 		Format(sSpecialType, sizeof sSpecialType, "'Gold'%T", "50 Cal Normal", client);
 	}
 
 	static char sDeployMsg[128];
-	Format(sDeployMsg, sizeof sDeployMsg, "You deployed  %s with %s ammunition!", sMachineGunModel, sSpecialType);
+	int gunCount = (iMachineGunModel == MACHINE_MINI) ? countGatlingGuns(client) : count50calGuns(client);
+	gunCount++;
+	int gunLimit = (iMachineGunModel == MACHINE_MINI) ? iCvar_MachineLimitGatling : iCvar_MachineLimit;
+	Format(sDeployMsg, sizeof sDeployMsg, "You deployed  %s with %s ammunition! (%i / %i)", sMachineGunModel, sSpecialType,gunCount, gunLimit);
 
 	CustomPrintToChat(client, "%s %s", sPluginTag, sDeployMsg); 
 }
@@ -1533,7 +1541,7 @@ public int MenuHandler_AdvancedMachineGuns(Menu hMenu, MenuAction hAction, int P
 			static char sInfo[56];
 			hMenu.GetItem(Param2, sInfo, sizeof(sInfo));
 
-			if(StrEqual(sInfo, "Cal50MachineGun", false))
+			if(StrEqual(sInfo, "50 Cal Normal", false))
 			{
 				CreateMachine(Param1, MACHINE_50CAL, NULL);
 			}
@@ -2275,7 +2283,9 @@ void StartCarry(int client, int iEntity)
 			return;
 		}	
 		GunCarrier[index] = client;
-		//SetEntProp(iEntity, Prop_Send, "m_CollisionGroup", 2);
+		if (bCvar_MachineBlocking == true)
+			SetEntProp(iEntity, Prop_Send, "m_CollisionGroup", 2);
+	
 		SetEntProp(iEntity, Prop_Send, "m_firing", 0);
 		float ang[3];
 		SetVector(ang, 0.0, 0.0, 90.0);
@@ -2362,7 +2372,8 @@ void StopCarry(int index)
 		GunCarrier[index] = 0;
 		AcceptEntityInput(Gun[index], "ClearParent");
 		PutMiniGun(Gun[index], GunCarrierOrigin[index], GunCarrierAngle[index]);
-		//SetEntProp(Gun[index], Prop_Send, "m_CollisionGroup", 0);
+		if (bCvar_MachineBlocking == true)
+			SetEntProp(Gun[index], Prop_Send, "m_CollisionGroup", 0);
 		GunLastCarryTime[index] = GetEngineTime();
 		GunState[index] = State_Scan;
 		Broken[index] = false;
@@ -3397,6 +3408,7 @@ int count50calGuns(int client)
 
 bool hasBuildsLeftForGatling(int client) {
 	if(! IsClientPlaying(client)) return false;
+
 	return (countGatlingGuns(client) < iCvar_MachineLimitGatling);
 }
 
