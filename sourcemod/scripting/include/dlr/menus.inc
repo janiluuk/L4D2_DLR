@@ -500,16 +500,14 @@ public Admin_MainMenu(Handle:topmenu, TopMenuAction:action, TopMenuObject:object
 		}
 		case TopMenuAction_SelectOption:
 		{
-			if (index == 0) {ShowDLRMenu(param); }
-			else if (index == 1) {  } 
+			if (index == 1) { ShowDLRMenu(param); }
 			else if (index == 2) { CreateDlrMenu(param); }
-			else if (index == 3) { ShowDebugMenu(param); }	
+			else if (index == 3) { ShowDebugMenu(param); }
 			/**else if (index == 4) { Command_PauseGame(param, 0); }	
 			else if (index == 5) { Command_UnpauseGame(param, 0); }	
-			
 			else if (index == 6) { ShowCurrTeamPanel(param, 0); }
 			else if (index == 7) { ShowLastRoundTeamPanel(param, 0); }	*/
-			else if (index == 0) { (param); }	
+			else if (index == 0) { (param); }
 		}			
 	}
 }
@@ -621,8 +619,8 @@ public Admin_MnuHdlr_DlrOpts(Handle:menu, MenuAction:action, param1, param2) {
 				}
 				else
 				{
-				if( param1 > 0) PrintHintText(param1, "\x04All game characters are now halted.\x01");
-					ExecuteCheatCommand("nb_stop", "1");	
+					if( param1 > 0) PrintHintText(param1, "\x04All game characters are now halted.\x01");
+					ExecuteCheatCommand("nb_stop", "1");
 				}
 				g_bNB = !g_bNB;
 			}

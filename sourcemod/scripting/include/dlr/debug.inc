@@ -17,8 +17,9 @@ stock void PrintDebug(int client, const char[] format, any ...)
 	
 	VFormat(buffer, sizeof(buffer), format, 2);
 	#if DEBUG_LOG
+	PrintToConsoleAll("[Debug] %s", buffer);	
 	PrintToConsole(0, "[Debug] %s", buffer);
-	LogMessage("[Debug] %s", buffer);	
+	LogMessage("[Debug] %s", buffer);
 	#endif 
 	#if DEBUG || DEBUG_TRACE
 	PrintToChat(client, "[Debug] %s", buffer);
@@ -50,8 +51,9 @@ stock void PrintDebugAll(const char[] format, any ...)
 	static char buffer[192];
 	VFormat(buffer, sizeof(buffer), format, 2);
 	#if DEBUG_LOG
+	PrintToConsoleAll("[Debug] %s", buffer);	
 	PrintToConsole(0, "[Debug] %s", buffer);
-	LogMessage("%s", buffer);
+	LogMessage("[Debug] %s", buffer);
 	#endif
 	#if DEBUG || DEBUG_TRACE
 	PrintToChatAll("[Debug] %s", buffer);

@@ -7,9 +7,10 @@ stock Action TimerStart(Handle timer)
 	return Plugin_Continue;
 }
 
-public Action:TimerThink(Handle:hTimer, any:client)
+public Action:TimerThink(Handle:hTimer, any:userid)
 {
-	if (!IsValidEntity(client) || !IsClientInGame(client) || IsFakeClient(client) || !IsPlayerAlive(client) || GetClientTeam(client) != 2)
+	int client = GetClientOfUserId(userid);
+	if (client <= 0 || !IsValidEntity(client) || !IsClientInGame(client) || IsFakeClient(client) || !IsPlayerAlive(client) || GetClientTeam(client) != 2)
 	{
 		return Plugin_Stop;
 	}
@@ -88,18 +89,21 @@ public Action:TimerThink(Handle:hTimer, any:client)
 			
 			if (buttons & IN_SPEED)
 			{
-				if (CanDrop == false && (iDropTime > 0 && iDropTime < GetConVarInt(MINIMUM_DROP_INTERVAL))) 
-				{
-					if (!(ClientData[client].LastButtons & IN_SPEED))
-						PrintHintText(client ,"Wait %i seconds to deploy", (GetConVarInt(MINIMUM_DROP_INTERVAL) - iDropTime));
+				if(!(GetEntityFlags(client) & FL_ONGROUND)) {
 				} else {
-
-					if (CanDrop == true && !IsPlayerInSaferoom(client) && !IsInEndingSaferoom(client))
+					if (CanDrop == false && (iDropTime > 0 && iDropTime < GetConVarInt(MINIMUM_DROP_INTERVAL))) 
 					{
-						if (ClientData[client].SpecialsUsed >= GetConVarInt(SABOTEUR_MAX_BOMBS)) {
-							PrintHintText(client ,"You're out of mines");
-						} else {
-							CreatePlayerSaboteurMenu(client);
+						if (!(ClientData[client].LastButtons & IN_SPEED))
+							PrintHintText(client ,"Wait %i seconds to another mine", (GetConVarInt(MINIMUM_DROP_INTERVAL) - iDropTime));
+					} else {
+
+						if (CanDrop == true && !IsPlayerInSaferoom(client) && !IsInEndingSaferoom(client))
+						{
+							if (ClientData[client].SpecialsUsed >= GetConVarInt(SABOTEUR_MAX_BOMBS)) {
+								PrintHintText(client ,"You're out of mines");
+							} else {
+								CreatePlayerSaboteurMenu(client);
+							}
 						}
 					}
 				}
@@ -148,8 +152,8 @@ public Action:TimerThink(Handle:hTimer, any:client)
 				char pendingMessage[128] = "Wait %i seconds to use healing grenades again";
 				
 				if (canUseSpecialSkill(client, pendingMessage)) {
-					useSpecialSkill(client, 12);
-					useCustomCommand("Grenades", client, -1, 12);
+					//useSpecialSkill(client, 11);
+					useCustomCommand("Grenades", client, -1, 11);
 					ClientData[client].LastDropTime = GetGameTime();
 				}
 
