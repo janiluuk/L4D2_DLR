@@ -47,9 +47,14 @@ stock Action:CmdClasses(client, args)
 	for (new i = 1; i <= MaxClients; i++)
 	{
 
-		if(ClientData[i].ChosenClass != NONE)
+
+		if(IsClientInGame(i) && GetClientTeam(i) == 2 && ClientData[i].ChosenClass != NONE)
 		{
-			PrintToChatAll("\x04%N\x01 : is a %s",i,ClassTips[i]);
+			static char translation[256];
+
+			Format(translation, sizeof(translation), "\x04%N\x01 is a {green}%s{white}%s",i,MENU_OPTIONS[ClientData[i].ChosenClass], ClassTips[ClientData[i].ChosenClass]);
+			ReplaceColors(translation, sizeof(translation));
+			PrintToChatAll(translation);
 		}
 	}
 }
@@ -60,7 +65,7 @@ public Action:CmdPlugins(client, args)
 	{
 		if(ClientData[i].ChosenClass != NONE)
 		{
-			PrintToChat(client, "\x04%N\x01 : is a %s",i,MENU_OPTIONS[ClientData[i].ChosenClass]);
+			PrintToChat(client, "\x04%N\x01 is a %s",i,MENU_OPTIONS[ClientData[i].ChosenClass]);
 		}
 	}
 }
