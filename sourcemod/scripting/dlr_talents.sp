@@ -322,6 +322,9 @@ public void SetupClasses(client, class)
 		{
 			decl String:text[64];
 			text = "";
+			ClientData[client].SpecialDropInterval = 120;
+			ClientData[client].SpecialLimit = 3;
+
 			if (GetConVarBool(COMMANDO_ENABLE_STUMBLE_BLOCK)) {
 				text = ", You're immune to Tank knockdowns";
 			} 

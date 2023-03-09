@@ -414,14 +414,14 @@ public OnPluginStart()
 	
 	//Global
 	CreateConVar("l4d2_berserk_mode_version", GETVERSION, "Version of Berserker Mode Plugin", FCVAR_SPONLY|FCVAR_NOTIFY|FCVAR_DONTRECORD);
-	g_cvarCountMode = CreateConVar("l4d2_berserk_mode_count_mode", "1", "How should the kill or damage count work?(0 = Timed, 1 = Not timed)", FCVAR_NOTIFY, true, 0.0, true, 1.0);
-	g_cvarCountExpireTime = CreateConVar("l4d2_berserk_mode_count_expire_time", "15", "How much time must pass between kills or attacks to reset counts?", FCVAR_NOTIFY);
-	g_cvarInfectedDuration = CreateConVar("l4d2_berserk_mode_infected_duration", "30", "Amount of time to berserk for infected", FCVAR_NOTIFY);
-	g_cvarSurvivorDuration = CreateConVar("l4d2_berserk_mode_survivor_duration", "30", "Amout of time to berserker for survivors", FCVAR_NOTIFY);
+	g_cvarCountMode = CreateConVar("l4d2_berserk_mode_count_mode", "0", "How should the kill or damage count work?(0 = Timed, 1 = Not timed)", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+	g_cvarCountExpireTime = CreateConVar("l4d2_berserk_mode_count_expire_time", "120", "How much time must pass between kills or attacks to reset counts?", FCVAR_NOTIFY);
+	g_cvarInfectedDuration = CreateConVar("l4d2_berserk_mode_infected_duration", "20", "Amount of time to berserk for infected", FCVAR_NOTIFY);
+	g_cvarSurvivorDuration = CreateConVar("l4d2_berserk_mode_survivor_duration", "20", "Amout of time to berserker for survivors", FCVAR_NOTIFY);
 	g_cvarAutomaticStart = CreateConVar("l4d2_berserk_mode_auto", "0", "Should the Berserk Mode toggle ON by itself? (Automatic?)", FCVAR_NOTIFY, true, 0.0, true, 1.0); 
 	g_cvarPlayMusic = CreateConVar("l4d2_berserk_mode_play_music", "1", "Should the plugin play music when the players are under Berserker Mode?", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvarSurvivorEnable = CreateConVar("l4d2_berserk_mode_enable_survivor", "1", "Enable Berserker On survivors?", FCVAR_NOTIFY, true, 0.0, true, 1.0);
-	g_cvarInfectedEnable = CreateConVar("l4d2_berserk_mode_enable_infected", "1", "Enable Berserker On infected?", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+	g_cvarInfectedEnable = CreateConVar("l4d2_berserk_mode_enable_infected", "0", "Enable Berserker On infected?", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvarChangeColor = CreateConVar("l4d2_berserk_mode_change_color", "1", "Should the plugin change a special color on players with berserker?", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvarColor = CreateConVar("l4d2_berserk_mode_color", "1", "What color should the players have on berserker? (1 = RED, 2 = BLUE, 3 = GREEN, 4 = BLACK, 5 = TRANSPARENT)", FCVAR_NOTIFY, true, 1.0, true, 5.0);
 	g_cvarMusicFile = CreateConVar("l4d2_berserk_mode_music_file", "music/tank/onebadtank.wav", "Which music should be played on berserker mode?");
@@ -436,7 +436,7 @@ public OnPluginStart()
 	g_cvarYellPower = CreateConVar("l4d2_berserk_mode_yell_power", "250", "Power of the shove of the Berserker mode 'Yell' feature", FCVAR_NOTIFY);
 	g_cvarYellRadius = CreateConVar("l4d2_berserk_mode_yell_radius", "350", "Radius that the yell shoves enemies", FCVAR_NOTIFY);
 	g_cvarYellLuck = CreateConVar("l4d2_berserk_mode_yell_luck", "2", "Chance of getting the Berserker Yell power (If set to 2, the probability will be of 50%, 3 = 33%, 4 = 25% 5= 20%)", FCVAR_NOTIFY, true, 1.0);
-	g_cvarAnnounceType = CreateConVar("l4d2_berserk_mode_announce", "2", "How should the plugin tell the players that the Berserker Mode is ready to be used? (0: DONT ANNOUNCE |1:CHAT| 2:HINT TEXT | 3:CENTER HINT TEXT | 4:INSTRUCTOR HINT)", FCVAR_NOTIFY, true, 0.0, true, 4.0);
+	g_cvarAnnounceType = CreateConVar("l4d2_berserk_mode_announce", "0", "How should the plugin tell the players that the Berserker Mode is ready to be used? (0: DONT ANNOUNCE |1:CHAT| 2:HINT TEXT | 3:CENTER HINT TEXT | 4:INSTRUCTOR HINT)", FCVAR_NOTIFY, true, 0.0, true, 4.0);
 	
 	//Survivor Options
 	g_cvarSurvivorGoal = CreateConVar("l4d2_berserk_mode_goal", "20", "Amount of common infected needed to berserk on survivors", FCVAR_NOTIFY);
@@ -450,7 +450,7 @@ public OnPluginStart()
 	g_cvarAdrenType = CreateConVar("l4d2_berserk_mode_give_shot_mode", "2", "Should the plugin give adrenaline, or add its effects by itself? 0 = Disable, 1 = Give Shot, 2 = Effects", FCVAR_NOTIFY, true, 0.0, true, 2.0);
 	g_cvarRefillWeapon = CreateConVar("l4d2_berserk_mode_refill_weapon", "1", "Should the plugin refill players weapons on berserker?", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvarSpecialBullets = CreateConVar("l4d2_berserk_mode_give_special_bullets", "1", "Should the plugin give fire bullets or nothing to the player on berserker? (Nothing = 0, Fire bullets = 1)", FCVAR_NOTIFY, true, 0.0, true, 2.0);
-	g_cvarIncapImmunity = CreateConVar("l4d2_berserk_mode_incap_inmu", "1", "Should the plugin give inmunity if the player gets incapacitated on berserker?", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+	g_cvarIncapImmunity = CreateConVar("l4d2_berserk_mode_incap_inmu", "0", "Should the plugin give inmunity if the player gets incapacitated on berserker?", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvarShovePenalty = CreateConVar("l4d2_berserk_mode_shove_penalty", "1", "Disable shoving penalty during berserker? (Will not affect other plugins with this function)", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvarEffectType = CreateConVar("l4d2_berserk_mode_animation_type", "0", "What kind of screen effect should we use for berserker? 0 = None, 1 = Fire, 2 = Adrenaline style 3 = Both (May cause low performance)", FCVAR_NOTIFY, true, 0.0, true, 3.0);
 	g_cvarInfiniteSpecialBullets = CreateConVar("l4d2_berserk_mode_infinite_special_bullets", "1", "Should the fire or ice bullets be infinite?", FCVAR_NOTIFY, true, 0.0, true, 1.0);
@@ -762,6 +762,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	MarkNativeAsOptional("RegisterDLRSkill");
 	MarkNativeAsOptional("DLR_OnPluginState");	
 
+	return APLRes_Success;
 }
 public void OnSkillSelected(int iClient, int iClass)
 {
@@ -773,10 +774,17 @@ public int OnSpecialSkillUsed(int iClient, int skill, int type)
 {
 	char szSkillName[32];
 	GetPlayerSkillName(iClient, szSkillName, sizeof(szSkillName));
-
+	if(!iClient
+	|| !IsValidEntity(iClient)
+	|| !IsClientInGame(iClient))
+	{
+		return 0;
+	}
 	if (StrEqual(szSkillName,PLUGIN_SKILL_NAME))
 	{
-		CmdEnableZerk(iClient, 0);
+
+		BeginBerserkerMode(iClient);
+		OnSpecialSkillSuccess(iClient, PLUGIN_SKILL_NAME);
 		return 1;
 	}
 	return 0;
