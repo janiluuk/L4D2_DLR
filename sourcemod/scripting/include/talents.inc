@@ -248,6 +248,7 @@ ConVar parachuteEnabled;
 #include <sourcemod>
 #include <sdktools>
 #include <sdkhooks>
+#include <left4dhooks.inc>
 #include <dlr/const>
 #include <dlr/timers>
 #include <dlr/commands>

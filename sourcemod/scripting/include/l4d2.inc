@@ -26,13 +26,6 @@ enum L4DGame
 	L4DGame_L4D2 = 1
 }
 
-enum L4DTeam
-{
-	L4DTeam_Unassigned = 0,
-	L4DTeam_Spectator = 1,
-	L4DTeam_Survivors = 2,
-	L4DTeam_Infected = 3
-}
 
 enum L4DSurvivor
 {
@@ -80,10 +73,6 @@ enum L4D2Infected
  * @return				Current L4DTeam of client.
  * @error				Invalid client index.
  */
-stock L4DTeam L4D_GetClientTeam(int client)
-{
-	return view_as<L4DTeam>(GetClientTeam(client));
-}
 
 /**
  * Gets the current group of survivors assigned to the map.
