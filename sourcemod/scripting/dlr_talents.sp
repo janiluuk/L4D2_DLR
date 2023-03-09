@@ -2236,7 +2236,7 @@ public void DropBomb(client, bombType)
 	WritePackCell(hPack, entity);	
 	CreateTimer(GetConVarFloat(SABOTEUR_BOMB_ACTIVATE), TimerActivateBomb, hPack, TIMER_FLAG_NO_MAPCHANGE);
 	EmitSoundToAll(SOUND_DROP_BOMB);
-	PrintHintTextToAll("%N planted a %s mine! (%i/%i)", client, bombName, ClientData[client].SpecialsUsed, GetConVarInt(SABOTEUR_MAX_BOMBS));
+	PrintHintTextToAll("%N planted a %s mine! (%i/%i)", client, bombName, (1+ ClientData[client].SpecialsUsed), GetConVarInt(SABOTEUR_MAX_BOMBS));
 }
 
 public DropMineEntity(Float:pos[3], int index)
