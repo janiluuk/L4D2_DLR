@@ -2607,3 +2607,11 @@ public Action:UnhidePlayer(client)
 	if (g_bHide[client] == true) HidePlayer(client);
 	g_bHide[client] = false;
 }
+
+void ReplaceColors(char[] translation, int size)
+{
+	ReplaceString(translation, size, "{white}",		"\x01");
+	ReplaceString(translation, size, "{cyan}",		"\x03");
+	ReplaceString(translation, size, "{orange}",	"\x04");
+	ReplaceString(translation, size, "{green}",		"\x05");
+}
