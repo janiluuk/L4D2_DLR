@@ -16,7 +16,7 @@
 */
 
 #define PLUGIN_NAME "Talents Plugin 2023 anniversary edition"
-#define PLUGIN_VERSION "1.71b"
+#define PLUGIN_VERSION "1.72"
 #define PLUGIN_IDENTIFIER "dlr_talents"
 #pragma semicolon 1
 #define DEBUG 0
