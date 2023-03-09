@@ -113,17 +113,14 @@ public Action:TimerThink(Handle:hTimer, any:userid)
 		{
 			if (buttons & IN_ZOOM) {
 
-				if (!(ClientData[client].LastButtons & IN_ZOOM)) {
 					char pendingMessage[128] = "Wait for %i seconds to activate berzerk mode again";
-
 					if (canUseSpecialSkill(client, pendingMessage)) {
 						useSpecialSkill(client, 1);
-						PrintHintText(client ,"You activated berzerk mode!");
-
+						PrintHintText(client, "You activated berzerk mode!");
+						
 						ClientData[client].LastDropTime = GetGameTime();
 
 					}
-				}	
 			}
 		}
 		case medic:
