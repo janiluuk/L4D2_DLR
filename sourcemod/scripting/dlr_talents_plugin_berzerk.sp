@@ -387,8 +387,8 @@ new Handle:g_hForward_BerserkUse = INVALID_HANDLE;
 //Plugin Info
 public Plugin:myinfo = 
 {
-	name = "Berserker Mode",
-	author = "honorcode23",
+	name = "[DLR] Berzerk Mode Plugin version",
+	author = "honorcode23,yani",
 	description = "Enters on Berserker Mode after x amount of killed infected",
 	version = GETVERSION,
 	url = "http://forums.alliedmods.net/showthread.php?t=127518"
