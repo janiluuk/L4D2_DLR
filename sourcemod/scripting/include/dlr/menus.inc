@@ -361,7 +361,7 @@ public SelectSaboteurItem(Handle:menu, MenuAction:action, param1, param2)
 			decl String:menucmd[256];
 			GetMenuItem(menu, param2, menucmd, sizeof(menucmd));
 			if (StringToInt(menucmd) > 0) {
-				PrintDebug(param1, "Placing type %i mine", StringToInt(menucmd));
+				PrintDebug(param1, "Placing type %d mine", getBombName(StringToInt(menucmd)));
 				CalculateSaboteurPlacePos(param1, StringToInt(menucmd));
 			}
 		}
@@ -507,7 +507,7 @@ public Admin_MainMenu(Handle:topmenu, TopMenuAction:action, TopMenuObject:object
 			else if (index == 5) { Command_UnpauseGame(param, 0); }	
 			else if (index == 6) { ShowCurrTeamPanel(param, 0); }
 			else if (index == 7) { ShowLastRoundTeamPanel(param, 0); }	*/
-			else if (index == 0) { (param); }
+			else if (index == 0) { ShowDLRMenu(param); }
 		}			
 	}
 }

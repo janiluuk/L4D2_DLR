@@ -1266,6 +1266,7 @@ Action Cmd_Grenade(int client, int args)
 
 void ShowGrenadeMenu(int client)
 {
+	return;
 	// Validate weapon
 	int iWeapon = GetPlayerWeaponSlot(client, 2);
 	if( iWeapon > MaxClients && IsValidEntity(iWeapon) )
@@ -2302,7 +2303,7 @@ void ResetPlugin(bool all = false)
 public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3], float angles[3], int &weapon)
 {
 	// Preferences allow to change grenade type, holding Shoot and pressing Shove
-	if( g_bCvarAllow && g_iConfigPrefs != 3 && g_iConfigBinds != 2 )
+	if( g_bCvarAllow && g_iConfigPrefs != 3 && g_iConfigBinds != 2 && g_iClassID == -1)
 	{
 		if( buttons & IN_ATTACK )
 		{
