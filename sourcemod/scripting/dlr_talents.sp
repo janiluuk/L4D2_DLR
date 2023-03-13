@@ -16,7 +16,7 @@
 */
 
 #define PLUGIN_NAME "Talents Plugin 2023 anniversary edition"
-#define PLUGIN_VERSION "1.72"
+#define PLUGIN_VERSION "1.82b"
 #define PLUGIN_IDENTIFIER "dlr_talents"
 #pragma semicolon 1
 #define DEBUG 0
@@ -326,10 +326,10 @@ public void SetupClasses(client, class)
 			ClientData[client].SpecialLimit = 3;
 
 			if (GetConVarBool(COMMANDO_ENABLE_STUMBLE_BLOCK)) {
-				text = ", You're immune to Tank knockdowns";
+				text = ", You're immune to Tank knockdowns!";
 			} 
 
-			PrintHintText(client,"You have faster reload and cause more damage%s!\nPress MIDDLE button to activate Berzerk mode!", text);
+			PrintHintText(client,"You have faster reload & increased damage%s!\nPress MIDDLE button to activate Berzerk mode!", text);
 			MaxPossibleHP = GetConVarInt(COMMANDO_HEALTH);
 		}
 		
@@ -342,10 +342,10 @@ public void SetupClasses(client, class)
 		
 		case saboteur:
 		{
-			PrintHintText(client,"Press SHIFT to drop mines! Hold CROUCH over 5 sec to go invisible.\nPress MIDDLE button to toggle Nightvision");
+			PrintHintText(client,"Press SHIFT to drop mines! Hold CROUCH for 3 sec to go invisible. \nPress MIDDLE button to toggle Dobbelganger if attacked!");
 			MaxPossibleHP = GetConVarInt(SABOTEUR_HEALTH);
 			ClientData[client].SpecialLimit = GetConVarInt(SABOTEUR_MAX_BOMBS);
-			ToggleNightVision(client);
+//			ToggleNightVision(client);
 		}
 		
 		case brawler:
@@ -396,7 +396,14 @@ public AssignSkills(client)
 			if (skillId > -1) {
 				g_iPlayerSkill[client] = skillId;
 			}
-		}		
+		}
+		case saboteur:
+		{
+			int skillId = FindSkillIdByName("cloak");
+			if (skillId > -1) {
+				g_iPlayerSkill[client] = skillId;
+			}
+		}
 	}
 	if (g_iPlayerSkill[client] >= 0) {
 		
@@ -861,8 +868,12 @@ public bool canUseSpecialSkill(client, char[] pendingMessage)
 	int iDropTime = RoundToFloor(fCanDropTime);
 
 	if (IsPlayerInSaferoom(client) || IsInEndingSaferoom(client)) {
-			PrintHintText(client, "Cannot deploy here");
-			return false;
+		PrintHintText(client, "Cannot deploy here");
+		return false;
+	}
+	if (FindAttacker(client) > 0 || IsIncapacitated(client)) {
+		PrintHintText(client, "You're too screwed to use special skills");
+		return false;
 	}
 	else if (CanDrop == false)
 	{
@@ -912,7 +923,7 @@ public ShowBar(client, String:msg[], Float:pos, Float:max)
 	
 	if(p>=0 && p<100)ChargeBar[p] = Gauge3[0]; 
 	/* Display gauge */
-	PrintHintText(client, "%s  %3.0f %\n<< %s >>", msg, GaugeNum, ChargeBar);
+	PrintHintText(client, "%s  %3.0f / 100% %\n<< %s >>", msg, GaugeNum, ChargeBar);
 }
 
 public Event_RoundChange(Handle:event, String:name[], bool:dontBroadcast)
@@ -1007,7 +1018,7 @@ public Event_LeftSaferoom(Handle:event, String:Event_name[], bool:dontBroadcast)
 public Action:Event_LeftStartArea(Handle:event, const String:name[], bool:dontBroadcast)
 {
 	RoundStarted = true;
-	PrintToChatAll("%sPlayers left safe area, classes now locked!",PRINT_PREFIX);	
+	PrintToChatAll("%s Players left safe area, classes now locked!",PRINT_PREFIX);	
 }
 
 public Event_PlayerTeam(Handle:hEvent, String:sName[], bool:bDontBroadcast)
@@ -1780,7 +1791,7 @@ public void CalculateSaboteurPlacePos(client, int value)
 			ClientData[client].SpecialsUsed++;
 			ClientData[client].LastDropTime = GetGameTime();				
 		} else {
-			PrintToChat(client, "%sCould not place the item because you were looking too far away.", PRINT_PREFIX);
+			PrintToChat(client, "%s Could not place the item because you were looking too far away.", PRINT_PREFIX);
 		}
 		
 	} else
@@ -2289,7 +2300,7 @@ public void CreateAirStrike(int client) {
 		EmitSoundToAll(SOUND_DROP_BOMB);
 
 		new Handle:pack = CreateDataPack();
-		WritePackCell(pack, client);
+		WritePackCell(pack, GetClientUserId(client));
 		WritePackFloat(pack, vPos[0]);
 		WritePackFloat(pack, vPos[1]);
 		WritePackFloat(pack, vPos[2]);
@@ -2609,12 +2620,4 @@ public Action:UnhidePlayer(client)
 {
 	if (g_bHide[client] == true) HidePlayer(client);
 	g_bHide[client] = false;
-}
-
-void ReplaceColors(char[] translation, int size)
-{
-	ReplaceString(translation, size, "{white}",		"\x01");
-	ReplaceString(translation, size, "{cyan}",		"\x03");
-	ReplaceString(translation, size, "{orange}",	"\x04");
-	ReplaceString(translation, size, "{green}",		"\x05");
 }

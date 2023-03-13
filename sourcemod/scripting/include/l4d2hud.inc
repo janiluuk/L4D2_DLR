@@ -125,7 +125,7 @@ void SetupHUD(hudPosition position, int flags, float x, float y, float w, float 
 }
 
 void SetHUDText(hudPosition position, char[] format, any ...) {
-    if(huds[view_as<int>(position)][0] == '\0') {
+    if(!IsHUDSetup(position)) {
         ThrowError("HUD at position was not setup.");
     }
     static char sBuffer[1024];
@@ -158,7 +158,7 @@ void GetHUDFormatString(hudPosition position, char[] buffer, int buffersize) {
 hudPosition MSG_HUD_POS; 
 
 char messages[MAX_MESSAGES][MAX_MESSAGE_LENGTH];
-char lastMsgFull[1023];
+char lastMsgFull[MAX_HUD_LENGTH];
 bool isEnabled;
 
 int msgExpiresTime;
@@ -167,13 +167,12 @@ public Action:Timer_ProcessMessages(Handle h) {
     if (isEnabled == false) return Plugin_Stop;
     if(GetGameTime() > msgExpiresTime) {
         messages[0][0] = '\0';
-        msgExpiresTime = GetGameTime() + MESSAGE_DURATION;
+        msgExpiresTime = RoundToFloor(GetGameTime()) + MESSAGE_DURATION;
     }
-    char buffer[MAX_HUD_LENGTH];
     for(int i = 0; i < sizeof(messages); i++) {
-        ImplodeStrings(messages, MAX_MESSAGES, "\\n", buffer, sizeof(buffer));
+        ImplodeStrings(messages, MAX_MESSAGES, "\\n", lastMsgFull, sizeof(lastMsgFull));
     }
-    SetHUDText(MSG_HUD_POS, buffer);
+    SetHUDText(MSG_HUD_POS, lastMsgFull);
     return Plugin_Continue;
 }
 void SetupMessageHud(hudPosition position, int flags, float xpos=0.0, float ypos=0.0, float width=1.0, float height=1.0) {
@@ -214,12 +213,19 @@ void ClearMessageHud() {
         messages[i][0] = '\0';
     }
 }
+
 int getCurrentHud() {
     return MSG_HUD_POS;
 }
+
 void setCurrentHud(pos) {
     MSG_HUD_POS = view_as<hudPosition>(pos);
 }
+
+void getHudText(char[] text, int textSize) {
+    GetHUDFormatString(MSG_HUD_POS, text, textSize);
+}
+
 void DeleteAllHUD(){
     ClearMessageHud();
     CloseMessageHud();
