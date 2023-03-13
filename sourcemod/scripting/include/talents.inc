@@ -252,6 +252,8 @@ new Handle:COMMANDO_ENABLE_STOMPING;
 new Handle:COMMANDO_STOMPING_SLOWDOWN;
 new Handle:SPECIAL_SKILL_LIMIT;
 #include <dlr/timers>
+#include <dlr/commands>
+#include <dlr/classes>
 #include <dlr/effects>
 #include <dlr/menus>
 #include <dlr/perks>

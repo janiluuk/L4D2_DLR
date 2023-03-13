@@ -382,7 +382,7 @@ public void SetupClasses(client, class)
 		
 		case saboteur:
 		{
-                        PrintHintText(client,"Press SHIFT to drop mines! Hold CROUCH 3 sec to go invisible.\nPress MIDDLE or !skill to summon Decoy. Use !extendedsight for wallhack");
+			PrintHintText(client,"Press SHIFT to drop mines! Hold CROUCH for 3 sec to go invisible. \nPress MIDDLE button to toggle Dobbelganger if attacked!");
 			MaxPossibleHP = GetConVarInt(SABOTEUR_HEALTH);
 			ClientData[client].SpecialLimit = GetConVarInt(SABOTEUR_MAX_BOMBS);
 //			ToggleNightVision(client);
@@ -880,7 +880,11 @@ bool canUseSpecialSkill(client, char[] pendingMessage, bool ignorePinned = false
 	int iDropTime = RoundToFloor(fCanDropTime);
 
 	if (IsPlayerInSaferoom(client) || IsInEndingSaferoom(client)) {
-		PrintHintText(client, "Cannot use it here");
+		PrintHintText(client, "Cannot deploy here");
+		return false;
+	}
+	if (FindAttacker(client) > 0 || IsIncapacitated(client)) {
+		PrintHintText(client, "You're too screwed to use special skills");
 		return false;
 	}
 	if ((FindAttacker(client) > 0 || IsIncapacitated(client)) && ignorePinned == false) {
@@ -2236,6 +2240,40 @@ public DropMineEntity(Float:pos[3], int index)
 	return entity;
 }
 
+
+public void CreateAirStrike(int client) {
+	
+	float vPos[3];
+
+	if (SetClientLocation(client, vPos)) {
+		char color[12];
+
+		int entity = CreateEntityByName("info_particle_system");
+		TeleportEntity(entity, vPos, NULL_VECTOR, NULL_VECTOR);
+		DispatchKeyValue(entity, "effect_name", BOMB_GLOW);
+		DispatchSpawn(entity);
+		DispatchSpawn(entity);
+		ActivateEntity(entity);
+		AcceptEntityInput(entity, "start");
+
+		CreateBeamRing(entity, { 255, 0, 255, 255 },0.1, 180.0, 3);		
+		PrintHintTextToAll("%N ordered airstrike, take cover!", client);
+		GetConVarString(SABOTEUR_ACTIVE_BOMB_COLOR, color, sizeof(color));
+		SetupPrjEffects(entity, vPos, color); // Red
+
+		EmitSoundToAll(SOUND_DROP_BOMB);
+
+		new Handle:pack = CreateDataPack();
+		WritePackCell(pack, GetClientUserId(client));
+		WritePackFloat(pack, vPos[0]);
+		WritePackFloat(pack, vPos[1]);
+		WritePackFloat(pack, vPos[2]);
+		WritePackFloat(pack, GetGameTime());
+		WritePackCell(pack, entity);									
+		CreateTimer(1.0, TimerAirstrike, pack, TIMER_FLAG_NO_MAPCHANGE ); 	
+ 		CreateTimer(10.0, DeleteParticles, entity, TIMER_FLAG_NO_MAPCHANGE ); 													
+	} 
+}
 /**
 * STOCK FUNCTIONS
 */

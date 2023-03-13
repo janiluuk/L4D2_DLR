@@ -376,7 +376,7 @@ public SelectSaboteurItem(Handle:menu, MenuAction:action, param1, param2)
 			decl String:menucmd[256];
 			GetMenuItem(menu, param2, menucmd, sizeof(menucmd));
 			if (StringToInt(menucmd) > 0) {
-				PrintDebug(param1, "Placing type %s mine. Original value was %s", getBombName(StringToInt(menucmd)), menucmd);
+				PrintDebug(param1, "Placing type %d mine", getBombName(StringToInt(menucmd)));
 				CalculateSaboteurPlacePos(param1, StringToInt(menucmd));
 			}
 		}
