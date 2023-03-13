@@ -105,6 +105,14 @@ public Action Cmd_SetVictim(int client, int args) {
 	}
 	return Plugin_Handled;
 }
+public Action Cmd_GetHudText(int client, int args) {
+
+	char text[1023];
+	getHudText(text, sizeof(text));
+	ReplyToCommand(client, "Current HUD text: %s", text);
+	
+	return Plugin_Handled;
+}
 
 public Action Cmd_GetHud(int client, int args) {
 

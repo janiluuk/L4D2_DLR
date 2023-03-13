@@ -128,13 +128,13 @@ stock const String:MENU_OPTIONS[][] =
 
 stock String:ClassTips[][] =
 {
-	", vanilla flavoured hero who didnt need any class.",
-	", He can shoot fast, takes less damage and moves faster.",
+	", He can't do shit.",
+	", He has high attack melee & shoot rate, takes less damage and moves faster.",
 	", He can Jump high",
-	", He can heal his nearby team, heal and revive others faster and drop supplies. ",
-	", He's invisible while crouched, drops mines and has nightvision.",
-	", He does loads of damage and has fast reload.",
-	", He can drop auto turrets and ammo supplies.",
+	", He can heal nearby players, revive others faster, drop supplies. Speciality: Healing orbs.",
+	", He can go invisible, drop variety of mines. Speciality: Nightvision.",
+	", He has increased damage, fast reload and immune to Tank knockdowns! Speciality: Berzerk mode!",
+	", He can drop auto turrets and ammo supplies. Speciality: Protective shield granades.",
 	", He has lots of health."
 };
 

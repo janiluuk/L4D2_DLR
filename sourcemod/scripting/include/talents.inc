@@ -1,5 +1,5 @@
 // What formatting string to use when printing to the chatbox
-#define PRINT_PREFIX 	"\x04[\x05DLR\x04]" 
+#define PRINT_PREFIX 	"\x04[DLR]\x01" 
 
 // top menu
 new Handle:hTopMenu = INVALID_HANDLE;
@@ -250,10 +250,10 @@ ConVar parachuteEnabled;
 #include <sdkhooks>
 #include <left4dhooks.inc>
 #include <dlr/const>
+#include <dlr/debug>
 #include <dlr/timers>
 #include <dlr/commands>
 #include <dlr/classes>
-#include <dlr/debug>
 #include <dlr/effects>
 #include <dlr/hud>
 #include <dlr/menus>

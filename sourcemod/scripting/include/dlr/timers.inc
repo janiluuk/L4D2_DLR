@@ -47,8 +47,12 @@ public Action:TimerThink(Handle:hTimer, any:userid)
 				}
 			}
 			if (buttons & IN_ZOOM) {
+					char pendingMessage[128] = "Wait for %i seconds to activate cloak again";
+					if (canUseSpecialSkill(client, pendingMessage)) {
+						useSpecialSkill(client, 1);						
+						ClientData[client].LastDropTime = GetGameTime();
+					}
 
-				ToggleNightVision(client);
 			}
 			if (buttons & IN_DUCK)
 			{
@@ -56,9 +60,10 @@ public Action:TimerThink(Handle:hTimer, any:userid)
 				if (hidingTime >= GetConVarInt(SABOTEUR_INVISIBLE_TIME)) {
 					if (InvisibilityTimestamp != hidingTime && InvisibilityHint == false) 
 					{
-						SetEntDataFloat(client, g_flLaggedMovementValue, 1.8, true);
+						SetRenderProperties(client);
 
-						HidePlayer(client);
+						FakeClientCommand(client, "sm_nap_apply 7");
+						//HidePlayer(client);
 
 						//SetEntityRenderFx(client, RENDERFX_PULSE_SLOW);
 						InvisibilityTimestamp = hidingTime;
@@ -75,25 +80,13 @@ public Action:TimerThink(Handle:hTimer, any:userid)
 					}
 				}
 			}
-			else
-			{
-				if (IsPlayerVisible(client) == false)  
-				{
-					UnhidePlayer(client);
-					SetRenderProperties(client);
-				}
-				SetEntDataFloat(client, g_flLaggedMovementValue, 1.0, true);
-
-				InvisibilityHint = false;
-			}
 			
-			if (buttons & IN_SPEED)
+			else if (buttons & IN_SPEED)
 			{
 				if(!(GetEntityFlags(client) & FL_ONGROUND)) {
 				} else {
 					if (CanDrop == false && (iDropTime > 0 && iDropTime < GetConVarInt(MINIMUM_DROP_INTERVAL))) 
 					{
-						if (!(ClientData[client].LastButtons & IN_SPEED))
 							PrintHintText(client ,"Wait %i seconds to another mine", (GetConVarInt(MINIMUM_DROP_INTERVAL) - iDropTime));
 					} else {
 
@@ -108,6 +101,11 @@ public Action:TimerThink(Handle:hTimer, any:userid)
 					}
 				}
 			}
+			else
+			{
+				InvisibilityHint = false;
+			}
+
 		}
 		case commando:
 		{
@@ -368,41 +366,34 @@ public Action:TimerAirstrike(Handle timer, Handle:hPack)
 	new Float:time;
 	int client;
 	int entity;
+	int userId;
 	ResetPack(hPack);
-	client = ReadPackCell(hPack);		
+	userId = ReadPackCell(hPack);		
+	client = GetClientOfUserId(userId);
 	pos[0] = ReadPackFloat(hPack);
 	pos[1] = ReadPackFloat(hPack);
 	pos[2] = ReadPackFloat(hPack);
 	time =  ReadPackFloat(hPack);
 	entity = ReadPackCell(hPack);
-	CloseHandle(hPack);
 
-	if (RoundToFloor(GetGameTime()-time) < 10) {
+	if (client > 0 && IsClientInGame(client) && RoundToFloor(GetGameTime()-time) <= 10) {
 		PrintHintTextToAll("Airstrike in %i, take cover!",10-(RoundToFloor(GetGameTime()-time)));
-		new Handle:pack = CreateDataPack();
-		WritePackCell(pack, client);
-		WritePackFloat(pack, pos[0]);
-		WritePackFloat(pack, pos[1]);
-		WritePackFloat(pack, pos[2]);
-		WritePackFloat(pack, time);
-		WritePackCell(pack, entity);
-		CreateTimer(1.0, TimerAirstrike, pack, TIMER_FLAG_NO_MAPCHANGE ); 									
-
+		
+		return Plugin_Continue;
 	} else {
 
 		g_bAirstrikeValid = true;
 		PrintHintTextToAll("Airstrike completed!");
+		ClientData[client].SpecialsUsed++;
+		F18_ShowAirstrike(pos, GetRandomFloat(0.0, 180.0));
 
 		if(IsValidEntity(entity))
 		{
 			AcceptEntityInput(entity, "Kill");
 		}
-		ClientData[client].SpecialsUsed++;
-		F18_ShowAirstrike(pos, GetRandomFloat(0.0, 180.0));
-		return Plugin_Stop;
 	}
 
-	return Plugin_Continue;
+	return Plugin_Stop;
 }
 
 public Action:TimerActivateBomb(Handle:hTimer, Handle:hPack)
@@ -470,7 +461,7 @@ public Action:TimerCheckBombSensors(Handle:hTimer, Handle:hPack)
 
 					PrintDebugAll("Detonating Mine type: %s", getBombName(bombType));
 
-					useCustomCommand("Grenades", owner, entity, bombType);					
+					useCustomCommand("Grenades", owner, entity, bombType-1);					
 					
 					return Plugin_Stop;
 				}

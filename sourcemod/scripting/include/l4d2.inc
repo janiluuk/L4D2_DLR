@@ -29,6 +29,7 @@ enum L4DGame
 
 enum L4DSurvivor
 {
+	L4DSurvivor_None = -1,
 	L4DSurvivor_Bill = 0,
 	L4DSurvivor_Zoey = 1,
 	L4DSurvivor_Louis = 2,
@@ -37,6 +38,7 @@ enum L4DSurvivor
 
 enum L4D2Survivor
 {
+	L4D2Survivor_None = -1,
 	L4D2Survivor_Nick = 0,
 	L4D2Survivor_Rochelle = 1,
 	L4D2Survivor_Coach = 2,
@@ -195,7 +197,7 @@ stock L4DSurvivor L4D_GetSurvivorID(const char[] name)
 	else if (StrEqual(name, "francis", false))
 		return L4DSurvivor_Francis;
 	
-	return -1;
+	return L4DSurvivor_None;
 }
 
 /**
@@ -215,7 +217,7 @@ stock L4D2Survivor L4D2_GetSurvivorID(const char[] name)
 	else if (StrEqual(name, "ellis", false))
 		return L4D2Survivor_Ellis;
 	
-	return -1;
+	return L4D2Survivor_None;
 }
 
 /**

@@ -303,7 +303,7 @@ static g_iAdrenSoundEffect = 0;
 
 //------------------------------Timers------------------------------------------
 
-new Handle:g_hAdrenCheckHandle[MAXPLAYERS+1] = INVALID_HANDLE; //Adrenaline effects timer handle
+new Handle:g_hAdrenCheckHandle[MAXPLAYERS+1] = { INVALID_HANDLE, ...}; //Adrenaline effects timer handle
 new Handle:g_timerLethalBiteDur = INVALID_HANDLE; //Lethal bite duration timer handle
 new Handle:g_timerLethalBiteFreq = INVALID_HANDLE; //Lethal bite frequency timer handle
 
@@ -387,8 +387,8 @@ new Handle:g_hForward_BerserkUse = INVALID_HANDLE;
 //Plugin Info
 public Plugin:myinfo = 
 {
-	name = "Berserker Mode",
-	author = "honorcode23",
+	name = "[DLR] Berserker Mode Plugin version",
+	author = "honorcode23, yani",
 	description = "Enters on Berserker Mode after x amount of killed infected",
 	version = GETVERSION,
 	url = "http://forums.alliedmods.net/showthread.php?t=127518"
@@ -792,7 +792,10 @@ public int OnSpecialSkillUsed(int iClient, int skill, int type)
 
 public void OnAllPluginsLoaded()
 {
-	DLR_Available = LibraryExists("dlr_talents"); 
+	DLR_Available = LibraryExists("dlr_talents");
+	if (DLR_Available && g_iClassID == -1) {
+		g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
+	}
 }
 
 public void DLR_OnPluginState(char[] plugin, int pluginstate)
@@ -2295,7 +2298,7 @@ public Action:BeginBerserkerMode(client)
 	if((g_iTeam[client] == 2) && (IsClientInGame(client)) && (IsPlayerAlive(client)))
 	{
 		g_iZerkTime[client] = GetConVarInt(g_cvarSurvivorDuration);
-		PrintToChat(client, "\x04You are now under berserker mode!");
+		PrintHintTextToAll("\x04%N went into berzerk mode!", client);
 		g_bHasBerserker[client] = true;
 		g_bBerserkerEnabled[client] = false;
 		new Float:vec[3];
@@ -2542,7 +2545,7 @@ public Action:STOPSOUND(Handle:timer, any:client)
 			PrintToChat(client, "\x04[ZERK DEBUG] \x01Returned to the default color");
 			#endif
 			//Stop music and announce that the berserker is over
-			PrintToChat(client, "\x04Berserker mode is over");
+			PrintToChat(client, "\x04Berzerk mode is over");
 			ClientCommand(client, "play %s", SOUND_NONE);
 			ClientCommand(client, "play %s", SOUND_NONE);
 			ClientCommand(client, "play %s", SOUND_END);

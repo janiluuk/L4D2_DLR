@@ -5,7 +5,6 @@ stock PrintToHud(char[] text)
 
 	AddMessageToHud(buffer);
 }
-
 stock deleteHUD(int pos) 
 {
 	DeleteHUD(view_as<hudPosition>(pos));
