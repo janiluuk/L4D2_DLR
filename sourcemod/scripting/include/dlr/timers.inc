@@ -215,9 +215,8 @@ public Action:TimerThink(Handle:hTimer, any:userid)
 				char pendingMessage[128] = "Wait %d seconds to order new airstrike.";
 				
 				if (g_bAirstrike && g_bAirstrikeValid && canUseSpecialSkill(client, pendingMessage)) {
-					g_bAirstrikeValid = false;
-					CreateAirStrike(client);
-					useSpecialSkill(client, 0);
+					useCustomCommand("Grenades", client, -1, 19);
+
 					ClientData[client].LastDropTime = GetGameTime();
 				}
 			}
