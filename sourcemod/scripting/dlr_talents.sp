@@ -868,7 +868,7 @@ public bool canUseSpecialSkill(client, char[] pendingMessage)
 	int iDropTime = RoundToFloor(fCanDropTime);
 
 	if (IsPlayerInSaferoom(client) || IsInEndingSaferoom(client)) {
-		PrintHintText(client, "Cannot deploy here");
+		PrintHintText(client, "Cannot use it here");
 		return false;
 	}
 	if (FindAttacker(client) > 0 || IsIncapacitated(client)) {
@@ -1682,65 +1682,6 @@ stock void SmashInfected(int zombie, int client)
 ///////////////////////////////////////////////////////////////////////////////////
 // Saboteur
 ///////////////////////////////////////////////////////////////////////////////////
-
-enum BombType {
-	Bomb = 0, 
-	Cluster, 
-	Firework,
-	Smoke, 
-	BlackHole,
-	Flashbang, 
-	Shield, 
-	Tesla, 
-	Chemical, 
-	Freeze, 
-	Medic, 
-	Vaporizer, 
-	Extinguisher, 
-	Glowing, 
-	AntiGravity, 
-	FireCluster, 
-	Bullets, 
-	Flak, 
-	Airstrike, 
-	Weapon
-}
-
-stock char[] formatBombName(char[] bombName) {
-	char temp[32];
-	Format(temp, sizeof(temp), "%s", bombName);
-	return temp;
-}
-
-stock char[] getBombName(int index) {
-
-	char bombName[32];
-
-	switch( index - 1 )
-	{
-		case 0: return formatBombName("Bomb");
-		case 1: return formatBombName("Cluster");
-		case 2: return formatBombName("Firework");
-		case 3: return formatBombName("Smoke");
-		case 4: return formatBombName("BlackHole");
-		case 5: return formatBombName("Flashbang");
-		case 6: return formatBombName("Shield");
-		case 7: return formatBombName("Tesla");
-		case 8: return formatBombName("Chemical");
-		case 9: return formatBombName("Freeze");
-		case 10: return formatBombName("Medic");
-		case 11: return formatBombName("Vaporizer");
-		case 12: return formatBombName("Extinguisher");
-		case 13: return formatBombName("Glow");
-		case 14: return formatBombName("Anti-Gravity");
-		case 15: return formatBombName("Fire Cluster");
-		case 16: return formatBombName("Bullets");
-		case 17: return formatBombName("Flak");
-		case 18: return formatBombName("Airstrike");
-		case 19: return formatBombName("Weapon");
-	}
-	return bombName;
-}
 
 public parseAvailableBombs()
 {
