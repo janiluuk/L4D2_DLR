@@ -1749,7 +1749,7 @@ public parseAvailableBombs()
 	char bombs[128];
 	GetConVarString(SABOTEUR_BOMB_TYPES, bombs, sizeof(bombs));
 
-	int amount = ExplodeString(bombs, ",", buffers, sizeof(buffers), sizeof(buffers[]));
+	int amount = ExplodeString(bombs, ",", buffers, sizeof(buffers), 3);
 	PrintDebugAll("Found %i amount of mines from bombs: %s ",amount, bombs);
 
 	if (amount == 1) {
@@ -1767,7 +1767,7 @@ public parseAvailableBombs()
 		}
 
 		g_AvailableBombs[i].setItem(i, item);
-		PrintDebugAll("Added %i bombtype to inventory: %s", getBombName(item), g_AvailableBombs[i].getItem());
+		PrintDebugAll("Added %i bombtype to inventory: %s", item, g_AvailableBombs[i].getItem());
 	}
 }
 
@@ -1784,8 +1784,8 @@ public void CalculateSaboteurPlacePos(client, int value)
 		CloseHandle(trace);
 		
 		if (GetVectorDistance(endPos, vPos) <= GetConVarFloat(ENGINEER_MAX_BUILD_RANGE)) {
-			vAng[0] = 0.0;
-			vAng[2] = 0.0;
+			vAng[0] = 0.1;
+			vAng[2] = 0.1;
 			DropBomb(client, value);
 			PrintDebugAll("%N dropped a mine with index of %i to %f %f %f" , client, value, vPos[0], vPos[1], vPos[2]);			
 			ClientData[client].SpecialsUsed++;
@@ -2227,6 +2227,7 @@ public void DropBomb(client, bombType)
 	char bombName[32];
 
 	bombName = getBombName(bombType);
+	PrintDebugAll("Planting #%i %s (index %d)", index, bombName, bombType);
 
 	new Handle:hPack = CreateDataPack();
 
@@ -2249,7 +2250,7 @@ public void DropBomb(client, bombType)
 
 	int entity = CreateBombParticleInPos(pos, BOMB_GLOW, index);
 	WritePackCell(hPack, entity);	
-	CreateTimer(GetConVarFloat(SABOTEUR_BOMB_ACTIVATE), TimerActivateBomb, hPack, TIMER_FLAG_NO_MAPCHANGE);
+	CreateTimer(GetConVarFloat(SABOTEUR_BOMB_ACTIVATE), TimerCheckBombSensors, hPack, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 	EmitSoundToAll(SOUND_DROP_BOMB);
 	PrintHintTextToAll("%N planted a %s mine! (%i/%i)", client, bombName, (1+ ClientData[client].SpecialsUsed), GetConVarInt(SABOTEUR_MAX_BOMBS));
 }

@@ -253,11 +253,7 @@ ConVar parachuteEnabled;
 #include <dlr/debug>
 #include <dlr/timers>
 #include <dlr/commands>
-<<<<<<< HEAD
-#include <dlr/debug>
-=======
-#include <dlr/classes>
->>>>>>> 748c580 (Bugfixes)
+//#include <dlr/classes>
 #include <dlr/effects>
 #include <dlr/hud>
 #include <dlr/menus>
