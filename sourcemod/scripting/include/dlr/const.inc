@@ -128,13 +128,13 @@ stock const String:MENU_OPTIONS[][] =
 stock const String:ClassCustomModels[][64] = 
 {
 	"models/infected/common_male_suit.mdl",
-	"models/infected/common_military_male01.mdl", 
-	"models/infected/common_female_tankTop_jeans.mdl",
-	"models/infected/common_surgeon_male01.mdl", 
-	"models/infected/common_tsaagent_male01.mdl",
-	"models/infected/common_police_male01.mdl",
-	"models/infected/common_male_roadcrew.mdl",
-	"models/infected/common_male_tankTop_jeans.mdl" 
+	"models/infected/common_male_fallen_survivor.mdl", 
+	"models/infected/common_female_tshirt_skirt_swamp.mdl",
+	"models/infected/common_male_roadcrew_rain.mdl", 
+	"models/infected/common_male_suit.mdl",
+	"models/infected/common_male_riot.mdl",
+	"models/npcs/rescue_pilot_01.mdl",
+	"models/infected/common_military_male01.mdl" 
 }
 
 stock String:ClassTips[][] =
