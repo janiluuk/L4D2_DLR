@@ -309,7 +309,7 @@ public void SetupClasses(client, class)
 	if (useCustomModel) {
 		int customModelIndex = view_as<int>(class);
 		char sModel[64];
-		Format(sModel, sizeof(sModel), ClassCustomModels[customModelIndex]);
+		Format(sModel, sizeof(sModel)	, ClassCustomModels[customModelIndex]);
 		LMC_L4D2_SetTransmit(client, LMC_SetClientOverlayModel(client, sModel));
 		PrintDebug(client, "Choosing custom model: %s", sModel);
 	}
