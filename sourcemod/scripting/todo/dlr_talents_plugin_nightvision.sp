@@ -14,7 +14,7 @@ new Handle:l4d_nt_team;
 
 public Plugin:myinfo = 
 {
-	name = "夜视仪",
+	name = "Nightvision",
 	author = "Pan Xiaohai & Mr. Zero",
 	description = "<- Description ->",
 	version = "1.0",
