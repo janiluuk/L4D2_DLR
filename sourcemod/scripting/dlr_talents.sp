@@ -39,6 +39,23 @@ public Plugin:myinfo =
 #include <jutils>
 #include <l4d2>
 
+#undef REQUIRE_PLUGIN
+#tryinclude <LMCCore>
+#define REQUIRE_PLUGIN
+
+#if !defined _LMCCore_included
+	native int LMC_SetClientOverlayModel(int iEntity, const char[] sModel);
+#endif
+
+#undef REQUIRE_PLUGIN
+#tryinclude <LMCL4D2SetTransmit>
+#define REQUIRE_PLUGIN
+
+#if !defined _LMCL4D2SetTransmit_included
+	native int LMC_L4D2_SetTransmit(int iEntity);
+#endif
+
+
 // ====================================================================================================
 //					L4D2 - Native
 // ====================================================================================================
@@ -283,6 +300,19 @@ public void SetupClasses(client, class)
 	ClientData[client].SpecialLimit = 5;
 	new MaxPossibleHP = GetConVarInt(NONE_HEALTH);
 	DisableAllUpgrades(client);
+	bool useCustomModel = false;
+
+	#if defined _LMCL4D2SetTransmit_included
+	useCustomModel = true;
+	#endif
+
+	if (useCustomModel) {
+		int customModelIndex = view_as<int>(class);
+		char sModel[64];
+		Format(sModel, sizeof(sModel), ClassCustomModels[customModelIndex]);
+		LMC_L4D2_SetTransmit(client, LMC_SetClientOverlayModel(client, sModel));
+		PrintDebug(client, "Choosing custom model: %s", sModel);
+	}
 
 	switch (view_as<ClassTypes>(class))
 	{
@@ -290,9 +320,8 @@ public void SetupClasses(client, class)
 		{
 			char text[64];
 			if (g_bAirstrike == true) {
-				text = "Press SHIFT for Airstrike!";
+				text = "Press MIDDLE BUTTON for Airstrike!";
 			}
-
 			PrintHintText(client,"You have armor, fast attack rate and movement %s", text );
 			ClientData[client].SpecialDropInterval = GetConVarInt(MINIMUM_AIRSTRIKE_INTERVAL);
 			ClientData[client].SpecialLimit = GetConVarInt(SOLDIER_MAX_AIRSTRIKES);
@@ -342,7 +371,7 @@ public void SetupClasses(client, class)
 		
 		case saboteur:
 		{
-			PrintHintText(client,"Press SHIFT to drop mines! Hold CROUCH for 3 sec to go invisible. \nPress MIDDLE button to toggle Dobbelganger if attacked!");
+			PrintHintText(client,"Press SHIFT to drop mines! Hold CROUCH for 3 sec to go invisible. \nPress MIDDLE button to summon decoy if attacked!");
 			MaxPossibleHP = GetConVarInt(SABOTEUR_HEALTH);
 			ClientData[client].SpecialLimit = GetConVarInt(SABOTEUR_MAX_BOMBS);
 //			ToggleNightVision(client);

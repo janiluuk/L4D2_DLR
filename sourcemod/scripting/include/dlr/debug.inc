@@ -67,45 +67,6 @@ stock void PrintDebugAll(const char[] format, any ...)
 }
 
 /**
-*   @note Prints a message to a specific client in the chat area. Supports named colors in translation file.
-*
-*   @param  iClient     Client Index.
-*   @param  format		Formatting rules.
-*   @param  ...			Variable number of format parameters.
-*   @no return
-*/
-stock void CPrintToChat(int iClient, const char[] format, any ...)
-{
-    char buffer[192];
-    SetGlobalTransTarget(iClient);
-    VFormat(buffer, sizeof(buffer), format, 3);
-    ReplaceColors(buffer, sizeof(buffer));
-    PrintToChat(iClient, "\x01%s", buffer);
-}
-
-/**
-*   @note Prints a message to all clients in the chat area. Supports named colors in translation file.
-*
-*   @param  format		Formatting rules.
-*   @param  ...			Variable number of format parameters.
-*   @no return
-*/
-stock void CPrintToChatAll(const char[] format, any ...)
-{
-    char buffer[192];
-    for( int i = 1; i <= MaxClients; i++ )
-    {
-        if( IsClientInGame(i) && !IsFakeClient(i) )
-        {
-            SetGlobalTransTarget(i);
-            VFormat(buffer, sizeof(buffer), format, 2);
-            ReplaceColors(buffer, sizeof(buffer));
-            PrintToChat(i, "\x01%s", buffer);
-        }
-    }
-}
-
-/**
 *   @note Converts named color to control character. Used internally by string translation functions.
 *
 *   @param  char[]		Input/Output string for convertion.

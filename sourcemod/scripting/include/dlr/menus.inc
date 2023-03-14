@@ -1,5 +1,6 @@
 ConVar sb_stop;
 bool g_bNB;
+
 ///////////////////////////////////////////////////////////////////////////////////
 // Class menu
 ///////////////////////////////////////////////////////////////////////////////////
@@ -7,13 +8,14 @@ bool g_bNB;
 stock bool:CreatePlayerClassMenu(client)
 {
 	new Handle:hPanel;
+
 	decl String:buffer[256];
 	if((hPanel = CreatePanel()) == INVALID_HANDLE)
 	{
 		LogError("Cannot create hPanel on CreatePlayerClassMenu");
 		return false;
 	}
-	
+
 	if (!client ||  !IsClientInGame(client) || GetClientTeam(client) != 2) {
 		return false;
 	}
@@ -97,6 +99,15 @@ public PanelHandler_SelectClass(Handle:menu, MenuAction:action, client, param)
 					PrintToChatAll("\x04%N\x01 : class changed from \x05%s\x01 to \x05%s\x01",client,MENU_OPTIONS[OldClass],MENU_OPTIONS[param]);
 				}
 			}
+		}
+		case MenuAction_Cancel:
+		{
+			CloseHandle(menu);
+
+		}
+		case MenuAction_End:
+		{
+			CloseHandle(menu);
 		}	
 	}	
 }
