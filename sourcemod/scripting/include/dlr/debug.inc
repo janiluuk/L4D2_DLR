@@ -119,3 +119,12 @@ stock void ReplaceColors(char[] message, int maxLen)
     ReplaceString(message, maxLen, "{orange}", "\x04", false);
     ReplaceString(message, maxLen, "{green}", "\x05", false);
 }
+
+any Clamp(any value, any min = 0.0, any max)
+{
+	if( value < min )
+		value = min;
+	else if( value > max )
+		value = max;
+	return value;
+}

@@ -396,13 +396,6 @@ public Action:TimerAirstrike(Handle timer, Handle:hPack)
 	return Plugin_Stop;
 }
 
-public Action:TimerActivateBomb(Handle:hTimer, Handle:hPack)
-{
-	CreateTimer(0.3, TimerCheckBombSensors, hPack, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
-	
-	return Plugin_Stop;
-}
-
 public Action:TimerCheckBombSensors(Handle:hTimer, Handle:hPack)
 {
 	new Float:pos[3];
@@ -443,9 +436,8 @@ public Action:TimerCheckBombSensors(Handle:hTimer, Handle:hPack)
 
 			if (GetVectorDistance(pos, clientpos) < GetConVarFloat(SABOTEUR_BOMB_RADIUS))
 			{
-				if (GetClientTeam(client) == 3 || IsWitch(client)) {
-					BombActive = false;
-					BombIndex[index] = false;
+				if (GetClientTeam(client) == 3 || IsWitch(client) || IsTank(client)) {
+	
 					
 					if (GetConVarInt(SABOTEUR_BOMB_TYPES) == 1) {
 						PrintDebugAll("Enabling single minetype mode");
@@ -455,13 +447,14 @@ public Action:TimerCheckBombSensors(Handle:hTimer, Handle:hPack)
 					if (!IsValidEntity(owner) || !IsClientInGame(owner)) {
 						return Plugin_Stop;
 					}
-
+					BombActive = false;
+					BombIndex[index] = false;
 					PrintHintTextToAll("%N's mine detonated!", owner);
 		
 
-					PrintDebugAll("Detonating Mine type: %s", getBombName(bombType));
+					PrintDebugAll("Detonating Mine %s on entity %i", getBombName(bombType), entity );
 
-					useCustomCommand("Grenades", owner, entity, bombType-1);					
+					useCustomCommand("Grenades", owner, entity, bombType);					
 					
 					return Plugin_Stop;
 				}
@@ -478,6 +471,23 @@ public Action:TimerCheckBombSensors(Handle:hTimer, Handle:hPack)
 	}
 	return Plugin_Continue;
 }
+
+/**
+ * @note Validates if the current client is valid to run the plugin.
+ *
+ * @param client		The client index.
+ * @return              False if the client is not the Tank, true otherwise.
+ */
+
+stock bool IsTank(int client)
+{
+	if(client > 0 && client <= MaxClients && IsClientInGame(client) && GetClientTeam(client) == 33)
+		if(GetEntProp(client, Prop_Send, "m_zombieClass") == 8)
+			return true;
+	
+	return false;
+}
+
 
 public Action:TimerRemovePrecacheParticle(Handle:timer, any:Particle)
 {
@@ -565,8 +575,6 @@ public Action:TimerStopAndRemoveBombParticle(Handle:timer, Handle:pack)
 		if (BombActive == false) {
 			AcceptEntityInput(entity, "Kill");
 		} else {
-			AcceptEntityInput(entity, "stop");
-			BombActive = true;
 			static float vPos[3];
 			char color[12];
 			new Handle:hPack = CreateDataPack();
@@ -577,11 +585,11 @@ public Action:TimerStopAndRemoveBombParticle(Handle:timer, Handle:pack)
 			int defibParticle;
 			int elmosParticle;
 			// Particle
-			defibParticle = DisplayParticle(false, PARTICLE_DEFIB, vPos, NULL_VECTOR);				
+			defibParticle = DisplayParticle(entity, PARTICLE_DEFIB, vPos, NULL_VECTOR);				
 			WritePackCell(hPack, defibParticle);
 
 			if (defibParticle) InputKill(defibParticle, 2.0);
-			elmosParticle = DisplayParticle(false, PARTICLE_ELMOS, vPos, NULL_VECTOR);
+			elmosParticle = DisplayParticle(entity, PARTICLE_ELMOS, vPos, NULL_VECTOR);
 			if (elmosParticle) InputKill(elmosParticle, 3.0);
 			WritePackCell(hPack, elmosParticle);
 			WritePackCell(hPack, mine);
@@ -598,7 +606,7 @@ public Action:TimerDeleteBombs(Handle:timer, Handle:pack)
 	bool removed = false;
 
 	if (BombIndex[index] == false) {
-		for (new i = 0; i <= 3; i++)
+		for (new i = 0; i < 3; i++)
 		{
 			int entity = ReadPackCell(pack);
 			if(entity > 0 && IsValidEntity(entity))
@@ -625,7 +633,6 @@ public Action:TimerDeleteBombs(Handle:timer, Handle:pack)
 		return Plugin_Continue;
 	}
 	if (removed == true) {
-		KillTimer(timer);
 		return Plugin_Stop;
 	} 
 	return Plugin_Continue;
