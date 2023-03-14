@@ -125,6 +125,17 @@ stock const String:MENU_OPTIONS[][] =
 	"Engineer",
 	"Brawler"
 };
+stock const String:ClassCustomModels[][64] = 
+{
+	"models/infected/common_male_suit.mdl",
+	"models/infected/common_military_male01.mdl", 
+	"models/infected/common_female_tankTop_jeans.mdl",
+	"models/infected/common_surgeon_male01.mdl", 
+	"models/infected/common_tsaagent_male01.mdl",
+	"models/infected/common_police_male01.mdl",
+	"models/infected/common_male_roadcrew.mdl",
+	"models/infected/common_male_tankTop_jeans.mdl" 
+}
 
 stock String:ClassTips[][] =
 {
