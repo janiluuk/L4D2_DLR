@@ -157,8 +157,9 @@ public void Event_WitchKilled(Handle event, const char[] name, bool dontBroadcas
 	int killerUserId = GetEventInt(event, "attacker");
 	int killerClient = GetClientOfUserId(killerUserId);
 
-	if(killerClient > 0 && IsValidEntity(killerClient) && IsClientInGame(killerClient) && g_iHasAbility[killerClient] > 0 && GetConVarInt(PluginCvarMode) == 2 || GetConVarInt(PluginCvarMode) == 3 && !ExtendedSightForever[killerClient]) 
+	if(killerClient > 0 && IsValidEntity(killerClient) && IsClientInGame(killerClient) && g_iHasAbility[killerClient] > 0 && GetConVarInt(PluginCvarMode) == 2 || GetConVarInt(PluginCvarMode) == 3 && !ExtendedSightForever[killerClient]) {
 		AddExtendedSight(GetConVarFloat(PluginCvarDuration), killerClient);
+	}
 }
 
 public void Event_RoundStart(Handle event, const char[] name, bool dontBroadcast)
