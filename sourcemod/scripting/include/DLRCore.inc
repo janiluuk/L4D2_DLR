@@ -35,6 +35,21 @@ native int GetPlayerClassName(int client, char[] skillName, int size);
  */
 native int GetPlayerSkillName(int client, char[] skillName, int size);
 
+forward DLR_GetClientSkill(int client, char[] skillName);
+
+
+/**
+ * Get player skillname
+ *
+ * @param client  Client index.
+
+ * @param skillName String to assign the name to 
+ * @param size 		Size of the string
+ * @return        	int
+ */
+native int GetPlayersWithSkillName(int client, char[] skillName, int size);
+
+
 /**
  * Get skill ID by name
  *
@@ -78,6 +93,12 @@ forward OnSpecialSkillUsed(int iClient, int skill, int type);
  */
 forward DLR_OnRoundState(int roundstate);
 
+/**
+ * Called when client hooks up with the skil
+ * @param int client
+ * @noreturn
+ */
+forward DLR_OnLoad(int client);
 /**
  * Called when plugin becomes available
  *
@@ -142,7 +163,7 @@ public SharedPlugin __pl_DLRCore =
 #if !defined REQUIRE_PLUGIN
 public __pl_DLRCore_SetNTVOptional()
 {
-    MarkNativeAsOptional("GetPlayerClassName");
+    MarkNativeAsOptional(" PlayerClassName");
     MarkNativeAsOptional("OnSpecialSkillFail");
     MarkNativeAsOptional("OnSpecialSkillSuccess");
     MarkNativeAsOptional("RegisterDLRSkill");

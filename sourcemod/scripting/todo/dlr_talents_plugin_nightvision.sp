@@ -49,7 +49,7 @@ public Action L4D2SF_OnGetPerkName(int client, const char[] name, int level, cha
 	return Plugin_Changed;
 }
 
-public Action L4D2SF_OnGetPerkDescription(int client, const char[] name, int level, char[] result, int maxlen)
+public Action DLR_OnGetPerkDescription(int client, const char[] name, int level, char[] result, int maxlen)
 {
 	if(!strcmp(name, "night_vision"))
 		FormatEx(result, maxlen, PLUGIN_DESCRIPTION);
@@ -58,9 +58,9 @@ public Action L4D2SF_OnGetPerkDescription(int client, const char[] name, int lev
 	return Plugin_Changed;
 }
 
-public void L4D2SF_OnPerkPost(int client, int level, const char[] perk)
+public void DLR_OnPerkPost(int client, int level, const char[] perk)
 {
-	if(!strcmp(perk, "night_vision"))
+	if(!strcmp(perk, PLUGIN_SKILL_NAME))
 		g_iLevelNVG[client] = level;
 }
 
