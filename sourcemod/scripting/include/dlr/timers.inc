@@ -209,17 +209,11 @@ public Action:TimerThink(Handle:hTimer, any:userid)
 
 			if (buttons & IN_SPEED)
 			{
-				if (g_bAirstrike && g_bAirstrikeValid == false) {
-
-					ClientData[client].LastButtons = buttons;
-					return Plugin_Continue;
-				}	
 				char pendingMessage[128] = "Wait %d seconds to order new airstrike.";
 				
-				if (g_bAirstrike && g_bAirstrikeValid && canUseSpecialSkill(client, pendingMessage)) {
+				if (canUseSpecialSkill(client, pendingMessage)) {
 					useCustomCommand("Grenades", client, -1, 19);
 					ClientData[client].LastDropTime = GetGameTime();
-
 				}
 			}
 		}
@@ -359,42 +353,6 @@ public Action:TimerDetectHealthChanges(Handle:hTimer, any:client)
 	}
 	
 	return Plugin_Continue;
-}
-
-public Action:TimerAirstrike(Handle timer, Handle:hPack)
-{
-	new Float:pos[3];
-	new Float:time;
-	int client;
-	int entity;
-	int userId;
-	ResetPack(hPack);
-	userId = ReadPackCell(hPack);		
-	client = GetClientOfUserId(userId);
-	pos[0] = ReadPackFloat(hPack);
-	pos[1] = ReadPackFloat(hPack);
-	pos[2] = ReadPackFloat(hPack);
-	time =  ReadPackFloat(hPack);
-	entity = ReadPackCell(hPack);
-
-	if (client > 0 && IsClientInGame(client) && RoundToFloor(GetGameTime()-time) < 10) {
-		PrintHintTextToAll("Airstrike in %i, take cover!",10-(RoundToFloor(GetGameTime()-time)));
-
-		return Plugin_Continue;
-	} else {
-
-		g_bAirstrikeValid = true;
-		PrintHintTextToAll("Airstrike completed!");
-		ClientData[client].SpecialsUsed++;
-		F18_ShowAirstrike(pos, GetRandomFloat(0.0, 180.0));
-
-		if(IsValidEntity(entity))
-		{
-			AcceptEntityInput(entity, "Kill");
-		}
-	}
-
-	return Plugin_Stop;
 }
 
 public Action:TimerCheckBombSensors(Handle:hTimer, Handle:hPack)

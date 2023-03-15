@@ -55,13 +55,6 @@ public Plugin:myinfo =
 	native int LMC_L4D2_SetTransmit(int iEntity);
 #endif
 
-
-// ====================================================================================================
-//					L4D2 - Native
-// ====================================================================================================
-
-native void F18_ShowAirstrike(float origin[3], float direction);
-
 /**
 * PLUGIN LOGIC
 */
@@ -96,7 +89,12 @@ public OnPluginStart( )
 	g_hOnSkillSelected = CreateGlobalForward("OnSkillSelected", ET_Event, Param_Cell, Param_Cell);	
 	g_hForwardPluginState = CreateGlobalForward("DLR_OnPluginState", ET_Ignore, Param_String, Param_Cell);
 	g_hForwardRoundState = CreateGlobalForward("DLR_OnRoundState", ET_Ignore, Param_Cell);
+	g_fwPerkPre = CreateGlobalForward("DLR_OnPerkPre", ET_Hook, Param_Cell, Param_Cell, Param_String, Param_Cell);
+	g_fwPerkPost = CreateGlobalForward("DLR_OnPerkPost", ET_Ignore, Param_Cell, Param_Cell, Param_String);
+	g_fwCanAccessPerk = CreateGlobalForward("DLR_CanAccessPerk", ET_Event, Param_Cell, Param_Cell, Param_String, Param_CellByRef);
+	g_fwSlotName = CreateGlobalForward("DLR_OnGetSlotName", ET_Event, Param_Cell, Param_Cell, Param_String, Param_Cell);
 
+	// void DLR_OnLoad(int client);
 	//Create menu and set properties
 	g_hSkillMenu = CreateMenu(DlrSkillMenuHandler);
 	SetMenuTitle(g_hSkillMenu, "Registered plugins");
@@ -323,6 +321,7 @@ public void SetupClasses(client, class)
 			if (g_bAirstrike == true) {
 				text = "Press MIDDLE BUTTON for Airstrike!";
 			}
+
 			PrintHintText(client,"You have armor, fast attack rate and movement %s", text );
 			ClientData[client].SpecialDropInterval = GetConVarInt(MINIMUM_AIRSTRIKE_INTERVAL);
 			ClientData[client].SpecialLimit = GetConVarInt(SOLDIER_MAX_AIRSTRIKES);
@@ -456,6 +455,11 @@ public AssignSkills(client)
 
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
 {
+	g_AllPerks = CreateTrie();
+	g_SlotPerks = CreateTrie();
+	g_SlotIndexes = CreateArray();
+	g_bLateLoad = late;
+
 	EngineVersion test = GetEngineVersion();
 	if( test == Engine_Left4Dead ) g_bLeft4Dead2 = false;
 	else if( test == Engine_Left4Dead2 ) g_bLeft4Dead2 = true;
@@ -474,14 +478,18 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	CreateNative("FindSkillNameById", Native_FindSkillNameById);
 	CreateNative("FindSkillIdByName", Native_FindSkillIdByName);
 	CreateNative("GetPlayerSkillName", Native_GetPlayerSkillName);
+	
+	CreateNative("DLR_GetAllPerks", Native_GetAllPerks);
+	CreateNative("DLR_GetPlayerPerk", Native_GetPlayerPerk);
+	CreateNative("DLR_RegPerk", Native_RegPerk);
+	CreateNative("DLR_FindPerk", Native_FindPerk);
+
 	MarkNativeAsOptional("LMC_GetEntityOverlayModel"); // LMC
-	MarkNativeAsOptional("F18_ShowAirstrike");
 	MarkNativeAsOptional("OnCustomCommand");
 
 	//MarkNativeAsOptional("DLR_Berzerk");
 	//MarkNativeAsOptional("DLR_Infected2023");
 
-	g_bLateLoad = late;
 	return APLRes_Success;
 }
 
@@ -495,23 +503,6 @@ public void OnPluginEnd()
 	Call_PushString(plugin);
 	Call_PushCell(0);
 	Call_Finish();	
-}
-
-public void OnLibraryAdded(const char[] sName)
-{
-	if( g_bLeft4Dead2 && strcmp(sName, "l4d2_airstrike") == 0 )
-	{
-		g_bAirstrike = true;
-		// Assuming valid for late load
-		if( g_bLateLoad )
-		g_bAirstrikeValid = true;
-	}
-}
-
-public void OnLibraryRemoved(const char[] sName)
-{
-	if( g_bLeft4Dead2 && strcmp(sName, "l4d2_airstrike") == 0 )
-		g_bAirstrike = false;
 }
 
 public InitSkillArray()
@@ -607,39 +598,7 @@ public Native_UnregisterSkill(Handle:plugin, numParams)
 	}
 	return 0;
 }
-// ====================================================================================================
-//					L4D2 - F-18 AIRSTRIKE
-// ====================================================================================================
 
-public void F18_OnRoundState(int roundstate)
-{
-	static int mystate;
-	if(roundstate == 1 && mystate == 0 )
-	{
-		mystate = 1;
-		g_bAirstrikeValid = true;
-	}
-	else if(roundstate == 0 && mystate == 1)
-	{
-		mystate = 0;
-		g_bAirstrikeValid = false;
-	}
-}
-
-public void F18_OnPluginState(int pluginstate)
-{
-	static int mystate;
-	if(pluginstate == 1 && mystate == 0)
-	{
-		mystate = 1;
-		g_bAirstrikeValid = true;
-	}
-	else if(pluginstate == 0 && mystate == 1)
-	{
-		mystate = 0;
-		g_bAirstrikeValid = false;
-	}
-}
 // ====================================================================================================
 //					Native events
 // ====================================================================================================
@@ -870,7 +829,7 @@ public void useCustomCommand(char[] pluginName, int client, int entity, int type
 	Call_PushCell(entity);
 	Call_PushCell(type);	
 	Call_Finish();
-}	
+}
 
 public void useSpecialSkill(int client, int type)
 {
@@ -1198,7 +1157,7 @@ public Native_GetPlayerSkillName(Handle:plugin, numParams)
 	int index = g_iPlayerSkill[client];
 	if (index >= 0) {
 		GetArrayString(g_hSkillArray, index, szSkillName, iSize);
-		PrintDebugAll("Found player skillname %s, %i", szSkillName, index);
+		//PrintDebugAll("Found player skillname %s, %i", szSkillName, index);
 		SetNativeString(2, szSkillName, iSize);
 		return true;
 	}
@@ -2248,40 +2207,6 @@ public DropMineEntity(Float:pos[3], int index)
 	return entity;
 }
 
-
-public void CreateAirStrike(int client) {
-	
-	float vPos[3];
-
-	if (SetClientLocation(client, vPos)) {
-		char color[12];
-
-		int entity = CreateEntityByName("info_particle_system");
-		TeleportEntity(entity, vPos, NULL_VECTOR, NULL_VECTOR);
-		DispatchKeyValue(entity, "effect_name", BOMB_GLOW);
-		DispatchSpawn(entity);
-		DispatchSpawn(entity);
-		ActivateEntity(entity);
-		AcceptEntityInput(entity, "start");
-
-		CreateBeamRing(entity, { 255, 0, 255, 255 },0.1, 180.0, 3);		
-		PrintHintTextToAll("%N ordered airstrike, take cover!", client);
-		GetConVarString(SABOTEUR_ACTIVE_BOMB_COLOR, color, sizeof(color));
-		SetupPrjEffects(entity, vPos, color); // Red
-
-		EmitSoundToAll(SOUND_DROP_BOMB);
-
-		new Handle:pack = CreateDataPack();
-		WritePackCell(pack, GetClientUserId(client));
-		WritePackFloat(pack, vPos[0]);
-		WritePackFloat(pack, vPos[1]);
-		WritePackFloat(pack, vPos[2]);
-		WritePackFloat(pack, GetGameTime());
-		WritePackCell(pack, entity);									
-		CreateTimer(1.0, TimerAirstrike, pack, TIMER_FLAG_NO_MAPCHANGE ); 	
- 		CreateTimer(10.0, DeleteParticles, entity, TIMER_FLAG_NO_MAPCHANGE ); 													
-	} 
-}
 /**
 * STOCK FUNCTIONS
 */

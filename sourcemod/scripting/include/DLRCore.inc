@@ -6,16 +6,7 @@
 #define DLRCore_version "1.0.0"
 #define DLR_PLUGIN_NAME = "dlr_talents"
 #define DLR_PLUGIN_FILE = "dlr_talents.smx"
-stock int checkDlrPluginState(char[] pluginName, int type=0)
-{
-    #if defined PLUGIN_SKILL_NAME
-        bool libraryCheck = LibraryExists("dlr_talents");
-        if (libraryCheck == true) {
-            return RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
-        }
-    #endif
-        return -1;
-}
+
 /**
  * Get player classname
  *
@@ -98,7 +89,8 @@ forward DLR_OnRoundState(int roundstate);
  * @param int client
  * @noreturn
  */
-forward DLR_OnLoad(int client);
+forward void DLR_OnLoad(int client);
+
 /**
  * Called when plugin becomes available
  *
@@ -138,6 +130,10 @@ native void OnSpecialSkillSuccess(int client, char[] skillName);
  */
 native void OnSpecialSkillFail(int client, char[] skillName, char[] reason);  
 
+native void OnGetPerkDescription(int client, const char[] name, int level, char[] result, int maxlen);
+
+native void OnGetPerkName(int client, const char[] name, int level, char[] result, int maxlen);
+
 /**
  * Register plugin 
  *
@@ -163,7 +159,7 @@ public SharedPlugin __pl_DLRCore =
 #if !defined REQUIRE_PLUGIN
 public __pl_DLRCore_SetNTVOptional()
 {
-    MarkNativeAsOptional(" PlayerClassName");
+    MarkNativeAsOptional("PlayerClassName");
     MarkNativeAsOptional("OnSpecialSkillFail");
     MarkNativeAsOptional("OnSpecialSkillSuccess");
     MarkNativeAsOptional("RegisterDLRSkill");
@@ -171,6 +167,7 @@ public __pl_DLRCore_SetNTVOptional()
     MarkNativeAsOptional("FindSkillIdByName");
     MarkNativeAsOptional("FindSkillNameByName");
     MarkNativeAsOptional("OnPluginStateChange");
+    MarkNativeAsOptional("DLR_GetClientSkill");    
 }
 #endif
 
@@ -199,4 +196,4 @@ stock KillAllClientTimers()
 {
     for (new i = 1; i <= MaxClients; i++)
         KillClientTimer(i);
-}  
+}
