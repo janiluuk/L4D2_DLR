@@ -26,7 +26,15 @@ public Action:CmdClassInfo(client, args)
 	PrintToChat(client,"\x05Engineer\x01 = Drops auto turrets and ammo");
 	PrintToChat(client,"\x05Brawler\x01 = Has Lots of health");	
 }
+public Action:CmdModel(client, args) {
 
+	char arg1[128];
+	GetCmdArg(1, arg1, sizeof(arg1));
+
+	LMC_L4D2_SetTransmit(client, LMC_SetClientOverlayModel(client, arg1));
+	ReplyToCommand(client, "Changing model to %s", arg1);
+	
+}
 public Action:CmdClassMenu(client, args)
 {
 	if (GetClientTeam(client) != 2)

@@ -61,6 +61,7 @@ public Action:TimerThink(Handle:hTimer, any:userid)
 					if (InvisibilityTimestamp != hidingTime && InvisibilityHint == false) 
 					{
 						SetRenderProperties(client);
+						PrintHintText(client,"You are now invisible for 20 seconds");
 
 						FakeClientCommand(client, "sm_nap_apply 7");
 						//HidePlayer(client);
@@ -79,6 +80,7 @@ public Action:TimerThink(Handle:hTimer, any:userid)
 						InvisibilityTimestamp = hidingTime;
 					}
 				}
+
 			}
 			
 			else if (buttons & IN_SPEED)
@@ -216,8 +218,8 @@ public Action:TimerThink(Handle:hTimer, any:userid)
 				
 				if (g_bAirstrike && g_bAirstrikeValid && canUseSpecialSkill(client, pendingMessage)) {
 					useCustomCommand("Grenades", client, -1, 19);
-
 					ClientData[client].LastDropTime = GetGameTime();
+
 				}
 			}
 		}
@@ -375,9 +377,9 @@ public Action:TimerAirstrike(Handle timer, Handle:hPack)
 	time =  ReadPackFloat(hPack);
 	entity = ReadPackCell(hPack);
 
-	if (client > 0 && IsClientInGame(client) && RoundToFloor(GetGameTime()-time) <= 10) {
+	if (client > 0 && IsClientInGame(client) && RoundToFloor(GetGameTime()-time) < 10) {
 		PrintHintTextToAll("Airstrike in %i, take cover!",10-(RoundToFloor(GetGameTime()-time)));
-		
+
 		return Plugin_Continue;
 	} else {
 

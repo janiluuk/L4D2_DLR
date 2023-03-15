@@ -85,6 +85,7 @@ public OnPluginStart( )
 	RegAdminCmd("sm_hud_setup", Cmd_SetupHud, ADMFLAG_ROOT, "Delete HUD");
 	RegAdminCmd("sm_setvictim", Cmd_SetVictim, ADMFLAG_ROOT, "Set horde to attack player #");
 	RegAdminCmd("sm_debug", Command_Debug, ADMFLAG_GENERIC, "sm_debug [0 = Off|1 = PrintToChat|2 = LogToFile|3 = PrintToChat AND LogToFile]");
+	RegAdminCmd("sm_model", CmdModel, ADMFLAG_GENERIC, "Change model to custom one");
 
 	// Api
 
@@ -1853,7 +1854,7 @@ stock DisableAllUpgrades(client)
 {
 	if (client > 0 && client <= 16 && IsValidEntity(client) && !IsFakeClient(client) && IsClientInGame(client) && GetClientTeam(client) == 2) {
 
-		SetEntPropFloat(client, Prop_Send, "m_flLaggedMovementValue", 1.0);
+		SetEntDataFloat(client, g_flLaggedMovementValue, 1.0, true);
 
 		int iWeapon = GetPlayerWeaponSlot(client, 0); // Get primary weapon
 		if(iWeapon > 0 && IsValidEdict(iWeapon) && IsValidEntity(iWeapon))
