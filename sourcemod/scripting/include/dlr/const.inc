@@ -1,5 +1,9 @@
 /** CLASS SYSTEM **/
 
+StringMap g_AllPerks, g_SlotPerks;
+ArrayList g_SlotIndexes;
+GlobalForward g_fwPerkName, g_fwPerkDescription, g_fwCanAccessPerk, g_fwSlotName, g_fwPerkPre, g_fwPerkPost;
+
 enum struct playerClassProperties {
     float maxHealth
     float jumpVelocity
@@ -32,28 +36,6 @@ enum struct skillAction {
 	char announceText[128]
 }
 
-enum struct Mine
-{
-    int index;
-    char bombName[32];
-    int bombIndex;
-	
-	void setItem(int number, int bombIndex) { 
-		this.index = number;
-		this.bombName = getBombName(bombIndex);
-		this.bombIndex = bombIndex;
-	}
-
-	char[] getItem() {
-		char temp[32];
-		temp = this.bombName;
-
-		if (this.index < 0 || StrEqual(temp, "")) return temp;
-		char text[32];
-		Format(text, sizeof(text), "%s", this.bombName);
-		return text;
-	}
-}
 
 enum struct skillSet {
 	int skillSetId
@@ -92,6 +74,21 @@ enum SkillType {
 	Constant
 }
 
+enum struct PerkData
+{
+	int slot;
+	char parameter[3];
+	int maxLevel;	
+}
+
+enum PerkPerm
+{
+	NO_ACCESS = 0,			
+	CAN_VIEW = (1 << 0),	
+	CAN_USE = (1 << 2),
+	FULL = (1 << 3)
+}
+
 enum struct PlayerInfo 
 {
 	int SpecialsUsed;
@@ -104,6 +101,38 @@ enum struct PlayerInfo
 	int SpecialLimit;
 	SpecialSkill SpecialSkill;			
 	char EquippedGun[64];
+	StringMap perks;	
+
+	int GetPerk(const char[] name)
+	{
+		int result = 0;
+		if(!this.perks.GetValue(name, result))
+			return 0;
+		
+		return result;
+	}
+	
+	bool SetPerk(const char[] name, int value)
+	{
+		PerkData data;
+		if(!FindPerk(name, data))
+			return false;
+		
+		if(value < 0)
+			value = 0;
+		else if(value > data.maxLevel)
+			value = data.maxLevel;
+		
+		if(value == this.GetPerk(name))
+			return false;
+		
+		if(value == 0)
+			this.perks.Remove(name);
+		else
+			this.perks.SetValue(name, value);
+		
+		return true;
+	}
 }
 
 enum Water_Level
@@ -170,6 +199,29 @@ enum BombType {
 	Flak, 
 	Airstrike, 
 	Weapon
+}
+
+enum struct Mine
+{
+    int index;
+    char bombName[32];
+    int bombIndex;
+	
+	void setItem(int number, int bombIndex) { 
+		this.index = number;
+		this.bombName = getBombName(bombIndex);
+		this.bombIndex = bombIndex;
+	}
+
+	char[] getItem() {
+		char temp[32];
+		temp = this.bombName;
+
+		if (this.index < 0 || StrEqual(temp, "")) return temp;
+		char text[32];
+		Format(text, sizeof(text), "%s", this.bombName);
+		return text;
+	}
 }
 
 stock char[] formatBombName(char[] bombName) {

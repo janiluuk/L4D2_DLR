@@ -1809,8 +1809,7 @@ int SlotClassnameToSlotId(const char[] classname)
 */
 
 GlobalForward g_fwSkillExperiencePre, g_fwSkillExperiencePost, g_fwExperiencePre, g_fwExperiencePost, g_fwSkillLevelUpPre, g_fwSkillLevelUpPost,
-	g_fwLevelUpPre, g_fwLevelUpPost, g_fwPerkName, g_fwPerkDescription, g_fwPointPre, g_fwPointPost, g_fwCanAccessPerk, g_fwSlotName,
-	g_fwPerkPre, g_fwPerkPost;
+	g_fwLevelUpPre, g_fwLevelUpPost, g_fwPerkName, g_fwPerkDescription, g_fwPointPre, g_fwPointPost, 
 
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
 {
