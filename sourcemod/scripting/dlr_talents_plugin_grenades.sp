@@ -26,6 +26,7 @@
 *	Name	:	[L4D & L4D2] Prototype Grenades Plugin version
 *	Author	:	SilverShot
 *	Descrp	:	Creates a selection of different grenade types.
+
 *	Link	:	https://forums.alliedmods.net/showthread.php?t=318965
 *	Plugins	:	https://sourcemod.net/plugins.php?exact=exact&sortby=title&search=1&author=Silvers
 

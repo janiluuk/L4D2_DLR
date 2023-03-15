@@ -2,9 +2,10 @@
 #include <sourcemod>
 #include <sdktools>
 #include <l4d2_skill_framework>
-#include "modules/l4d2ps.sp"
-
-new IMPULS_FLASHLIGHT 						= 100;
+#include "include/modules/baseplugin.sp"
+#define PLUGIN_SKILL_NAME "Nightvision"
+#define PLUGIN_DESCRIPTION  "Provides Nightvision goggles"
+new IMPULS_FLASHLIGHT = 100;
 new Float:PressTime[MAXPLAYERS+1];
  
 new Mode; 
@@ -14,9 +15,9 @@ new Handle:l4d_nt_team;
 
 public Plugin:myinfo = 
 {
-	name = "Nightvision",
-	author = "Pan Xiaohai & Mr. Zero",
-	description = "<- Description ->",
+	name = "[DLR] Nightvision Plugin",
+	author = "Pan Xiaohai & Mr. Zero, Yani",
+	description = PLUGIN_DESCRIPTION
 	version = "1.0",
 	url = "<- URL ->"
 }
@@ -31,9 +32,7 @@ public OnPluginStart()
 	AutoExecConfig(true, "l4d_nightvision"); 
 	HookConVarChange(l4d_nt_team, ConVarChange);
 	GetConVar();
-	
-	LoadTranslations("l4d2sf_night_vision.phrases.txt");
-	
+		
 	HookEvent("player_spawn", Event_PlayerSpawn);
 	HookEvent("player_first_spawn", Event_PlayerSpawn);
 	
@@ -44,7 +43,7 @@ public OnPluginStart()
 public Action L4D2SF_OnGetPerkName(int client, const char[] name, int level, char[] result, int maxlen)
 {
 	if(!strcmp(name, "night_vision"))
-		FormatEx(result, maxlen, "%T", "夜视仪", client, level);
+		FormatEx(result, maxlen, "Night Vision", client, level);
 	else
 		return Plugin_Continue;
 	return Plugin_Changed;
@@ -53,7 +52,7 @@ public Action L4D2SF_OnGetPerkName(int client, const char[] name, int level, cha
 public Action L4D2SF_OnGetPerkDescription(int client, const char[] name, int level, char[] result, int maxlen)
 {
 	if(!strcmp(name, "night_vision"))
-		FormatEx(result, maxlen, "%T", tr("夜视仪%d", IntBound(level, 1, 1)), client, level);
+		FormatEx(result, maxlen, PLUGIN_DESCRIPTION);
 	else
 		return Plugin_Continue;
 	return Plugin_Changed;
@@ -136,13 +135,12 @@ SwitchNightVision(client)
 	if(d==0)
 	{
 		SetEntProp(client, Prop_Send, "m_bNightVisionOn",1); 
-		PrintHintText(client, "%T", "夜视仪开启", client);
+		PrintHintText(client,"Night Vision ON"client);
 		
 	}
 	else
 	{
 		SetEntProp(client, Prop_Send, "m_bNightVisionOn",0);
-		PrintHintText(client, "%T", "夜视仪关闭", client);	
+		PrintHintText(client, "Night Vision OFF", client);	
 	}
-
 }
