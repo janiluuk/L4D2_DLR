@@ -79,7 +79,7 @@ public void OnPluginStart()
 	
 	CreateConVar("l4d2_extendedsight_version", PLUGIN_VERSION, "Extended Survivor Sight Version", FCVAR_NOTIFY|FCVAR_SPONLY|FCVAR_REPLICATED|FCVAR_DONTRECORD);
 	
-	PluginCvarMode = CreateConVar("l4d2_extendedsight_mode", "3", "When to reward Survivors with Extended Sight? 1 - when Tank is killed, 2 - when Witch is killed, 3 - when Tank or Witch is killed, 4 - active all the time, 0 - disabled", FCVAR_NOTIFY, true, 0.0, true, 4.0);
+	PluginCvarMode = CreateConVar("l4d2_extendedsight_mode", "4", "When to reward Survivors with Extended Sight? 1 - when Tank is killed, 2 - when Witch is killed, 3 - when Tank or Witch is killed, 4 - active all the time, 0 - disabled", FCVAR_NOTIFY, true, 0.0, true, 4.0);
 	PluginCvarNotify = CreateConVar("l4d2_extendedsight_notify", "1", "Notify players when they gain Extended Sight? 0 - disable, 1 - hintbox, 2 - chat", FCVAR_NOTIFY, true, 0.0, true, 2.0);
 	PluginCvarDuration = CreateConVar("l4d2_extendedsight_duration", "30", "How long should the Extended Sight last?", FCVAR_NOTIFY, true, 10.0);
 	PluginCvarGlow = CreateConVar("l4d2_extendedsight_glowcolor", "255 75 75", "Glow color, use RGB, seperate values with spaces", FCVAR_NOTIFY);
@@ -174,10 +174,13 @@ public Action Command_ExtendedSight(int client, any args)
 {	
 	char arg[5];
 	GetCmdArg(1, arg, sizeof(arg));
+	g_iHasAbility[client] = 1;
+
 	if (g_iHasAbility[client] <= 0) return Plugin_Handled;
 
 	if(StrEqual(arg, "on", false) || StringToInt(arg) == 1 && args != 0)
 	{
+
 		if(!ExtendedSightActive[client])
 		{
 			ReplyToCommand(client, "%t", "ACTIVATEDPERMANENTLY");
@@ -221,13 +224,12 @@ public Action TimerChangeGlow(Handle timer, Handle hPack)
 	int userId = ReadPackCell(hPack);
 	int color = ReadPackCell(hPack);
 	int client = GetClientOfUserId(userId);
-		if (!client
-		|| !IsValidEntity(client)
-		|| !IsClientInGame(client)
-		|| !IsPlayerAlive(client)
-		)
+	if (!client
+	|| !IsValidEntity(client)
+	|| !IsClientInGame(client)
+	|| !IsPlayerAlive(client)
+	)
 	return Plugin_Stop;
-
 
 	if(ExtendedSightActive[client])
 		SetGlow(color, client);
@@ -288,8 +290,9 @@ public Action TimerGlowFading(Handle timer, int userId)
 	{
 		KillTimer(ExtendedSightTimer[client]);
 		ExtendedSightTimer[client] = INVALID_HANDLE;
+		return Plugin_Stop;
 	}
-
+	return Plugin_Continue;
 }
 
 //---------------------------------------------------------------------------------------------------------------
