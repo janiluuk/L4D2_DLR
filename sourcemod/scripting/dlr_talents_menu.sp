@@ -68,7 +68,7 @@ public void OnLibraryAdded(const char[] name)
 		if (!buttons_nums)
 			ExtraMenu_AddEntry(menu_id, "Use W/S to move row and A/D to select", MENU_ENTRY);
 		ExtraMenu_AddEntry(menu_id, " ", MENU_ENTRY);	 // Space to add blank entry
-		ExtraMenu_AddEntry(menu_id, "1. 3rd person mode:", MENU_SELECT_LIST);
+		ExtraMenu_AddEntry(menu_id, "1. 3rd person mode: _OPT_", MENU_SELECT_LIST);
 		ExtraMenu_AddOptions(menu_id, "Off|Melee Only|Always");
 		ExtraMenu_AddEntry(menu_id, "2. Multiple Equipment Mode: _OPT_", MENU_SELECT_LIST);
 		ExtraMenu_AddOptions(menu_id, "Off|Single Tap|Double tap");
