@@ -153,9 +153,9 @@ public void OnPluginStart()
 	if(version_cvar != null)
 		SetConVarString(version_cvar, PLUGIN_VERSION);
 	
-	DeadRinger_EnableComm = CreateConVar("sm_l4d_dr_enable_fdcmd", "1.0", "Toggle whether the sm_fd command is available for use.", FCVAR_ARCHIVE, true, 0.0, true, 1.0);
-	DeadRinger_RechargeTime = CreateConVar("sm_l4d_dr_recharge_timelimit", "10.0", "Set the time limit until the Dead Ringer fully recharges.", FCVAR_ARCHIVE, true, 0.0, true, 100.0);
-	DeadRinger_FakeWeaponTime = CreateConVar("sm_l4d_dr_wepfake_time", "10.0", "How long the fake weapons last. 0 = forever.", FCVAR_ARCHIVE, true, 0.0, true, 100.0);
+	DeadRinger_EnableComm = CreateConVar("sm_l4d_dr_enable_fdcmd", "0.0", "Toggle whether the sm_fd command is available for use.", FCVAR_ARCHIVE, true, 0.0, true, 1.0);
+	DeadRinger_RechargeTime = CreateConVar("sm_l4d_dr_recharge_timelimit", "30.0", "Set the time limit until the Dead Ringer fully recharges.", FCVAR_ARCHIVE, true, 0.0, true, 100.0);
+	DeadRinger_FakeWeaponTime = CreateConVar("sm_l4d_dr_wepfake_time", "13.0", "How long the fake weapons last. 0 = forever.", FCVAR_ARCHIVE, true, 0.0, true, 100.0);
 	DeadRinger_DisableAttack = CreateConVar("sm_l4d_dr_no_attack", "1.0", "Toggle whether cloaked users can attack.", FCVAR_ARCHIVE, true, 0.0, true, 1.0);
 	DeadRinger_RemovePins = CreateConVar("sm_l4d_dr_remove_pins", "1.0", "Remove pins from pinning infected on DR use?", FCVAR_ARCHIVE, true, 0.0, true, 1.0);
 	DeadRinger_CloakTime = CreateConVar("sm_l4d_dr_cloak_timelimit", "13", "Set the time limit the Dead Ringer cloaks the user for.", FCVAR_ARCHIVE, true, 0.0, true, 100.0);
