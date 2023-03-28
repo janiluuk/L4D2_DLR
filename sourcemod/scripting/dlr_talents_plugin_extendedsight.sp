@@ -81,7 +81,7 @@ public void OnPluginStart()
 	
 	PluginCvarMode = CreateConVar("l4d2_extendedsight_mode", "4", "When to reward Survivors with Extended Sight? 1 - when Tank is killed, 2 - when Witch is killed, 3 - when Tank or Witch is killed, 4 - active all the time, 0 - disabled", FCVAR_NOTIFY, true, 0.0, true, 4.0);
 	PluginCvarNotify = CreateConVar("l4d2_extendedsight_notify", "1", "Notify players when they gain Extended Sight? 0 - disable, 1 - hintbox, 2 - chat", FCVAR_NOTIFY, true, 0.0, true, 2.0);
-	PluginCvarDuration = CreateConVar("l4d2_extendedsight_duration", "30", "How long should the Extended Sight last?", FCVAR_NOTIFY, true, 10.0);
+	PluginCvarDuration = CreateConVar("l4d2_extendedsight_duration", "15", "How long should the Extended Sight last?", FCVAR_NOTIFY, true, 10.0);
 	PluginCvarGlow = CreateConVar("l4d2_extendedsight_glowcolor", "255 75 75", "Glow color, use RGB, seperate values with spaces", FCVAR_NOTIFY);
 	PluginCvarGlowMode = CreateConVar("l4d2_extendedsight_glowmode", "1", "Glow mode. 0 - persistent glow, 1 - fading glow", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	PluginCvarGlowFadeInterval = CreateConVar("l4d2_extendedsight_glowfadeinterval", "3", "Interval between each glow fade", FCVAR_NOTIFY, true, 1.5, true, 10.0);
@@ -136,7 +136,7 @@ public void OnMapStart()
 			ExtendedSightExtended[i] = false;
 			ExtendedSightForever[i] = false;
 			if(GetConVarInt(PluginCvarMode) == 4 && g_iHasAbility[i] > 0 && IsValidEntity(i) && IsClientInGame(i) && GetClientTeam(i) == 2)
-				AddExtendedSight(0.0, i);		
+				AddExtendedSight(GetConVarFloat(PluginCvarDuration), i);		
 			}
 	}
 
@@ -172,6 +172,8 @@ public void Event_RoundStart(Handle event, const char[] name, bool dontBroadcast
 
 public Action Command_ExtendedSight(int client, any args) 
 {	
+	g_iHasAbility[client] = 1;
+
 	char arg[5];
 	GetCmdArg(1, arg, sizeof(arg));
 	g_iHasAbility[client] = 1;
@@ -184,7 +186,7 @@ public Action Command_ExtendedSight(int client, any args)
 		if(!ExtendedSightActive[client])
 		{
 			ReplyToCommand(client, "%t", "ACTIVATEDPERMANENTLY");
-			AddExtendedSight(0.0, client);
+			AddExtendedSight(GetConVarFloat(PluginCvarDuration), client);
 		}
 		else
 			ReplyToCommand(client, "%t", "ALREADYACTIVE");
