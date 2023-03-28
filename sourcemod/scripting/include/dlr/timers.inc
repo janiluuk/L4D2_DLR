@@ -64,6 +64,8 @@ public Action:TimerThink(Handle:hTimer, any:userid)
 						PrintHintText(client,"You are now invisible for 20 seconds");
 
 						FakeClientCommand(client, "sm_nap_apply 7");
+						FakeClientCommand(client, "sm_extendedsight on");
+
 						//HidePlayer(client);
 
 						//SetEntityRenderFx(client, RENDERFX_PULSE_SLOW);

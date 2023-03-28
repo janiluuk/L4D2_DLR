@@ -330,7 +330,7 @@ public void SetupClasses(client, class)
 		
 		case medic:
 		{
-			PrintHintText(client,"Hold CROUCH to heal others. Press SHIFT to drop medkits & supplies.\nPress MIDDLE button to throw healing grenade");
+			PrintHintText(client,"Hold CROUCH to heal others. Press SHIFT to drop medkits & supplies.\nPress MIDDLE button to throw healing grenade!");
 			CreateTimer(GetConVarFloat(MEDIC_HEALTH_INTERVAL), TimerDetectHealthChanges, client, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 			ClientData[client].SpecialLimit = GetConVarInt(MEDIC_MAX_ITEMS);
 			MaxPossibleHP = GetConVarInt(MEDIC_HEALTH);
@@ -486,9 +486,6 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 
 	MarkNativeAsOptional("LMC_GetEntityOverlayModel"); // LMC
 	MarkNativeAsOptional("OnCustomCommand");
-
-	//MarkNativeAsOptional("DLR_Berzerk");
-	//MarkNativeAsOptional("DLR_Infected2023");
 
 	return APLRes_Success;
 }
