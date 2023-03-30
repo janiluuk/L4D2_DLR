@@ -92,8 +92,16 @@ This is anniversary update for the infamous DLR mode for Left 4 Dead 2. Original
 - Hunter can masquerade as survivor for 30 second time (Using LMC)
 - More suggestions welcome!
 
-
 See https://forums.alliedmods.net/showthread.php?t=273312 for more info
+
+## Features available for testing
+
+€## complete new saboteur class. 
+
+- Hold crouch 4 sec, and you'll get 20 sec total invisibility with decoy outline.
+- Middle click to activate cloak mode 30 sec. If you get pinned, you leave a doppelganger ragdoll with fake weapon for them to toy with and have 10 seconds invisibility to make escape without ability to shoot.
+- During cloak you can see outlines of all special infected.
+- 7 minetypes to plant. Selection of best variation assigned as default.
 
 ## Adding a plugin
 
