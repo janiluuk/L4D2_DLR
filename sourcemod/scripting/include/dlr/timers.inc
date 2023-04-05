@@ -48,9 +48,15 @@ public Action:TimerThink(Handle:hTimer, any:userid)
 			}
 			if (buttons & IN_ZOOM) {
 					char pendingMessage[128] = "Wait for %i seconds to activate cloak again";
-					if (canUseSpecialSkill(client, pendingMessage)) {
-						useSpecialSkill(client, 1);						
-						ClientData[client].LastDropTime = GetGameTime();
+					if (canUseSpecialSkill(client, pendingMessage, true)) {
+						new Handle:hPack = CreateDataPack();
+						WritePackCell(hPack, GetClientUserId(client));
+						WritePackCell(hPack, ClientData[client].ChosenClass);
+
+						CreateTimer(3.0, TimerRestorePlayer, hPack, TIMER_FLAG_NO_MAPCHANGE);	
+						useSpecialSkill(client, 1);	
+						PrintHintText(client, "You spawned a decoy, you have 10 seconds to sneak away without weapons.");
+
 					}
 
 			}
@@ -61,7 +67,7 @@ public Action:TimerThink(Handle:hTimer, any:userid)
 					if (InvisibilityTimestamp != hidingTime && InvisibilityHint == false) 
 					{
 						SetRenderProperties(client);
-						PrintHintText(client,"You are now invisible for 20 seconds");
+						PrintHintText(client,"You are now invisible for 20 seconds. You can see enemies during this time.");
 
 						FakeClientCommand(client, "sm_nap_apply 7");
 						FakeClientCommand(client, "sm_extendedsight on");
@@ -91,7 +97,7 @@ public Action:TimerThink(Handle:hTimer, any:userid)
 				} else {
 					if (CanDrop == false && (iDropTime > 0 && iDropTime < GetConVarInt(MINIMUM_DROP_INTERVAL))) 
 					{
-							PrintHintText(client ,"Wait %i seconds to another mine", (GetConVarInt(MINIMUM_DROP_INTERVAL) - iDropTime));
+							PrintHintText(client ,"Wait %i seconds to deploy next mine", (GetConVarInt(MINIMUM_DROP_INTERVAL) - iDropTime));
 					} else {
 
 						if (CanDrop == true && !IsPlayerInSaferoom(client) && !IsInEndingSaferoom(client))
@@ -119,9 +125,6 @@ public Action:TimerThink(Handle:hTimer, any:userid)
 					if (canUseSpecialSkill(client, pendingMessage)) {
 						useSpecialSkill(client, 1);
 						PrintHintText(client, "You activated berzerk mode!");
-						
-						ClientData[client].LastDropTime = GetGameTime();
-
 					}
 			}
 		}
@@ -148,7 +151,7 @@ public Action:TimerThink(Handle:hTimer, any:userid)
 
 			if (buttons & IN_ZOOM) {
 
-				char pendingMessage[128] = "Wait %i seconds to use healing grenades again";
+				char pendingMessage[128] = "Wait %i seconds to use healing orb again";
 				
 				if (canUseSpecialSkill(client, pendingMessage)) {
 					//useSpecialSkill(client, 11);
@@ -194,7 +197,7 @@ public Action:TimerThink(Handle:hTimer, any:userid)
 			}
 			else if (buttons & IN_ZOOM) {
 
-				char pendingMessage[128] = "Wait %i seconds to use shield grenades again";
+				char pendingMessage[128] = "Wait %i seconds to activate shield again";
 				
 				if (canUseSpecialSkill(client, pendingMessage)) {
 					useCustomCommand("Grenades", client, -1, 7);
@@ -209,7 +212,7 @@ public Action:TimerThink(Handle:hTimer, any:userid)
 		{
 			SetEntDataFloat(client, g_flLaggedMovementValue, GetConVarFloat(SOLDIER_SPEED), true);
 
-			if (buttons & IN_SPEED)
+			if (buttons & IN_ZOOM)
 			{
 				char pendingMessage[128] = "Wait %d seconds to order new airstrike.";
 				
@@ -225,6 +228,7 @@ public Action:TimerThink(Handle:hTimer, any:userid)
 	return Plugin_Continue;
 }
 
+
 public Action:TimerLoadClient(Handle:hTimer, any:client)
 {
 	if (!client ||  !IsValidEntity(client) || !IsClientInGame(client)) 
@@ -238,6 +242,28 @@ public Action:TimerLoadClient(Handle:hTimer, any:client)
 	return Plugin_Stop;
 }
 
+public Action Timer_Ready(Handle timer, int client) {
+	if (!IsValidClient(client) ||  !IsPlayerAlive(client) || GetClientTeam(client) != 2)
+	{ return Plugin_Stop; }
+
+	GetPlayerSkillReadyHint(client);
+	//KillTimer(g_ReadyTimer, true);
+	g_ReadyTimer[client] = null;
+	return Plugin_Stop;
+}
+
+public Action:TimerRestorePlayer(Handle:hTimer, Handle:hPack)
+{
+	ResetPack(hPack);
+	new userid = ReadPackCell(hPack);
+	new client = GetClientOfUserId(userid);
+	new chosenClass = ReadPackCell(hPack);
+	CloseHandle(hPack);
+	ClientData[client].ChosenClass = view_as<ClassTypes>(chosenClass);
+
+	return Plugin_Stop;
+
+}
 public Action:TimerSetClientTempHealth(Handle:hTimer, Handle:hPack)
 {
 	ResetPack(hPack);

@@ -62,10 +62,10 @@ int g_iClassID = -1;
 
 int g_Ragdoll[MAXPLAYERS+1] = {-1, ...};
 int g_BloodPool[MAXPLAYERS+1] = {-1, ...};
-static bool isTriggerable[MAXPLAYERS+1];
-static bool isActive[MAXPLAYERS+1];
-static bool isCloaked[MAXPLAYERS+1];
-static bool hasEffects[2048] = {false, ...};
+bool isTriggerable[MAXPLAYERS+1];
+bool isActive[MAXPLAYERS+1];
+bool isCloaked[MAXPLAYERS+1];
+bool hasEffects[2048] = {false, ...};
 //static int initialAlpha[2048] = 255;
 //static RenderMode initialRender[2048] = RENDER_NORMAL;
 
@@ -78,16 +78,16 @@ ConVar DeadRinger_CloakTime;
 ConVar DeadRinger_CorpseMode;
 ConVar DeadRinger_Transmit;
 
-static Handle g_UncloakTimer[MAXPLAYERS+1] = {null, ...};
-static Handle g_BoostTimer[MAXPLAYERS+1] = {null, ...};
-static Handle g_ReadyTimer[MAXPLAYERS+1] = {null, ...};
+Handle g_UncloakTimer[MAXPLAYERS+1] = {null, ...};
+Handle g_BoostTimer[MAXPLAYERS+1] = {null, ...};
+Handle g_ReadyTimer[MAXPLAYERS+1] = {null, ...};
 
 Handle hConf = null;
-static Handle hOnPummelEnded = null;
-static Handle hOnPounceEnd = null;
-static Handle hStartActivationTimer = null;
-static Handle hReleaseTongueVictim = null;
-static Handle hOnRideEnded = null;
+Handle hOnPummelEnded = null;
+Handle hOnPounceEnd = null;
+Handle hStartActivationTimer = null;
+Handle hReleaseTongueVictim = null;
+Handle hOnRideEnded = null;
 #define NAME_ONPUMMELENDED "CTerrorPlayer::OnPummelEnded"
 #define NAME_ONPOUNCEEND "CTerrorPlayer::OnPounceEnd"
 #define NAME_RELEASETONGUEVICTIM "CTerrorPlayer::ReleaseTongueVictim"
@@ -158,7 +158,7 @@ public void OnPluginStart()
 	DeadRinger_FakeWeaponTime = CreateConVar("sm_l4d_dr_wepfake_time", "13.0", "How long the fake weapons last. 0 = forever.", FCVAR_ARCHIVE, true, 0.0, true, 100.0);
 	DeadRinger_DisableAttack = CreateConVar("sm_l4d_dr_no_attack", "1.0", "Toggle whether cloaked users can attack.", FCVAR_ARCHIVE, true, 0.0, true, 1.0);
 	DeadRinger_RemovePins = CreateConVar("sm_l4d_dr_remove_pins", "1.0", "Remove pins from pinning infected on DR use?", FCVAR_ARCHIVE, true, 0.0, true, 1.0);
-	DeadRinger_CloakTime = CreateConVar("sm_l4d_dr_cloak_timelimit", "13", "Set the time limit the Dead Ringer cloaks the user for.", FCVAR_ARCHIVE, true, 0.0, true, 100.0);
+	DeadRinger_CloakTime = CreateConVar("sm_l4d_dr_cloak_timelimit", "15", "Set the time limit the Dead Ringer cloaks the user for.", FCVAR_ARCHIVE, true, 0.0, true, 100.0);
 	DeadRinger_CorpseMode = CreateConVar("sm_l4d_dr_corpse_type", "0.0", "Toggle which corpse type to use for survivors. 0 = static, 1 = ragdoll, 2 = none.", FCVAR_ARCHIVE, true, 0.0, true, 2.0);
 	DeadRinger_Transmit = CreateConVar("sm_l4d_dr_hide_from_team", "1.0", "Hide cloaked users from their teammates?", FCVAR_ARCHIVE, true, 0.0, true, 1.0);
 	for (int client = 1; client <= MaxClients; client++) {
@@ -314,13 +314,21 @@ public int OnSpecialSkillUsed(int iClient, int skill, int type)
 {
 	char szSkillName[32];
 	GetPlayerSkillName(iClient, szSkillName, sizeof(szSkillName));
-
+	if(!iClient
+	|| !IsValidEntity(iClient)
+	|| !IsClientInGame(iClient))
+	{
+		return 0;
+	}
 	if (StrEqual(szSkillName,PLUGIN_SKILL_NAME))
 	{
+		PrintToChat(iClient, "You activated \x04CLOAK!\x01");
 		TriggerDeadRinger(iClient, true, false, false, false);
+		BeginDeadRingerFromDamage(iClient, iClient, iClient, 1.0, 0, -1);
+	
+		OnSpecialSkillSuccess(iClient, PLUGIN_SKILL_NAME);
 		return 1;
 	}
-	return 0;
 }
 
 public void OnMapStart() {
@@ -556,7 +564,8 @@ void DeadRingerCloak(int client, int attacker, int inflictor, int damageType, in
 		SetEventString(event1, "victimname", event_victimname);
 		SetEventBool(event1, "victimisbot", event_victimisbot);
 		SetEventInt(event1, "type", damageType);
-		
+		SetEventInt(event1, "isfakedeath", 1);
+
 		FireEvent(event1);
 	}
 	
@@ -576,8 +585,7 @@ void DeadRingerCloak(int client, int attacker, int inflictor, int damageType, in
 		if (DeadRinger_CloakTime == null || GetConVarFloat(DeadRinger_CloakTime) > 0.0)
 		{ WeaponAttackAvailable(client, false); }
 		RemovePinFromClient(client);
-		CreateTimer(0.75, Timer_Vocals, client, TIMER_FLAG_NO_MAPCHANGE);
-	}
+ 	}
 	/*static int other_Clients[MaxClients+1] = -1;
 	for (int loopclient = 1; loopclient <= MaxClients; loopclient++)
 	{
@@ -1146,7 +1154,7 @@ Action Timer_Ready(Handle timer, int client) {
 	if (!IsValidClient(client))
 	{ return Plugin_Stop; }
 	isTriggerable[client] = true;
-	PrintHintText(client, "Cloak is ready.");
+//	PrintHintText(client, "Cloak is ready.");
 	//KillTimer(g_ReadyTimer, true);
 	g_ReadyTimer[client] = null;
 	return Plugin_Stop;
