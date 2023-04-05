@@ -169,12 +169,12 @@ stock const String:ClassCustomModels[][64] =
 stock String:ClassTips[][] =
 {
 	", He can't do shit.",
-	", He has high attack melee & shoot rate, takes less damage and moves faster.",
-	", He can Jump high",
+	", He has high attack melee & shoot rate, takes less damage and moves faster. Speciality: Airstrike",
+	", He can Jump high, Speciality: Anti-gravity grenades",
 	", He can heal nearby players, revive others faster, drop supplies. Speciality: Healing orbs.",
-	", He can go invisible, drop variety of mines. Speciality: Nightvision.",
-	", He has increased damage, fast reload and immune to Tank knockdowns! Speciality: Berzerk mode!",
-	", He can drop auto turrets and ammo supplies. Speciality: Protective shield granades.",
+	", He can go invisible, drop variety of mines. Speciality: Cloak",
+	", He has increased damage, fast reload and immune to Tank knockdowns! Speciality: Berzerk mode",
+	", He can drop auto turrets and ammo supplies. Speciality: Protective shield",
 	", He has lots of health."
 };
 
