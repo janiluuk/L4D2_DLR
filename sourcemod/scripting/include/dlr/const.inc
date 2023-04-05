@@ -178,6 +178,18 @@ stock String:ClassTips[][] =
 	", He has lots of health."
 };
 
+stock String:SpecialReadyTips[][] =
+{
+	"No go",
+	"Airstrike is ready!",
+	"Anti-Gravity grenade is ready!",
+	"You can deploy and throw healing grenades again",
+	"You can plant mines or use cloak again",
+	"Berzerk mode is ready!",
+	"You can deploy or throw armoring grenades again",
+	""
+};
+v
 enum BombType {
 	Bomb = 0, 
 	Cluster, 

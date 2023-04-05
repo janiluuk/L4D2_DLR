@@ -53,7 +53,7 @@ public void OnLibraryAdded(const char[] name)
 			ExtraMenu_AddEntry(menu_id, "Use W/S to move row and A/D to select", MENU_ENTRY);
 		ExtraMenu_AddEntry(menu_id, " ", MENU_ENTRY);	 // Space to add blank entry
 		ExtraMenu_AddEntry(menu_id, "1. DLR Guide", MENU_SELECT_ADD, false, 250, 10, 100, 300);
-		ExtraMenu_AddEntry(menu_id, "2. Get Kit (1 left)", MENU_SELECT_LIST);
+		ExtraMenu_AddEntry(menu_id, "2. Get Kit (1 left): _OPT_", MENU_SELECT_LIST);
 		ExtraMenu_AddOptions(menu_id, "Medic kit|Rambo kit|Counter-terrorist kit|Ninja kit");
 
 		ExtraMenu_AddEntry(menu_id, "3. Set yourself away", MENU_SELECT_ONLY);
@@ -73,8 +73,11 @@ public void OnLibraryAdded(const char[] name)
 		ExtraMenu_AddEntry(menu_id, "2. Multiple Equipment Mode: _OPT_", MENU_SELECT_LIST);
 		ExtraMenu_AddOptions(menu_id, "Off|Single Tap|Double tap");
 		ExtraMenu_AddEntry(menu_id, "3. HUD: _OPT_", MENU_SELECT_ONOFF);
-		ExtraMenu_AddEntry(menu_id, "4. Custom Music: _OPT_", MENU_SELECT_ONOFF);
-		ExtraMenu_AddEntry(menu_id, "5. Custom Skins: _OPT_", MENU_SELECT_ONOFF);
+		ExtraMenu_AddEntry(menu_id, "4. Custom Skins: _OPT_", MENU_SELECT_ONOFF);
+		ExtraMenu_AddEntry(menu_id, "5. Custom Music: _OPT_", MENU_SELECT_ONOFF);
+		ExtraMenu_AddEntry(menu_id, "6. Music Volume: _OPT_", MENU_SELECT_LIST);
+		ExtraMenu_AddOptions(menu_id, "□□□□□□□□□□|■□□□□□□□□□|■■□□□□□□□□|■■■□□□□□□□|■■■■□□□□□□|■■■■■□□□□□|■■■■■■□□□□|■■■■■■■□□□|■■■■■■■■□□|■■■■■■■■■□|■■■■■■■■■■");
+
 		ExtraMenu_AddEntry(menu_id, " ", MENU_ENTRY);
 
 		ExtraMenu_NewPage(menu_id);	   // New Page
