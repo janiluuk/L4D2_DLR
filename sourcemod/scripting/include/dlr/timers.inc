@@ -27,6 +27,17 @@ public Action:TimerThink(Handle:hTimer, any:userid)
 		case athlete:
 		{	
 			SetEntDataFloat(client, g_flLaggedMovementValue, GetConVarFloat(ATHLETE_SPEED), true);
+			if (buttons & IN_ZOOM) {
+
+				char pendingMessage[128] = "Wait %i seconds to use anti-gravity grenade again";
+				
+				if (canUseSpecialSkill(client, pendingMessage)) {
+					//useSpecialSkill(client, 11);
+					useCustomCommand("Grenades", client, -1, 15);
+					ClientData[client].LastDropTime = GetGameTime();
+				}
+
+			}
 		}
 		
 		case saboteur:
