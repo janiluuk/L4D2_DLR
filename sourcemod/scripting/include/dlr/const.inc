@@ -189,7 +189,7 @@ stock String:SpecialReadyTips[][] =
 	"You can deploy or throw armoring grenades again",
 	""
 };
-v
+
 enum BombType {
 	Bomb = 0, 
 	Cluster, 

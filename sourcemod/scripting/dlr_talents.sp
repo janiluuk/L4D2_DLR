@@ -295,7 +295,7 @@ public RebuildCache()
 
 public void GetPlayerSkillReadyHint(client) {
 
-	int classId = ClientData[client].ChosenClass;
+	int classId = view_as<int>(ClientData[client].ChosenClass);
 	if (ClientData[client].SpecialLimit > ClientData[client].SpecialsUsed) {
 		PrintHintText(client,"%s", SpecialReadyTips[classId]);	
 	}
@@ -638,11 +638,11 @@ any Native_OnSpecialSkillSuccess(Handle plugin, int numParams)
 	ClientData[client].SpecialsUsed++;
 	ClientData[client].LastDropTime = GetGameTime();
 
-	float interval = ClientData[client].SpecialDropInterval;
+	int interval = ClientData[client].SpecialDropInterval;
 
-	if (interval >= 0.0 && (ClientData[client].SpecialsUsed < ClientData[client].SpecialLimit))
+	if (interval >= 0 && (ClientData[client].SpecialsUsed < ClientData[client].SpecialLimit))
 	{ 
-		g_ReadyTimer[client] = CreateTimer(ClientData[client].SpecialDropInterval, Timer_Ready, client); 
+		g_ReadyTimer[client] = CreateTimer(float(ClientData[client].SpecialDropInterval), Timer_Ready, client); 
 	}
 
 	return 1;
