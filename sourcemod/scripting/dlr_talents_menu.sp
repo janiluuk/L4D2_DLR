@@ -1,5 +1,4 @@
 #define PLUGIN_VERSION "0.3"
-
 #include <sourcemod>
 #include <extra_menu>
 
