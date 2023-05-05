@@ -257,7 +257,7 @@ public ResetClientVariables(client)
 	
 	if (g_ReadyTimer[client] != null) 
 	{ 
-		KillTimer(g_ReadyTimer[client], true); 
+		delete g_ReadyTimer[client];
 	}
 	
 }
