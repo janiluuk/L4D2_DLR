@@ -79,9 +79,9 @@ public void OnPluginStart()
 	
 	CreateConVar("l4d2_extendedsight_version", PLUGIN_VERSION, "Extended Survivor Sight Version", FCVAR_NOTIFY|FCVAR_SPONLY|FCVAR_REPLICATED|FCVAR_DONTRECORD);
 	
-	PluginCvarMode = CreateConVar("l4d2_extendedsight_mode", "3", "When to reward Survivors with Extended Sight? 1 - when Tank is killed, 2 - when Witch is killed, 3 - when Tank or Witch is killed, 4 - active all the time, 0 - disabled", FCVAR_NOTIFY, true, 0.0, true, 4.0);
+	PluginCvarMode = CreateConVar("l4d2_extendedsight_mode", "4", "When to reward Survivors with Extended Sight? 1 - when Tank is killed, 2 - when Witch is killed, 3 - when Tank or Witch is killed, 4 - active all the time, 0 - disabled", FCVAR_NOTIFY, true, 0.0, true, 4.0);
 	PluginCvarNotify = CreateConVar("l4d2_extendedsight_notify", "1", "Notify players when they gain Extended Sight? 0 - disable, 1 - hintbox, 2 - chat", FCVAR_NOTIFY, true, 0.0, true, 2.0);
-	PluginCvarDuration = CreateConVar("l4d2_extendedsight_duration", "30", "How long should the Extended Sight last?", FCVAR_NOTIFY, true, 10.0);
+	PluginCvarDuration = CreateConVar("l4d2_extendedsight_duration", "15", "How long should the Extended Sight last?", FCVAR_NOTIFY, true, 10.0);
 	PluginCvarGlow = CreateConVar("l4d2_extendedsight_glowcolor", "255 75 75", "Glow color, use RGB, seperate values with spaces", FCVAR_NOTIFY);
 	PluginCvarGlowMode = CreateConVar("l4d2_extendedsight_glowmode", "1", "Glow mode. 0 - persistent glow, 1 - fading glow", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	PluginCvarGlowFadeInterval = CreateConVar("l4d2_extendedsight_glowfadeinterval", "3", "Interval between each glow fade", FCVAR_NOTIFY, true, 1.5, true, 10.0);
@@ -136,11 +136,11 @@ public void OnMapStart()
 			ExtendedSightExtended[i] = false;
 			ExtendedSightForever[i] = false;
 			if(GetConVarInt(PluginCvarMode) == 4 && g_iHasAbility[i] > 0 && IsValidEntity(i) && IsClientInGame(i) && GetClientTeam(i) == 2)
-				AddExtendedSight(0.0, i);		
+				AddExtendedSight(GetConVarFloat(PluginCvarDuration), i);		
 			}
 	}
 
-}
+}./configure –add-module=../nginx-rtmp-module –sbin-path=/usr/sbin/nginx –lock-path=/var/run/nginx.lock –conf-path=/etc/nginx/nginx.conf –pid-path=/run/nginx.pid –with-pcre=../pcre-8.42 –with-zlib=../zlib-1.2.11 –with-openssl=../openssl-1.0.2q –error-log-path=/var/log/nginx/error.log –http-log-path=/var/log/nginx/access.log –user=nginx –group=nginx –with-http_auth_request_module –with-http_degradation_module –with-http_geoip_module –with-http_gunzip_module –with-http_gzip_static_module –with-http_image_filter_module –with-http_mp4_module –with-http_perl_module –with-http_realip_module –with-http_secure_link_module –with-http_slice_module –with-http_ssl_module –with-http_stub_status_module –with-http_v2_module –with-stream_ssl_module –with-stream –with-threads –prefix=/etc/nginx
 
 public void Event_TankKilled(Handle event, const char[] name, bool dontBroadcast)
 {	
@@ -172,16 +172,21 @@ public void Event_RoundStart(Handle event, const char[] name, bool dontBroadcast
 
 public Action Command_ExtendedSight(int client, any args) 
 {	
+	g_iHasAbility[client] = 1;
+
 	char arg[5];
 	GetCmdArg(1, arg, sizeof(arg));
+	g_iHasAbility[client] = 1;
+
 	if (g_iHasAbility[client] <= 0) return Plugin_Handled;
 
 	if(StrEqual(arg, "on", false) || StringToInt(arg) == 1 && args != 0)
 	{
+
 		if(!ExtendedSightActive[client])
 		{
 			ReplyToCommand(client, "%t", "ACTIVATEDPERMANENTLY");
-			AddExtendedSight(0.0, client);
+			AddExtendedSight(GetConVarFloat(PluginCvarDuration), client);
 		}
 		else
 			ReplyToCommand(client, "%t", "ALREADYACTIVE");
@@ -221,13 +226,12 @@ public Action TimerChangeGlow(Handle timer, Handle hPack)
 	int userId = ReadPackCell(hPack);
 	int color = ReadPackCell(hPack);
 	int client = GetClientOfUserId(userId);
-		if (!client
-		|| !IsValidEntity(client)
-		|| !IsClientInGame(client)
-		|| !IsPlayerAlive(client)
-		)
+	if (!client
+	|| !IsValidEntity(client)
+	|| !IsClientInGame(client)
+	|| !IsPlayerAlive(client)
+	)
 	return Plugin_Stop;
-
 
 	if(ExtendedSightActive[client])
 		SetGlow(color, client);
@@ -288,8 +292,9 @@ public Action TimerGlowFading(Handle timer, int userId)
 	{
 		KillTimer(ExtendedSightTimer[client]);
 		ExtendedSightTimer[client] = INVALID_HANDLE;
+		return Plugin_Stop;
 	}
-
+	return Plugin_Continue;
 }
 
 //---------------------------------------------------------------------------------------------------------------

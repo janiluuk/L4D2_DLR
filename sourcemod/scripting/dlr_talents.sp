@@ -169,6 +169,7 @@ public OnPluginStart( )
 	ENGINEER_HEALTH = CreateConVar("talents_engineer_health", "150", "How much health a engineer should have");
 	BRAWLER_HEALTH = CreateConVar("talents_brawler_health", "600", "How much health a brawler should have");
 
+	SPECIAL_SKILL_LIMIT = CreateConVar("talents_skill_amount", "5", "How many times special skills can be used per round by default");
 	SOLDIER_MELEE_ATTACK_RATE = CreateConVar("talents_soldier_melee_rate", "0.45", "The interval for soldier swinging melee weapon (clamped between 0.3 < 0.9)", FCVAR_NOTIFY, true, 0.3, true, 0.9);
 	HookConVarChange(SOLDIER_MELEE_ATTACK_RATE, Convar_Melee_Rate);	
 	SOLDIER_ATTACK_RATE = CreateConVar("talents_soldier_attack_rate", "0.6666", "How fast the soldier should shoot with guns. Lower values = faster. Between 0.2 and 0.9", FCVAR_NONE|FCVAR_NOTIFY, true, 0.2, true, 0.9);
@@ -242,6 +243,7 @@ public OnPluginStart( )
 
 public ResetClientVariables(client)
 {
+
 	ClientData[client].SpecialsUsed = 0;	
 	ClientData[client].HideStartTime= GetGameTime();
 	ClientData[client].HealStartTime= GetGameTime();
@@ -251,7 +253,13 @@ public ResetClientVariables(client)
 	ClientData[client].SpecialSkill = SpecialSkill:No_Skill;
 	ClientData[client].LastDropTime = 0.0;
 	g_bInSaferoom[client] = false;
-	g_bHide[client] = false; 
+	g_bHide[client] = false;
+	
+	if (g_ReadyTimer[client] != null) 
+	{ 
+		delete g_ReadyTimer[client];
+	}
+	
 }
 
 public ClearCache()
@@ -285,6 +293,14 @@ public RebuildCache()
 	}
 }
 
+public void GetPlayerSkillReadyHint(client) {
+
+	int classId = view_as<int>(ClientData[client].ChosenClass);
+	if (ClientData[client].SpecialLimit > ClientData[client].SpecialsUsed) {
+		PrintHintText(client,"%s", SpecialReadyTips[classId]);	
+	}
+}
+
 public void SetupClasses(client, class)
 {
 	if (!client
@@ -296,7 +312,7 @@ public void SetupClasses(client, class)
 	
 	ClientData[client].ChosenClass = view_as<ClassTypes>(class);
 	ClientData[client].SpecialDropInterval = GetConVarInt(MINIMUM_DROP_INTERVAL);	
-	ClientData[client].SpecialLimit = 5;
+	ClientData[client].SpecialLimit = GetConVarInt(SPECIAL_SKILL_LIMIT);
 	new MaxPossibleHP = GetConVarInt(NONE_HEALTH);
 	DisableAllUpgrades(client);
 	bool useCustomModel = false;
@@ -315,6 +331,7 @@ public void SetupClasses(client, class)
 
 	switch (view_as<ClassTypes>(class))
 	{
+
 		case soldier:	
 		{
 			char text[64];
@@ -330,7 +347,7 @@ public void SetupClasses(client, class)
 		
 		case medic:
 		{
-			PrintHintText(client,"Hold CROUCH to heal others. Press SHIFT to drop medkits & supplies.\nPress MIDDLE button to throw healing grenade");
+			PrintHintText(client,"Hold CROUCH to heal others. Press SHIFT to drop medkits & supplies.\nPress MIDDLE button to throw healing grenade!");
 			CreateTimer(GetConVarFloat(MEDIC_HEALTH_INTERVAL), TimerDetectHealthChanges, client, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 			ClientData[client].SpecialLimit = GetConVarInt(MEDIC_MAX_ITEMS);
 			MaxPossibleHP = GetConVarInt(MEDIC_HEALTH);
@@ -371,7 +388,7 @@ public void SetupClasses(client, class)
 		
 		case saboteur:
 		{
-			PrintHintText(client,"Press SHIFT to drop mines! Hold CROUCH for 3 sec to go invisible. \nPress MIDDLE button to summon decoy if attacked!");
+			PrintHintText(client,"Press SHIFT to drop mines! Hold CROUCH for 3 sec to go invisible. \nPress MIDDLE button to summon Decoy. It can save you from being pinned");
 			MaxPossibleHP = GetConVarInt(SABOTEUR_HEALTH);
 			ClientData[client].SpecialLimit = GetConVarInt(SABOTEUR_MAX_BOMBS);
 //			ToggleNightVision(client);
@@ -487,9 +504,6 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	MarkNativeAsOptional("LMC_GetEntityOverlayModel"); // LMC
 	MarkNativeAsOptional("OnCustomCommand");
 
-	//MarkNativeAsOptional("DLR_Berzerk");
-	//MarkNativeAsOptional("DLR_Infected2023");
-
 	return APLRes_Success;
 }
 
@@ -560,7 +574,7 @@ public Native_RegisterSkill(Handle:plugin, numParams)
 		IntToString(g_iSkillCounter, szItemInfo, sizeof(szItemInfo));
 		int index = FindStringInArray(g_hSkillArray, szSkillName);		
 		if (index >= 0) {
-			PrintDebugAll("Skill %s already exists on index %i", szSkillName, index);
+			//PrintDebugAll("Skill %s already exists on index %i", szSkillName, index);
 			return index;
 		}
 		index = PushArrayString(g_hSkillArray, szSkillName);
@@ -623,6 +637,14 @@ any Native_OnSpecialSkillSuccess(Handle plugin, int numParams)
 	GetNativeString(2, str, len + 1);
 	ClientData[client].SpecialsUsed++;
 	ClientData[client].LastDropTime = GetGameTime();
+
+	int interval = ClientData[client].SpecialDropInterval;
+
+	if (interval >= 0 && (ClientData[client].SpecialsUsed < ClientData[client].SpecialLimit))
+	{ 
+		g_ReadyTimer[client] = CreateTimer(float(ClientData[client].SpecialDropInterval), Timer_Ready, client); 
+	}
+
 	return 1;
 }
 
@@ -842,9 +864,10 @@ public void useSpecialSkill(int client, int type)
 		Call_PushCell(type);		
 		Call_Finish();
 	}
+
 }	
 
-public bool canUseSpecialSkill(client, char[] pendingMessage)
+bool canUseSpecialSkill(client, char[] pendingMessage, bool ignorePinned = false)
 {	
 	new Float:fCanDropTime = (GetGameTime() - ClientData[client].LastDropTime);
 	if (ClientData[client].LastDropTime == 0) {
@@ -860,14 +883,17 @@ public bool canUseSpecialSkill(client, char[] pendingMessage)
 		PrintHintText(client, "Cannot use it here");
 		return false;
 	}
-	if (FindAttacker(client) > 0 || IsIncapacitated(client)) {
+	if ((FindAttacker(client) > 0 || IsIncapacitated(client)) && ignorePinned == false) {
 		PrintHintText(client, "You're too screwed to use special skills");
 		return false;
 	}
-	else if (CanDrop == false)
+	else if (CanDrop == false )
 	{
+
 		Format(pendMsg, sizeof(pendMsg), pendingMessage, (ClientData[client].SpecialDropInterval-iDropTime));
-		PrintHintText(client, pendMsg );
+		if (fCanDropTime > 5.0) {		
+			PrintHintText(client, pendMsg );
+		}
 		return false;
 	} else if (ClientData[client].SpecialsUsed >= ClientData[client].SpecialLimit) {
 		int limit = ClientData[client].SpecialLimit;
@@ -984,9 +1010,12 @@ public Event_PlayerSpawn(Handle:hEvent, String:sName[], bool:bDontBroadcast)
 
 public Event_PlayerDeath(Handle:hEvent, String:sName[], bool:bDontBroadcast)
 {
+	new isFake = GetEventInt(hEvent, "isfakedeath",0);
+	if (isFake == 1) return;
+
 	RebuildCache();
-	
 	new client = GetClientOfUserId(GetEventInt(hEvent, "userid"));
+
 	if(client > 0 && IsClientInGame(client) && GetClientTeam(client) == 2) DisableAllUpgrades(client);
 
 	ResetClientVariables(client);
@@ -1018,7 +1047,7 @@ public Event_PlayerTeam(Handle:hEvent, String:sName[], bool:bDontBroadcast)
 	if (team == 2 && LastClassConfirmed[client] != 0)
 	{
 		ClientData[client].ChosenClass = view_as<ClassTypes>(LastClassConfirmed[client]);
-		PrintToChat(client, "You are currently a \x04%s", MENU_OPTIONS[LastClassConfirmed[client]]);
+		PrintToChat(client, "\x01You are currently a \x04%s", MENU_OPTIONS[LastClassConfirmed[client]]);
 	}
 }
 
@@ -1157,7 +1186,7 @@ public Native_GetPlayerSkillName(Handle:plugin, numParams)
 	int index = g_iPlayerSkill[client];
 	if (index >= 0) {
 		GetArrayString(g_hSkillArray, index, szSkillName, iSize);
-		//PrintDebugAll("Found player skillname %s, %i", szSkillName, index);
+		PrintDebugAll("Found player skillname %s, %i", szSkillName, index);
 		SetNativeString(2, szSkillName, iSize);
 		return true;
 	}
