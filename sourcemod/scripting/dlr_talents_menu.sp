@@ -29,7 +29,7 @@ public void
 {
 	RegAdminCmd("sm_dlr", CmdDLRMenu, ADMFLAG_ROOT);
 	RegAdminCmd("sm_guide", CmdDLRGuideMenu, ADMFLAG_ROOT);
-}
+}	
 
 public void OnLibraryAdded(const char[] name)
 {
@@ -171,7 +171,7 @@ Action CmdDLRGuideMenu(int client, int args)
 }
 
 // Game Menu selection handling
-public void DLRMenu_OnSelect(int client, int menu_id, int option, int value)
+public void ExtraMenu_OnSelect(int client, int menu_id, int option, int value)
 {
 	if (menu_id == g_iMenuID)
 	{
