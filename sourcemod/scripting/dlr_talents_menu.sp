@@ -207,12 +207,6 @@ public void ExtraMenu_OnSelect(int client, int menu_id, int option, int value)
 
 	}
 
-
-}
-
-// Guide Menu selection handling
-public void DLRGuideMenu_OnSelect(int client, int menu_id, int option, int value)
-{
 	if (menu_id == g_iGuideMenuID)
 	{
 		PrintToChatAll("SELECTED %N Option: %d Value: %d", client, option, value);
@@ -222,4 +216,6 @@ public void DLRGuideMenu_OnSelect(int client, int menu_id, int option, int value
 			// foobar
 		}
 	}
+
+
 }

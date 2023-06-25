@@ -10,12 +10,13 @@
 
 public Plugin myinfo =
 {
-	name = "技能：连跳/多重跳",
-	author = "zonde306",
+	name = "Bunnyhop plugin",
+	author = "Yani, zonde306",
 	description = "",
 	version = PLUGIN_VERSION,
 	url = "https://forums.alliedmods.net/",
 };
+
 
 const float g_fHighJumpFactor = 0.0625;
 const float g_fLongJumpFactor = 0.0625;
@@ -30,9 +31,9 @@ public OnPluginStart()
 {
 	InitPlugin("sfj");
 	g_hCvarGravity = FindConVar("sv_gravity");
-	g_pCvarJumpHeight = CreateConVar("l4d2_sfj_height", "35.0", "跳跃高度", CVAR_FLAGS, true, 0.0);
-	g_pCvarDuckHeight = CreateConVar("l4d2_sfj_duck_height", "52.0", "蹲下跳跃高度", CVAR_FLAGS, true, 0.0);
-	g_pCvarCalmTime = CreateConVar("l4d2_sfj_calm_time", "1.0", "重置计数时间", CVAR_FLAGS, true, 0.0);
+	g_pCvarJumpHeight = CreateConVar("l4d2_sfj_height", "35.0", "Height", CVAR_FLAGS, true, 0.0);
+	g_pCvarDuckHeight = CreateConVar("l4d2_sfj_duck_height", "52.0", "Duck height", CVAR_FLAGS, true, 0.0);
+	g_pCvarCalmTime = CreateConVar("l4d2_sfj_calm_time", "1.0", "Calm time", CVAR_FLAGS, true, 0.0);
 	AutoExecConfig(true, "l4d2_sfj");
 	
 	UpdateCache(null, "", "");
@@ -72,15 +73,15 @@ public void UpdateCache(ConVar cvar, const char[] oldValue, const char[] newValu
 public Action L4D2SF_OnGetPerkName(int client, const char[] name, int level, char[] result, int maxlen)
 {
 	if(!strcmp(name, "bunnyhop"))
-		FormatEx(result, maxlen, "%T", "连跳", client, level);
+		FormatEx(result, maxlen, "%T", "Bunnyhop", client, level);
 	else if(!strcmp(name, "doublejump"))
-		FormatEx(result, maxlen, "%T", "多重跳", client, level);
+		FormatEx(result, maxlen, "%T", "Double jump", client, level);
 	else if(!strcmp(name, "highjump"))
-		FormatEx(result, maxlen, "%T", "跳高", client, level);
+		FormatEx(result, maxlen, "%T", "High jump", client, level);
 	else if(!strcmp(name, "longjump"))
-		FormatEx(result, maxlen, "%T", "跳远", client, level);
+		FormatEx(result, maxlen, "%T", "Long jump", client, level);
 	else if(!strcmp(name, "movespeed"))
-		FormatEx(result, maxlen, "%T", "地速", client, level);
+		FormatEx(result, maxlen, "%T", "Moovement speed", client, level);
 	else
 		return Plugin_Continue;
 	return Plugin_Changed;
@@ -160,7 +161,6 @@ public void Event_PlayerJump(Event event, const char[] eventName, bool dontBroad
 	if(!IsValidAliveClient(client))
 		return;
 	
-	// 此时即将起跳(但是还在地面上)
 	g_bFirstJump[client] = true;
 	g_bJumpReleased[client] = false;
 	g_iCountBHop[client] = 0;
@@ -266,13 +266,11 @@ public void OnPlayerRunCmdPost(int client, int buttons, int impulse, const float
 	
 	if(!inGround && !(buttons & IN_JUMP))
 	{
-		// 在空中放开了跳跃键，准备进行多重跳
 		g_bJumpReleased[client] = true;
 		
 		// PrintToChat(client, "JumpReleased");
 	}
 	
-	// 多重跳
 	else if(!inGround && canJump && (buttons & IN_JUMP) && g_bJumpReleased[client] && g_iCountMulJmp[client] < g_iLevelDouble[client])
 	{
 		float velocity[3];
@@ -291,7 +289,6 @@ public void OnPlayerRunCmdPost(int client, int buttons, int impulse, const float
 		// PrintToChat(client, "DoubleJump");
 	}
 	
-	// 连跳
 	else if(inGround && canJump && (buttons & IN_JUMP) && !g_bFirstJump[client] && g_iCountBHop[client] < g_iLevelBHop[client])
 	{
 		float velocity[3];
@@ -302,8 +299,7 @@ public void OnPlayerRunCmdPost(int client, int buttons, int impulse, const float
 		if(velocity[2] < upVel)
 			velocity[2] = upVel;
 		
-		// 因为引擎的问题，必须要把 m_hGroundEntity 设置为 -1 才能在地面上设置向上速度
-		// 否则会被摩擦力阻止小于 300.0 的向上速度，即使玩家是完全静止的
+
 		SetEntPropEnt(client, Prop_Send, "m_hGroundEntity", -1);
 		TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, velocity);
 		
@@ -323,7 +319,6 @@ float CaclJumpVelocity(int client)
 {
 	bool ducking = ((GetClientButtons(client) & IN_DUCK) && (GetEntityFlags(client) & FL_DUCKING));
 	
-	// GetEntityGravity 返回 0.0，好像用不了
 	float height = SquareRoot(2.0 * g_fGravity * (ducking ? g_fDuckHeight : g_fJumpHeight)/* / GetEntityGravity(client)*/);
 	// PrintToChat(client, "d=%d, gg=%d, pg=%.2f, h=%.0f, jh=%.0f", ducking, g_hCvarGravity.IntValue, GetEntityGravity(client), height, (ducking ? g_fJumpHeightDucking : g_fJumpHeight));
 	
