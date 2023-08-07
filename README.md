@@ -1,5 +1,4 @@
-# L4D2_DLRTalents
-
+# L4D2 DLR Talents
 This is anniversary update for the infamous DLR mode for Left 4 Dead 2. Original is from 2013
 
 ## Changes:
