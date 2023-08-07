@@ -1,5 +1,8 @@
 # L4D2 DLR Talents
-This is anniversary update for the infamous DLR mode for Left 4 Dead 2. Original is from 2013
+This is anniversary update for the infamous DLR mode for Left 4 Dead 2. Original is from 2013.
+Brutal and fun alternative for modern co-op shooters and major upgrade for original game.
+
+Recommended play mode is Versus, but works also in other modes.
 
 ## Changes:
 
