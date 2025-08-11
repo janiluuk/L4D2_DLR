@@ -8,6 +8,60 @@
 int	g_iMenuID;
 int	g_iGuideMenuID;
 
+// Menu option identifiers. Keep in sync with creation order in OnLibraryAdded
+enum DLRMenuOption
+{
+        MENU_GET_KIT = 0,
+        MENU_SET_AWAY,
+        MENU_SELECT_TEAM,
+        MENU_CHANGE_CLASS,
+        MENU_VIEW_RANK,
+        MENU_VOTE_MAP,
+        MENU_VOTE_GAMEMODE,
+        MENU_THIRD_PERSON,
+        MENU_EQUIP_MODE,
+        MENU_TOGGLE_HUD,
+        MENU_MUSIC_PLAYER,
+        MENU_MUSIC_VOLUME,
+        MENU_CHANGE_CHARACTER,
+        MENU_ADMIN_SPAWN,
+        MENU_ADMIN_RELOAD,
+        MENU_ADMIN_MANAGE_SKILLS,
+        MENU_ADMIN_MANAGE_PERKS,
+        MENU_ADMIN_APPLY_EFFECT,
+        MENU_DEBUG_MODE,
+        MENU_HALT_GAME,
+        MENU_INFECTED_SPAWN,
+        MENU_GOD_MODE,
+        MENU_REMOVE_WEAPONS,
+        MENU_GAME_SPEED
+};
+
+// Helper function declarations
+void HandleKit(int client, int kit);
+void HandleSetAway(int client);
+void HandleSelectTeam(int client);
+void HandleChangeClass(int client, int classIndex);
+void HandleShowRank(int client);
+void HandleVoteMap(int client, int value);
+void HandleVoteGamemode(int client, int mode);
+void HandleThirdPerson(int client, int mode);
+void HandleEquipMode(int client, int mode);
+void HandleHud(int client, int state);
+void HandleMusicPlayer(int client, int state);
+void HandleMusicVolume(int client, int level);
+void HandleChangeCharacter(int client, int state);
+void HandleAdminSpawn(int client, int type);
+void HandleAdminReload(int client, int type);
+void HandleManageSkills(int client);
+void HandleManagePerks(int client);
+void HandleApplyEffect(int client);
+void HandleDebugMode(int client, int mode);
+void HandleHaltGame(int client, int mode);
+void HandleInfectedSpawn(int client, int state);
+void HandleGodMode(int client, int state);
+void HandleRemoveWeapons(int client);
+void HandleGameSpeed(int client, int level);
 // ====================================================================================================
 //					PLUGIN INFO
 // ====================================================================================================
@@ -173,39 +227,273 @@ Action CmdDLRGuideMenu(int client, int args)
 // Game Menu selection handling
 public void DLRMenu_OnSelect(int client, int menu_id, int option, int value)
 {
-	if (menu_id == g_iMenuID)
-	{
-	
-		PrintToChatAll("SELECTED %N Option: %d Value: %d", client, option, value);
-
-		switch( option )
-		{
-			case 0: ClientCommand(client, "sm_godmode @me");
-			case 1: ClientCommand(client, "sm_noclip @me");
-			case 2: ClientCommand(client, "sm_beacon @me");
-			case 3: PrintToChat(client, "Speed changed to %d", value);
-			case 4: PrintToChat(client, "Difficulty to %d", value);
-			case 5: PrintToChat(client, "Tester to %d", value);
-			case 6: FakeClientCommand(client, "sm_slay @me");
-			case 7: PrintToChat(client, "Default value changed to %d", value);
-			case 8: PrintToChat(client, "Close after use %d", value);
-			case 9: PrintToChat(client, "Meter value %d", value);
-			case 10, 11, 12: PrintToChat(client, "Second page option %d", option - 9);
-		}
-
-	}
+        if (menu_id == g_iMenuID)
+        {
+                switch (option)
+                {
+                        case MENU_GET_KIT:                HandleKit(client, value);
+                        case MENU_SET_AWAY:               HandleSetAway(client);
+                        case MENU_SELECT_TEAM:            HandleSelectTeam(client);
+                        case MENU_CHANGE_CLASS:           HandleChangeClass(client, value);
+                        case MENU_VIEW_RANK:              HandleShowRank(client);
+                        case MENU_VOTE_MAP:               HandleVoteMap(client, value);
+                        case MENU_VOTE_GAMEMODE:          HandleVoteGamemode(client, value);
+                        case MENU_THIRD_PERSON:           HandleThirdPerson(client, value);
+                        case MENU_EQUIP_MODE:             HandleEquipMode(client, value);
+                        case MENU_TOGGLE_HUD:             HandleHud(client, value);
+                        case MENU_MUSIC_PLAYER:           HandleMusicPlayer(client, value);
+                        case MENU_MUSIC_VOLUME:           HandleMusicVolume(client, value);
+                        case MENU_CHANGE_CHARACTER:       HandleChangeCharacter(client, value);
+                        case MENU_ADMIN_SPAWN:            HandleAdminSpawn(client, value);
+                        case MENU_ADMIN_RELOAD:           HandleAdminReload(client, value);
+                        case MENU_ADMIN_MANAGE_SKILLS:    HandleManageSkills(client);
+                        case MENU_ADMIN_MANAGE_PERKS:     HandleManagePerks(client);
+                        case MENU_ADMIN_APPLY_EFFECT:     HandleApplyEffect(client);
+                        case MENU_DEBUG_MODE:             HandleDebugMode(client, value);
+                        case MENU_HALT_GAME:              HandleHaltGame(client, value);
+                        case MENU_INFECTED_SPAWN:         HandleInfectedSpawn(client, value);
+                        case MENU_GOD_MODE:               HandleGodMode(client, value);
+                        case MENU_REMOVE_WEAPONS:         HandleRemoveWeapons(client);
+                        case MENU_GAME_SPEED:             HandleGameSpeed(client, value);
+                        default:                          LogMessage("Unhandled menu option %d (value %d) from client %N", option, value, client);
+                }
+        }
 }
 
 // Guide Menu selection handling
 public void DLRGuideMenu_OnSelect(int client, int menu_id, int option, int value)
 {
-	if (menu_id == g_iGuideMenuID)
-	{
-		PrintToChatAll("SELECTED %N Option: %d Value: %d", client, option, value);
+        if (menu_id == g_iGuideMenuID)
+        {
+                PrintToChatAll("SELECTED %N Option: %d Value: %d", client, option, value);
 
-		switch (option)
-		{
-			// foobar
-		}
-	}
+                switch (option)
+                {
+                        // foobar
+                }
+        }
+}
+
+// ====================================================================================================
+// Helper Implementations
+// ====================================================================================================
+
+void HandleKit(int client, int kit)
+{
+        static const char cmds[][] =
+        {
+                "sm_kit_medic",
+                "sm_kit_rambo",
+                "sm_kit_ct",
+                "sm_kit_ninja"
+        };
+
+        if (kit >= 0 && kit < sizeof(cmds))
+        {
+                FakeClientCommand(client, cmds[kit]);
+        }
+        else
+        {
+                LogMessage("Unknown kit index %d", kit);
+        }
+}
+
+void HandleSetAway(int client)
+{
+        FakeClientCommand(client, "sm_afk");
+}
+
+void HandleSelectTeam(int client)
+{
+        FakeClientCommand(client, "sm_team");
+}
+
+void HandleChangeClass(int client, int classIndex)
+{
+        char cmd[32];
+        Format(cmd, sizeof(cmd), "sm_class %d", classIndex);
+        FakeClientCommand(client, cmd);
+}
+
+void HandleShowRank(int client)
+{
+        FakeClientCommand(client, "sm_rank");
+}
+
+void HandleVoteMap(int client, int value)
+{
+        FakeClientCommand(client, "sm_votemap");
+}
+
+void HandleVoteGamemode(int client, int mode)
+{
+        static const char modes[][] = { "off", "escort", "deathmatch", "race" };
+        if (mode >= 0 && mode < sizeof(modes))
+        {
+                char cmd[64];
+                Format(cmd, sizeof(cmd), "sm_votegamemode %s", modes[mode]);
+                FakeClientCommand(client, cmd);
+        }
+        else
+        {
+                LogMessage("Unknown gamemode %d", mode);
+        }
+}
+
+void HandleThirdPerson(int client, int mode)
+{
+        if (mode == 0)
+        {
+                ClientCommand(client, "firstperson");
+        }
+        else
+        {
+                ClientCommand(client, "thirdpersonshoulder");
+        }
+}
+
+void HandleEquipMode(int client, int mode)
+{
+        char cmd[32];
+        Format(cmd, sizeof(cmd), "sm_equipment %d", mode);
+        FakeClientCommand(client, cmd);
+}
+
+void HandleHud(int client, int state)
+{
+        char cmd[16];
+        Format(cmd, sizeof(cmd), "sm_hud %d", state);
+        FakeClientCommand(client, cmd);
+}
+
+void HandleMusicPlayer(int client, int state)
+{
+        char cmd[24];
+        Format(cmd, sizeof(cmd), "sm_music %d", state);
+        FakeClientCommand(client, cmd);
+}
+
+void HandleMusicVolume(int client, int level)
+{
+        char cmd[32];
+        Format(cmd, sizeof(cmd), "sm_musicvolume %d", level);
+        FakeClientCommand(client, cmd);
+}
+
+void HandleChangeCharacter(int client, int state)
+{
+        if (state)
+        {
+                FakeClientCommand(client, "sm_changechar");
+        }
+}
+
+void HandleAdminSpawn(int client, int type)
+{
+        static const char cmds[][] =
+        {
+                "sm_spawn_cabinet",
+                "sm_spawn_weapon",
+                "sm_spawn_si",
+                "sm_spawn_tank"
+        };
+
+        if (type >= 0 && type < sizeof(cmds))
+        {
+                FakeClientCommand(client, cmds[type]);
+        }
+        else
+        {
+                LogMessage("Unknown spawn type %d", type);
+        }
+}
+
+void HandleAdminReload(int client, int type)
+{
+        char map[64];
+        switch (type)
+        {
+                case 0:
+                {
+                        GetCurrentMap(map, sizeof(map));
+                        ServerCommand("changelevel %s", map);
+                        break;
+                }
+                case 1:
+                {
+                        ServerCommand("sm_reload_dlr");
+                        break;
+                }
+                case 2:
+                {
+                        ServerCommand("sm_reloadplugins");
+                        break;
+                }
+                case 3:
+                {
+                        ServerCommand("_restart");
+                        break;
+                }
+                default:
+                {
+                        LogMessage("Unknown reload type %d", type);
+                        break;
+                }
+        }
+}
+
+void HandleManageSkills(int client)
+{
+        FakeClientCommand(client, "sm_skill");
+}
+
+void HandleManagePerks(int client)
+{
+        FakeClientCommand(client, "sm_perks");
+}
+
+void HandleApplyEffect(int client)
+{
+        FakeClientCommand(client, "sm_effect");
+}
+
+void HandleDebugMode(int client, int mode)
+{
+        char cmd[32];
+        Format(cmd, sizeof(cmd), "sm_debug %d", mode);
+        ServerCommand("%s", cmd);
+}
+
+void HandleHaltGame(int client, int mode)
+{
+        char cmd[32];
+        Format(cmd, sizeof(cmd), "sm_halt %d", mode);
+        ServerCommand("%s", cmd);
+}
+
+void HandleInfectedSpawn(int client, int state)
+{
+        char cmd[32];
+        Format(cmd, sizeof(cmd), "sm_infectedspawn %d", state);
+        ServerCommand("%s", cmd);
+}
+
+void HandleGodMode(int client, int state)
+{
+        char cmd[32];
+        Format(cmd, sizeof(cmd), "sm_godmode %d", state);
+        FakeClientCommand(client, cmd);
+}
+
+void HandleRemoveWeapons(int client)
+{
+        ServerCommand("sm_removeweapons");
+}
+
+void HandleGameSpeed(int client, int level)
+{
+        float scale = float(level) / 10.0;
+        char cmd[32];
+        Format(cmd, sizeof(cmd), "host_timescale %.2f", scale);
+        ServerCommand("%s", cmd);
 }
