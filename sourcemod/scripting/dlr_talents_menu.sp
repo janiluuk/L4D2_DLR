@@ -178,20 +178,20 @@ public void DLRMenu_OnSelect(int client, int menu_id, int option, int value)
 	
 		PrintToChatAll("SELECTED %N Option: %d Value: %d", client, option, value);
 
-		switch( option )
-		{
-			case 0: ClientCommand(client, "sm_godmode @me");
-			case 1: ClientCommand(client, "sm_noclip @me");
-			case 2: ClientCommand(client, "sm_beacon @me");
-			case 3: PrintToChat(client, "Speed changed to %d", value);
-			case 4: PrintToChat(client, "Difficulty to %d", value);
-			case 5: PrintToChat(client, "Tester to %d", value);
-			case 6: FakeClientCommand(client, "sm_slay @me");
-			case 7: PrintToChat(client, "Default value changed to %d", value);
-			case 8: PrintToChat(client, "Close after use %d", value);
-			case 9: PrintToChat(client, "Meter value %d", value);
-			case 10, 11, 12: PrintToChat(client, "Second page option %d", option - 9);
-		}
+                switch( option )
+                {
+                        case 0: ClientCommand(client, "sm_godmode @me");
+                        case 1: FakeClientCommand(client, "sm_afk");
+                        case 2: FakeClientCommand(client, "sm_team");
+                        case 3: FakeClientCommand(client, "sm_class");
+                        case 4: PrintToChat(client, "Difficulty to %d", value);
+                        case 5: PrintToChat(client, "Tester to %d", value);
+                        case 6: FakeClientCommand(client, "sm_slay @me");
+                        case 7: PrintToChat(client, "Default value changed to %d", value);
+                        case 8: PrintToChat(client, "Close after use %d", value);
+                        case 9: PrintToChat(client, "Meter value %d", value);
+                        case 10, 11, 12: PrintToChat(client, "Second page option %d", option - 9);
+                }
 
 	}
 }
@@ -203,9 +203,16 @@ public void DLRGuideMenu_OnSelect(int client, int menu_id, int option, int value
 	{
 		PrintToChatAll("SELECTED %N Option: %d Value: %d", client, option, value);
 
-		switch (option)
-		{
-			// foobar
-		}
-	}
+                switch (option)
+                {
+                        // foobar
+                }
+        }
+}
+
+// Forward handler for ExtraMenu selections
+public void ExtraMenu_OnSelect(int client, int menu_id, int option, int value)
+{
+        DLRMenu_OnSelect(client, menu_id, option, value);
+        DLRGuideMenu_OnSelect(client, menu_id, option, value);
 }
