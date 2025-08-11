@@ -197,15 +197,33 @@ public void DLRMenu_OnSelect(int client, int menu_id, int option, int value)
 }
 
 // Guide Menu selection handling
-public void DLRGuideMenu_OnSelect(int client, int menu_id, int option, int value)
+void DLRGuideMenu_OnSelect(int client, int menu_id, int option, int value)
 {
-	if (menu_id == g_iGuideMenuID)
+	if (menu_id != g_iGuideMenuID)
 	{
-		PrintToChatAll("SELECTED %N Option: %d Value: %d", client, option, value);
+		return;
+	}
 
-		switch (option)
+	switch (option)
+	{
+		case 1: // "How to" entry
 		{
-			// foobar
+			if (value == 2) // "Special skills"
+			{
+				ShowNightVisionHelp(client);
+			}
 		}
 	}
+}
+
+void ShowNightVisionHelp(int client)
+{
+	PrintToChat(client, "\x04[Nightvision]\x01 Soldiers can press N or type !nv to toggle night vision goggles.");
+	PrintToChat(client, "\x04[Nightvision]\x01 Only the Soldier class can use this ability.");
+}
+
+public void ExtraMenu_OnSelect(int client, int menu_id, int option, int value)
+{
+	DLRMenu_OnSelect(client, menu_id, option, value);
+	DLRGuideMenu_OnSelect(client, menu_id, option, value);
 }
