@@ -1604,7 +1604,7 @@ public Action:Event_WeaponFire(Handle:event, const String:name[], bool:dontBroad
 		if (RoundStarted == true) {
 			ClassHint = true;
 		}
-		PrintHintText(client,"You really should pick a class, 1,5,7 are good for beginners.");
+                PrintHintText(client,"You really should pick a class. Soldier, Medic, or Engineer are good for beginners.");
 		CreatePlayerClassMenu(client);
 	}
 
