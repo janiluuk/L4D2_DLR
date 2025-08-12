@@ -2,68 +2,100 @@ name: Build
 
 on:
   push:
+    paths-ignore:
+      - LICENSE
+      - README.md
   pull_request:
+    paths-ignore:
+      - LICENSE
+      - README.md
   workflow_dispatch:
   schedule:
     - cron: '30 03 01 */3 *' # Artifacts expire every 3 months
 
 jobs:
   build:
-    name: build on ${{ matrix.os }}
+    name: build with sm${{ matrix.sm_version }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os:
+          - ubuntu-latest
+          - ubuntu-22.04
+          - windows-latest
+        sm_version:
+          - "1.8"
+          - "1.9"
+          - "1.10"
+          - "1.11"
         include:
+          - meta_version: "1.10"
+            meta_branch: "1.10-dev"
+          - meta_version: latest
+            meta_branch: master
+          - os_short: linux
+          - sm_version: "1.8"
+            sm_branch: "1.8-dev"
+          - sm_version: "1.9"
+            sm_branch: "1.9-dev"
+          - sm_version: "1.10"
+            sm_branch: "1.10-dev"
+          - sm_version: "1.11"
+            sm_branch: "1.11-dev"
           - os: ubuntu-22.04
             os_short: oldlinux
           - os: windows-latest
             os_short: win
+
     steps:
       - name: Prepare env
         shell: bash
         run: echo "GITHUB_SHA_SHORT=${GITHUB_SHA::7}" >> $GITHUB_ENV
 
-      - uses: actions/checkout@v4
-
-      - name: Install dependencies (Linux)
+      - name: Install (Linux)
         if: runner.os == 'Linux'
         run: |
           sudo dpkg --add-architecture i386
           sudo apt-get update
-          sudo apt-get install -y wget tar lib32z1 lib32stdc++6
+          sudo apt-get install -y unzip wget
 
-      - name: Install dependencies (Windows)
+      - name: Install (Windows)
         if: runner.os == 'Windows'
         run: choco install wget --no-progress
 
-      - name: Download SourceMod 1.11.0-git6453
+      - name: Download SourceMod ${{ matrix.sm_version }}
         shell: bash
         run: |
           if [ "${{ runner.os }}" = "Windows" ]; then
-            wget -nv "https://sm.alliedmods.net/smdrop/1.12/sourcemod-1.12.0-git7219-windows.zip" -O sm.zip
-            unzip sm.zip -d sm
+            wget -nv "https://sm.alliedmods.net/smdrop/${{ matrix.sm_version }}/sourcemod-${{ matrix.sm_version }}-windows.zip" -O sm.zip
+            unzip sm.zip -d sourcemod
           else
-            wget -nv "https://sm.alliedmods.net/smdrop/1.12/sourcemod-1.12.0-git7219-linux.tar.gz" -O sm.tar.gz
-            mkdir -p sm
-            tar -xzf sm.tar.gz -C sm
+            wget -nv "https://sm.alliedmods.net/smdrop/${{ matrix.sm_version }}/sourcemod-${{ matrix.sm_version }}-linux.tar.gz" -O sm.tar.gz
+            mkdir sourcemod
+            tar -xzf sm.tar.gz -C sourcemod
           fi
+
+      - name: Getting own repository
+        uses: actions/checkout@v4
+        with:
+          path: src
 
       - name: Compile plugins
         shell: bash
+        working-directory: src
         run: |
-          spcomp="$GITHUB_WORKSPACE/sm/addons/sourcemod/scripting/spcomp"
-          if [ "${{ runner.os }}" = "Windows" ]; then
-            spcomp="${spcomp}.exe"
-          fi
-          includes="-i $GITHUB_WORKSPACE/sourcemod/scripting/include -i $GITHUB_WORKSPACE/sm/addons/sourcemod/scripting/include"
           mkdir -p package/addons/sourcemod/plugins
-          for sp in sourcemod/scripting/dlr_*.sp; do
-            "$spcomp" $includes -v0 "$sp" -o package/addons/sourcemod/plugins/$(basename "${sp%.sp}.smx")
+          spcompbin="${{ github.workspace }}/sourcemod/addons/sourcemod/scripting/spcomp"
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            spcompbin="${spcompbin}.exe"
+          fi
+          for sp in sourcemod/scripting/*.sp; do
+            "$spcompbin" -v0 "$sp" -o "package/addons/sourcemod/plugins/$(basename "${sp%.sp}.smx")"
           done
 
-      - name: Upload package
+      - name: Uploading package
         uses: actions/upload-artifact@v4
         with:
-          name: l4d2_dlr-sm1.11.0-git6453-${{ matrix.os_short }}-${{ env.GITHUB_SHA_SHORT }}
-          path: package
+          name: l4d2_dlr-sm${{ matrix.sm_version }}-${{ matrix.os_short }}-${{ env.GITHUB_SHA_SHORT }}
+          path: src/package

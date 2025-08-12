@@ -51,7 +51,169 @@ Drop a list of 44.1 kHz MP3s into the supplied music text files, point your fa
 ## Admin corner
 Need to tidy the battlefield? `!adm` opens a dedicated panel with spawn helpers, restart controls, god mode, and slow-motion toggles. Everything is grouped for quick decisions mid-round.
 
-## Ready to tinker?
-Rage Edition is built from modular SourceMod plugins, so you can add new talents, swap out effects, or write your own class packs without touching the core. Check the `sourcemod/scripting` folder for clean, well-documented examples.
+### New saboteur class. 
+
+- Hold crouch 4 sec, and you'll get 20 sec total invisibility with decoy outline.
+- Middle click to activate cloak mode 30 sec. If you get pinned, you leave a doppelganger ragdoll with fake weapon for them to toy with and have 10 seconds invisibility to make escape without ability to shoot.
+- During cloak you can see outlines of all special infected.
+- 7 minetypes to plant. Selection of best variation assigned as default.
+- Nightvision
+
+### Misc
+
+- Each class have now own playermodel. Current ones are guidelines, final models TBD
+-:3rd person with saveable preferences. Either always, melee only and disabled.
+- Soldier now throws realistic marker grenade for airstrike
+- Custom music player, includes free Doom 2 heavymetal remake album in playlist.
+
+### Music player controls
+
+Use the in-game menu (open with `sm_dlr`) and navigate to **Game Options** to control the music player.
+
+- **4. Music player** – play or pause the current track. The track name is echoed to chat after each toggle.
+- **5. Music Volume** – set the volume from 0 to 10 without resuming paused music.
+- **6. Next track** – skip to the next song and print its title.
+
+Opening the menu or changing any setting always prints the current track name so players know what is playing. If background music is enabled, map-specific ambient sounds from `sourcemod/configs/ambient_sounds.cfg` will automatically play whenever the playlist is idle.
+
+## Adding a plugin
+
+Adding new plugin requires including DLRCore.sp file, and implementing following methods:
+```
+/**
+ * Called when player changed class
+ *
+ * @param client         The client index of the player playing tetris.
+ * @param className      Classname that user just selected
+ * @param previousClass  Previous class of user
+ * @noreturn
+ */
+forward OnPlayerClassChange(client, className, previousClass);  
+
+/**
+ * Called when player uses special skill. 
+ * Plugin should react to this to initiate the skill, then call either or OnSpecialSkillFail / OnSpecialSkillSuccess
+ * @param client         The client index of the player playing tetris.
+ * @param skillName      Skill that user just used
+ * @noreturn
+ */
+forward OnSpecialSkillUsed(client, skillName);  
+
+
+/**
+ * Called when player has successfully used special skill. 
+ * This is required for plugin to implement
+ *
+ * @param client         The client index of the player playing tetris.
+ * @param className      Skill that user just used
+ * @noreturn
+ */
+native void OnSpecialSkillSuccess(int client, char[] skillName);  
+
+/**
+ * Called when player has failed using special skill. This prevents from affecting the inventory.
+ *
+ * @param client         The client index of the player playing tetris.
+ * @param className      Skill that user just used
+ * @param reason         Reason for failure
+ * @noreturn
+ */
+native void OnSpecialSkillFail(int client, char[] skillName, char[] reason);  
+
+/**
+ * Register skill from plugin
+ *
+ * @param client         The client index of the player playing tetris.
+ * @param className      Skill that user just used
+ * @param reason         Reason for failure
+ * @noreturn
+ */
+native int RegisterDLRSkill(char[] skillName);  
+
+``` 
+
+Native helper methods that are available:
+
+```
+
+/**
+ * Called when player uses special skill. 
+ * Plugin should react to this to initiate the skill, then call either or OnSpecialSkillFail / OnSpecialSkillSuccess
+ * @param skillName         The client index of the player playing tetris.
+ * @param skillId     Assign ID to this var
+ * @noreturn
+ */
+forward FindSkillIdByName(skillName, skillId);  
+
+/**
+ * Get player classname
+ *
+ * @param client  Client index.
+ * @return        Classname
+ */
+native int:GetPlayerClassName(client);
+
+``` 
+
+Add DLRCore.sp in your include folder and make sure you have dlr_talents.smx available.
+Include this in the plugin file header that you want to implement
+
+
+```
+/****************************************************/
+#tryinclude <DLRCore>
+#if !defined _DLRCore_included
+	// Optional native from DLR Talents
+	native void OnSpecialSkillSuccess(int client, char[] skillName);
+	native void OnSpecialSkillFail(int client, char[] skillName, char[] reason);
+	native void GetPlayerSkillName(int client, char[] skillName, int size);
+	native int  RegisterDLRSkill(char[] skillName, 0);  
+#endif
+static bool DLR_Available = false;
+#define PLUGIN_SKILL_NAME "Plugin Name"
+/****************************************************/
+``` 
+
+Include these functions;
+``` 
+public void DLR_OnPluginState(int pluginstate)
+{
+	DLR_Available = IntToBool(pluginstate);
+	g_iClassID = DLR_Available ? RegisterDLRSkill(PLUGIN_SKILL_NAME, 0) : -1;
+    ....
+}
+
+public void OnPluginStart()
+{
+....
+	if (DLR_Available) {
+		g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME);
+}
+
+public void OnSpecialSkillUsed(int iClient, int skill)
+{
+	if (skill == FindSkillIdByName(PLUGIN_SKILL_NAME) {
+
+		CMD_MainMenu(iClient, 0);
+	}
+}
+public void OnSpecialSkillSuccess(int iClient, int skill)
+{
+	if (skill == FindSkillIdByName(PLUGIN_SKILL_NAME) {
+
+		CMD_MainMenu(iClient, 0);
+	}
+}
+public void OnSpecialSkillFail(int iClient, int skill, char[] reason)
+{
+	if (skill == FindSkillIdByName(PLUGIN_SKILL_NAME) {
+		CMD_MainMenu(iClient, 0);
+	}
+}
+
+
+```
+
+See Multiturret implementation as example
 
 Grab the files, drop them on your server, and let the rage weekend begin.
