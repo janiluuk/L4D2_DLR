@@ -112,6 +112,16 @@ See https://forums.alliedmods.net/showthread.php?t=273312 for more info
 - Soldier now throws realistic marker grenade for airstrike
 - Custom music player, includes free Doom 2 heavymetal remake album in playlist.
 
+### Music player controls
+
+Use the in-game menu (open with `sm_dlr`) and navigate to **Game Options** to control the music player.
+
+- **4. Music player** – play or pause the current track. The track name is echoed to chat after each toggle.
+- **5. Music Volume** – set the volume from 0 to 10 without resuming paused music.
+- **6. Next track** – skip to the next song and print its title.
+
+Opening the menu or changing any setting always prints the current track name so players know what is playing. If background music is enabled, map-specific ambient sounds from `sourcemod/configs/ambient_sounds.cfg` will automatically play whenever the playlist is idle.
+
 ## Adding a plugin
 
 Adding new plugin requires including DLRCore.sp file, and implementing following methods:
