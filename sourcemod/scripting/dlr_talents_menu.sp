@@ -74,12 +74,13 @@ public void OnLibraryAdded(const char[] name)
 		ExtraMenu_AddEntry(menu_id, "2. Multiple Equipment Mode: _OPT_", MENU_SELECT_LIST);
 		ExtraMenu_AddOptions(menu_id, "Off|Single Tap|Double tap");
 		ExtraMenu_AddEntry(menu_id, "3. HUD: _OPT_", MENU_SELECT_ONOFF);
-		ExtraMenu_AddEntry(menu_id, "4. Music player: _OPT_", MENU_SELECT_ONOFF);
-		ExtraMenu_AddEntry(menu_id, "5. Music Volume: _OPT_", MENU_SELECT_LIST);
+                ExtraMenu_AddEntry(menu_id, "4. Music player: _OPT_", MENU_SELECT_ONOFF);
+                ExtraMenu_AddEntry(menu_id, "5. Music Volume: _OPT_", MENU_SELECT_LIST, false, 10);
 		ExtraMenu_AddOptions(menu_id, "□□□□□□□□□□|■□□□□□□□□□|■■□□□□□□□□|■■■□□□□□□□|■■■■□□□□□□|■■■■■□□□□□|■■■■■■□□□□|■■■■■■■□□□|■■■■■■■■□□|■■■■■■■■■□|■■■■■■■■■■");	  // Various selectable options
 
-		ExtraMenu_AddEntry(menu_id, "6. Change Character: _OPT_", MENU_SELECT_ONOFF);
-		ExtraMenu_AddEntry(menu_id, " ", MENU_ENTRY);
+                ExtraMenu_AddEntry(menu_id, "6. Next track", MENU_SELECT_ONLY);
+                ExtraMenu_AddEntry(menu_id, "7. Change Character: _OPT_", MENU_SELECT_ONOFF);
+                ExtraMenu_AddEntry(menu_id, " ", MENU_ENTRY);
 
 		ExtraMenu_NewPage(menu_id);	   // New Page
 
@@ -157,9 +158,12 @@ public void OnPluginEnd()
 // Display menu
 Action CmdDLRMenu(int client, int args)
 {
-	ExtraMenu_Display(client, g_iMenuID, MENU_TIME_FOREVER);
+        ExtraMenu_Display(client, g_iMenuID, MENU_TIME_FOREVER);
 
-	return Plugin_Handled;
+        // Show currently playing track when opening the menu
+        FakeClientCommand(client, "sm_music_current");
+
+        return Plugin_Handled;
 }
 
 // Display menu
@@ -176,9 +180,7 @@ public void DLRMenu_OnSelect(int client, int menu_id, int option, int value)
 	if (menu_id == g_iMenuID)
 	{
 	
-		PrintToChatAll("SELECTED %N Option: %d Value: %d", client, option, value);
-
-		switch( option )
+                switch( option )
 		{
 			case 0: ClientCommand(client, "sm_godmode @me");
 			case 1: ClientCommand(client, "sm_noclip @me");
@@ -190,22 +192,56 @@ public void DLRMenu_OnSelect(int client, int menu_id, int option, int value)
 			case 7: PrintToChat(client, "Default value changed to %d", value);
 			case 8: PrintToChat(client, "Close after use %d", value);
 			case 9: PrintToChat(client, "Meter value %d", value);
-			case 10, 11, 12: PrintToChat(client, "Second page option %d", option - 9);
-		}
+                        case 10:
+                        {
+                                if (value == 1)
+                                {
+                                        FakeClientCommand(client, "sm_music_play");
+                                        FakeClientCommand(client, "sm_music_current");
+                                }
+                                else
+                                {
+                                        FakeClientCommand(client, "sm_music_pause");
+                                        FakeClientCommand(client, "sm_music_current");
+                                }
+                        }
+                        case 11:
+                        {
+                                FakeClientCommand(client, "sm_music_volume %d", value);
+                                FakeClientCommand(client, "sm_music_current");
+                        }
+                        case 12:
+                        {
+                                FakeClientCommand(client, "sm_music_next");
+                                FakeClientCommand(client, "sm_music_current");
+                        }
+                        case 13:
+                                PrintToChat(client, "Second page option %d", option - 9);
+                }
 
-	}
+        }
 }
 
 // Guide Menu selection handling
 public void DLRGuideMenu_OnSelect(int client, int menu_id, int option, int value)
 {
-	if (menu_id == g_iGuideMenuID)
-	{
-		PrintToChatAll("SELECTED %N Option: %d Value: %d", client, option, value);
+        if (menu_id == g_iGuideMenuID)
+        {
+                switch (option)
+                {
+                        // foobar
+                }
+        }
+}
 
-		switch (option)
-		{
-			// foobar
-		}
-	}
+public void ExtraMenu_OnSelect(int client, int menu_id, int option, int value)
+{
+        if (menu_id == g_iMenuID)
+        {
+                DLRMenu_OnSelect(client, menu_id, option, value);
+        }
+        else if (menu_id == g_iGuideMenuID)
+        {
+                DLRGuideMenu_OnSelect(client, menu_id, option, value);
+        }
 }
