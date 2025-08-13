@@ -27,6 +27,17 @@ public Action:TimerThink(Handle:hTimer, any:userid)
 		case athlete:
 		{	
 			SetEntDataFloat(client, g_flLaggedMovementValue, GetConVarFloat(ATHLETE_SPEED), true);
+			if (buttons & IN_ZOOM) {
+
+				char pendingMessage[128] = "Wait %i seconds to use anti-gravity grenade again";
+				
+				if (canUseSpecialSkill(client, pendingMessage)) {
+					//useSpecialSkill(client, 11);
+					useCustomCommand("Grenades", client, -1, 15);
+					ClientData[client].LastDropTime = GetGameTime();
+				}
+
+			}
 		}
 		
 		case saboteur:
@@ -48,9 +59,15 @@ public Action:TimerThink(Handle:hTimer, any:userid)
 			}
 			if (buttons & IN_ZOOM) {
 					char pendingMessage[128] = "Wait for %i seconds to activate cloak again";
-					if (canUseSpecialSkill(client, pendingMessage)) {
-						useSpecialSkill(client, 1);						
-						ClientData[client].LastDropTime = GetGameTime();
+					if (canUseSpecialSkill(client, pendingMessage, true)) {
+						new Handle:hPack = CreateDataPack();
+						WritePackCell(hPack, GetClientUserId(client));
+						WritePackCell(hPack, ClientData[client].ChosenClass);
+
+						CreateTimer(3.0, TimerRestorePlayer, hPack, TIMER_FLAG_NO_MAPCHANGE);	
+						useSpecialSkill(client, 1);	
+						PrintHintText(client, "You spawned a decoy, you have 10 seconds to sneak away without weapons.");
+
 					}
 
 			}
@@ -61,8 +78,11 @@ public Action:TimerThink(Handle:hTimer, any:userid)
 					if (InvisibilityTimestamp != hidingTime && InvisibilityHint == false) 
 					{
 						SetRenderProperties(client);
+						PrintHintText(client,"You are now invisible for 20 seconds. You can see enemies during this time.");
 
 						FakeClientCommand(client, "sm_nap_apply 7");
+						FakeClientCommand(client, "sm_extendedsight on");
+
 						//HidePlayer(client);
 
 						//SetEntityRenderFx(client, RENDERFX_PULSE_SLOW);
@@ -79,6 +99,7 @@ public Action:TimerThink(Handle:hTimer, any:userid)
 						InvisibilityTimestamp = hidingTime;
 					}
 				}
+
 			}
 			
 			else if (buttons & IN_SPEED)
@@ -87,7 +108,7 @@ public Action:TimerThink(Handle:hTimer, any:userid)
 				} else {
 					if (CanDrop == false && (iDropTime > 0 && iDropTime < GetConVarInt(MINIMUM_DROP_INTERVAL))) 
 					{
-							PrintHintText(client ,"Wait %i seconds to another mine", (GetConVarInt(MINIMUM_DROP_INTERVAL) - iDropTime));
+							PrintHintText(client ,"Wait %i seconds to deploy next mine", (GetConVarInt(MINIMUM_DROP_INTERVAL) - iDropTime));
 					} else {
 
 						if (CanDrop == true && !IsPlayerInSaferoom(client) && !IsInEndingSaferoom(client))
@@ -115,9 +136,6 @@ public Action:TimerThink(Handle:hTimer, any:userid)
 					if (canUseSpecialSkill(client, pendingMessage)) {
 						useSpecialSkill(client, 1);
 						PrintHintText(client, "You activated berzerk mode!");
-						
-						ClientData[client].LastDropTime = GetGameTime();
-
 					}
 			}
 		}
@@ -144,7 +162,7 @@ public Action:TimerThink(Handle:hTimer, any:userid)
 
 			if (buttons & IN_ZOOM) {
 
-				char pendingMessage[128] = "Wait %i seconds to use healing grenades again";
+				char pendingMessage[128] = "Wait %i seconds to use healing orb again";
 				
 				if (canUseSpecialSkill(client, pendingMessage)) {
 					//useSpecialSkill(client, 11);
@@ -190,7 +208,7 @@ public Action:TimerThink(Handle:hTimer, any:userid)
 			}
 			else if (buttons & IN_ZOOM) {
 
-				char pendingMessage[128] = "Wait %i seconds to use shield grenades again";
+				char pendingMessage[128] = "Wait %i seconds to activate shield again";
 				
 				if (canUseSpecialSkill(client, pendingMessage)) {
 					useCustomCommand("Grenades", client, -1, 7);
@@ -205,19 +223,12 @@ public Action:TimerThink(Handle:hTimer, any:userid)
 		{
 			SetEntDataFloat(client, g_flLaggedMovementValue, GetConVarFloat(SOLDIER_SPEED), true);
 
-			if (buttons & IN_SPEED)
+			if (buttons & IN_ZOOM)
 			{
-				if (g_bAirstrike && g_bAirstrikeValid == false) {
-
-					ClientData[client].LastButtons = buttons;
-					return Plugin_Continue;
-				}	
 				char pendingMessage[128] = "Wait %d seconds to order new airstrike.";
 				
-				if (g_bAirstrike && g_bAirstrikeValid && canUseSpecialSkill(client, pendingMessage)) {
-					g_bAirstrikeValid = false;
-					CreateAirStrike(client);
-					useSpecialSkill(client, 0);
+				if (canUseSpecialSkill(client, pendingMessage)) {
+					useCustomCommand("Grenades", client, -1, 19);
 					ClientData[client].LastDropTime = GetGameTime();
 				}
 			}
@@ -227,6 +238,7 @@ public Action:TimerThink(Handle:hTimer, any:userid)
 	ClientData[client].LastButtons = buttons;
 	return Plugin_Continue;
 }
+
 
 public Action:TimerLoadClient(Handle:hTimer, any:client)
 {
@@ -241,6 +253,28 @@ public Action:TimerLoadClient(Handle:hTimer, any:client)
 	return Plugin_Stop;
 }
 
+public Action Timer_Ready(Handle timer, int client) {
+	if (!IsValidClient(client) ||  !IsPlayerAlive(client) || GetClientTeam(client) != 2)
+	{ return Plugin_Stop; }
+
+	GetPlayerSkillReadyHint(client);
+	//KillTimer(g_ReadyTimer, true);
+	g_ReadyTimer[client] = null;
+	return Plugin_Stop;
+}
+
+public Action:TimerRestorePlayer(Handle:hTimer, Handle:hPack)
+{
+	ResetPack(hPack);
+	new userid = ReadPackCell(hPack);
+	new client = GetClientOfUserId(userid);
+	new chosenClass = ReadPackCell(hPack);
+	CloseHandle(hPack);
+	ClientData[client].ChosenClass = view_as<ClassTypes>(chosenClass);
+
+	return Plugin_Stop;
+
+}
 public Action:TimerSetClientTempHealth(Handle:hTimer, Handle:hPack)
 {
 	ResetPack(hPack);
@@ -360,49 +394,6 @@ public Action:TimerDetectHealthChanges(Handle:hTimer, any:client)
 	return Plugin_Continue;
 }
 
-public Action:TimerAirstrike(Handle timer, Handle:hPack)
-{
-	new Float:pos[3];
-	new Float:time;
-	int client;
-	int entity;
-	int userId;
-	ResetPack(hPack);
-	userId = ReadPackCell(hPack);		
-	client = GetClientOfUserId(userId);
-	pos[0] = ReadPackFloat(hPack);
-	pos[1] = ReadPackFloat(hPack);
-	pos[2] = ReadPackFloat(hPack);
-	time =  ReadPackFloat(hPack);
-	entity = ReadPackCell(hPack);
-
-	if (client > 0 && IsClientInGame(client) && RoundToFloor(GetGameTime()-time) <= 10) {
-		PrintHintTextToAll("Airstrike in %i, take cover!",10-(RoundToFloor(GetGameTime()-time)));
-		
-		return Plugin_Continue;
-	} else {
-
-		g_bAirstrikeValid = true;
-		PrintHintTextToAll("Airstrike completed!");
-		ClientData[client].SpecialsUsed++;
-		F18_ShowAirstrike(pos, GetRandomFloat(0.0, 180.0));
-
-		if(IsValidEntity(entity))
-		{
-			AcceptEntityInput(entity, "Kill");
-		}
-	}
-
-	return Plugin_Stop;
-}
-
-public Action:TimerActivateBomb(Handle:hTimer, Handle:hPack)
-{
-	CreateTimer(0.3, TimerCheckBombSensors, hPack, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
-	
-	return Plugin_Stop;
-}
-
 public Action:TimerCheckBombSensors(Handle:hTimer, Handle:hPack)
 {
 	new Float:pos[3];
@@ -443,9 +434,8 @@ public Action:TimerCheckBombSensors(Handle:hTimer, Handle:hPack)
 
 			if (GetVectorDistance(pos, clientpos) < GetConVarFloat(SABOTEUR_BOMB_RADIUS))
 			{
-				if (GetClientTeam(client) == 3 || IsWitch(client)) {
-					BombActive = false;
-					BombIndex[index] = false;
+				if (GetClientTeam(client) == 3 || IsWitch(client) || IsTank(client)) {
+	
 					
 					if (GetConVarInt(SABOTEUR_BOMB_TYPES) == 1) {
 						PrintDebugAll("Enabling single minetype mode");
@@ -455,11 +445,12 @@ public Action:TimerCheckBombSensors(Handle:hTimer, Handle:hPack)
 					if (!IsValidEntity(owner) || !IsClientInGame(owner)) {
 						return Plugin_Stop;
 					}
-
+					BombActive = false;
+					BombIndex[index] = false;
 					PrintHintTextToAll("%N's mine detonated!", owner);
 		
 
-					PrintDebugAll("Detonating Mine type: %s", getBombName(bombType));
+					PrintDebugAll("Detonating Mine %s on entity %i", getBombName(bombType), entity );
 
 					useCustomCommand("Grenades", owner, entity, bombType-1);					
 					
@@ -478,6 +469,23 @@ public Action:TimerCheckBombSensors(Handle:hTimer, Handle:hPack)
 	}
 	return Plugin_Continue;
 }
+
+/**
+ * @note Validates if the current client is valid to run the plugin.
+ *
+ * @param client		The client index.
+ * @return              False if the client is not the Tank, true otherwise.
+ */
+
+stock bool IsTank(int client)
+{
+	if(client > 0 && client <= MaxClients && IsClientInGame(client) && GetClientTeam(client) == 33)
+		if(GetEntProp(client, Prop_Send, "m_zombieClass") == 8)
+			return true;
+	
+	return false;
+}
+
 
 public Action:TimerRemovePrecacheParticle(Handle:timer, any:Particle)
 {
@@ -565,8 +573,6 @@ public Action:TimerStopAndRemoveBombParticle(Handle:timer, Handle:pack)
 		if (BombActive == false) {
 			AcceptEntityInput(entity, "Kill");
 		} else {
-			AcceptEntityInput(entity, "stop");
-			BombActive = true;
 			static float vPos[3];
 			char color[12];
 			new Handle:hPack = CreateDataPack();
@@ -577,11 +583,11 @@ public Action:TimerStopAndRemoveBombParticle(Handle:timer, Handle:pack)
 			int defibParticle;
 			int elmosParticle;
 			// Particle
-			defibParticle = DisplayParticle(false, PARTICLE_DEFIB, vPos, NULL_VECTOR);				
+			defibParticle = DisplayParticle(entity, PARTICLE_DEFIB, vPos, NULL_VECTOR);				
 			WritePackCell(hPack, defibParticle);
 
 			if (defibParticle) InputKill(defibParticle, 2.0);
-			elmosParticle = DisplayParticle(false, PARTICLE_ELMOS, vPos, NULL_VECTOR);
+			elmosParticle = DisplayParticle(entity, PARTICLE_ELMOS, vPos, NULL_VECTOR);
 			if (elmosParticle) InputKill(elmosParticle, 3.0);
 			WritePackCell(hPack, elmosParticle);
 			WritePackCell(hPack, mine);
@@ -598,7 +604,7 @@ public Action:TimerDeleteBombs(Handle:timer, Handle:pack)
 	bool removed = false;
 
 	if (BombIndex[index] == false) {
-		for (new i = 0; i <= 3; i++)
+		for (new i = 0; i < 3; i++)
 		{
 			int entity = ReadPackCell(pack);
 			if(entity > 0 && IsValidEntity(entity))
@@ -625,7 +631,6 @@ public Action:TimerDeleteBombs(Handle:timer, Handle:pack)
 		return Plugin_Continue;
 	}
 	if (removed == true) {
-		KillTimer(timer);
 		return Plugin_Stop;
 	} 
 	return Plugin_Continue;

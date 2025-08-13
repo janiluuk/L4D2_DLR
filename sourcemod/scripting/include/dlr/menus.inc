@@ -1,5 +1,6 @@
 ConVar sb_stop;
 bool g_bNB;
+
 ///////////////////////////////////////////////////////////////////////////////////
 // Class menu
 ///////////////////////////////////////////////////////////////////////////////////
@@ -7,13 +8,14 @@ bool g_bNB;
 stock bool:CreatePlayerClassMenu(client)
 {
 	new Handle:hPanel;
+
 	decl String:buffer[256];
 	if((hPanel = CreatePanel()) == INVALID_HANDLE)
 	{
 		LogError("Cannot create hPanel on CreatePlayerClassMenu");
 		return false;
 	}
-	
+
 	if (!client ||  !IsClientInGame(client) || GetClientTeam(client) != 2) {
 		return false;
 	}
@@ -97,6 +99,15 @@ public PanelHandler_SelectClass(Handle:menu, MenuAction:action, client, param)
 					PrintToChatAll("\x04%N\x01 : class changed from \x05%s\x01 to \x05%s\x01",client,MENU_OPTIONS[OldClass],MENU_OPTIONS[param]);
 				}
 			}
+		}
+		case MenuAction_Cancel:
+		{
+			CloseHandle(menu);
+
+		}
+		case MenuAction_End:
+		{
+			CloseHandle(menu);
 		}	
 	}	
 }
@@ -361,7 +372,7 @@ public SelectSaboteurItem(Handle:menu, MenuAction:action, param1, param2)
 			decl String:menucmd[256];
 			GetMenuItem(menu, param2, menucmd, sizeof(menucmd));
 			if (StringToInt(menucmd) > 0) {
-				PrintDebug(param1, "Placing type %d mine", getBombName(StringToInt(menucmd)));
+				PrintDebug(param1, "Placing type %s mine. Original value was %s", getBombName(StringToInt(menucmd)), menucmd);
 				CalculateSaboteurPlacePos(param1, StringToInt(menucmd));
 			}
 		}
@@ -561,11 +572,11 @@ public Admin_MnuHdlr_DlrOpts(Handle:menu, MenuAction:action, param1, param2) {
 		}
 		case MenuAction_Select:
 		{
-			if( param2 == 1)
+			if( param2 == 0)
 			{
 				PrintHintText(param1,"Debug mode is %s",  (getDebugMode() > 0) ? "ON" : "OFF");
 			}
-			if (param2 == 2) 
+			if (param2 == 1) 
 			{
 				disableInfected = (disableInfected == true) ? false : true;
 
@@ -592,11 +603,11 @@ public Admin_MnuHdlr_DlrOpts(Handle:menu, MenuAction:action, param1, param2) {
 				}
 				PrintHintText(param1,"Infected are now %s", disableInfected ? "DISABLED" : "ENABLED");
 			}
-			if( param2 == 3)
+			if( param2 == 2)
 			{
 			        DisplayMenu(g_hSkillMenu, param1, MENU_TIME_FOREVER);
 			}
-			if( param2 == 4)
+			if( param2 == 3)
 			{
 				sb_stop = FindConVar("sb_stop");
 				if( sb_stop.IntValue == 1 )
@@ -611,7 +622,7 @@ public Admin_MnuHdlr_DlrOpts(Handle:menu, MenuAction:action, param1, param2) {
 				}
 			
 			}
-			if( param2 == 5)
+			if( param2 == 4)
 			{
 				if( g_bNB ) {
 					if( param1 > 0) PrintHintText(param1, "\x04Game characters are no more halted.\x01");

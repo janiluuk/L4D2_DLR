@@ -38,7 +38,7 @@ void SetupPerks() {
 	index = SetupPerk("Sticky Goo", "Slows player down in goo", PerkMod_Constant);
 	Perks[index].AddFlagPrompt(false);
 	Perks[index].AddFlag("90% Movement Speed", true);
-	Perks[index].AddFlag("80% Movement Speed", false);
+	Perks[index].AddFlag("80% MovemSDKHook_WeaponCanUseent Speed", false);
 	Perks[index].AddFlag("70% Movement Speed", false);
 	Perks[index].AddFlag("50% Movement Speed", false);
 	Perks[index].AddFlag("30% Movement Speed", false);

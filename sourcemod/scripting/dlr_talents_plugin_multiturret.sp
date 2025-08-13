@@ -489,7 +489,7 @@ public void OnPluginStart()
 	hCvar_Machine_MapsOn 			= CreateConVar("l4d_machine_maps_on", 				"", 		"Allow the plugin being loaded on these maps, separate by commas (no spaces). Empty = all.\nExample: \"l4d_hospital01_apartment,c1m1_hotel\"", FCVAR_NOTIFY);
 	hCvar_Machine_MapsOff 			= CreateConVar("l4d_machine_maps_off", 				"", 		"Prevent the plugin being loaded on these maps, separate by commas (no spaces). Empty = none.\nExample: \"l4d_hospital01_apartment,c1m1_hotel\"", FCVAR_NOTIFY);
 	hCvar_MachineDamageToInfected 	= CreateConVar("l4d_machine_damage_to_infected", 	"60", 		"Sets the amount of damage to the infected.", FCVAR_NOTIFY, true, 0.0, true, 100.0);
-	hCvar_MachineDamageToSurvivor 	= CreateConVar("l4d_machine_damage_to_survivor", 	"25", 		"Sets the amount of damage to survivors.", FCVAR_NOTIFY, true, 0.0, true, 100.0);
+	hCvar_MachineDamageToSurvivor 	= CreateConVar("l4d_machine_damage_to_survivor", 	"10", 		"Sets the amount of damage to survivors.", FCVAR_NOTIFY, true, 0.0, true, 100.0);
 	hCvar_MachineRange 				= CreateConVar("l4d_machine_range", 				"1000", 	"Sets the max range of enemy detection by machine guns.", FCVAR_NOTIFY, true, 250.00, true, 3000.00);
 	hCvar_MachineOverHeat 			= CreateConVar("l4d_machine_overheat", 				"15.0", 	"Sets the time before overheat in seconds.", FCVAR_NOTIFY, true, 5.00, true, 30.00);
 	hCvar_MachineRequiredAccessLevel= CreateConVar("l4d_machine_required_access_level", "", 		"Admin flags required to use the feature. \nEmpty = Allowed for everyone.", FCVAR_NOTIFY);
@@ -513,7 +513,7 @@ public void OnPluginStart()
 	hCvar_MachineFireRateGatling	= CreateConVar("l4d_machine_fire_rate_gatling", 	"7", 		"Sest rate of fire, amount shots per second.", FCVAR_NOTIFY, true, 5.0, true, 30.0);
 	hCvar_MachineBlocking 	 		= CreateConVar("l4d_machine_blocking", 				"0", 		"If enabled, turrets are solid entities instead of walk-through. \n0 = Disabled.\n1 = Enabled.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	hCvar_MachineGlowRange 			= CreateConVar("l4d_machine_glow_range", 			"3.0",		"Sets the amount of glow the turret produces", FCVAR_NOTIFY, true, 0.0, true, 100.0);
- 	hCvar_MachineBetrayChance 		= CreateConVar("l4d_machine_betray_chance", 		"20.0",		"Sets the probability of being betrayed by machine guns", FCVAR_NOTIFY, true, 0.0, true, 100.0);
+ 	hCvar_MachineBetrayChance 		= CreateConVar("l4d_machine_betray_chance", 		"10.0",		"Sets the probability of being betrayed by machine guns", FCVAR_NOTIFY, true, 0.0, true, 100.0);
 	hCvar_MachineLimit 				= CreateConVar("l4d_machine_limit", 				"2", 		"Maximum 50 cal guns per user.", FCVAR_NOTIFY, true, 1.0, true, 16.0);
 	hCvar_MachineLimitGatling		= CreateConVar("l4d_machine_gatling_limit", 		"1", 		"Maximum amount of gatling guns per user", FCVAR_NOTIFY, true, 1.0, true, float(MAX_EACHPLAYER));	
 	hCvar_MachineMaxAllowed 		= CreateConVar("l4d_machine_max_allowed", 			"8", 		"Maximum total amount of turrets per game", FCVAR_NOTIFY, true, 1.0, true, float(MAX_ALLOWED));

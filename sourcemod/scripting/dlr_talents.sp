@@ -39,11 +39,21 @@ public Plugin:myinfo =
 #include <jutils>
 #include <l4d2>
 
-// ====================================================================================================
-//					L4D2 - Native
-// ====================================================================================================
+#undef REQUIRE_PLUGIN
+#tryinclude <LMCCore>
+#define REQUIRE_PLUGIN
 
-native void F18_ShowAirstrike(float origin[3], float direction);
+#if !defined _LMCCore_included
+	native int LMC_SetClientOverlayModel(int iEntity, const char[] sModel);
+#endif
+
+#undef REQUIRE_PLUGIN
+#tryinclude <LMCL4D2SetTransmit>
+#define REQUIRE_PLUGIN
+
+#if !defined _LMCL4D2SetTransmit_included
+	native int LMC_L4D2_SetTransmit(int iEntity);
+#endif
 
 /**
 * PLUGIN LOGIC
@@ -68,6 +78,7 @@ public OnPluginStart( )
 	RegAdminCmd("sm_hud_setup", Cmd_SetupHud, ADMFLAG_ROOT, "Delete HUD");
 	RegAdminCmd("sm_setvictim", Cmd_SetVictim, ADMFLAG_ROOT, "Set horde to attack player #");
 	RegAdminCmd("sm_debug", Command_Debug, ADMFLAG_GENERIC, "sm_debug [0 = Off|1 = PrintToChat|2 = LogToFile|3 = PrintToChat AND LogToFile]");
+	RegAdminCmd("sm_model", CmdModel, ADMFLAG_GENERIC, "Change model to custom one");
 
 	// Api
 
@@ -78,7 +89,12 @@ public OnPluginStart( )
 	g_hOnSkillSelected = CreateGlobalForward("OnSkillSelected", ET_Event, Param_Cell, Param_Cell);	
 	g_hForwardPluginState = CreateGlobalForward("DLR_OnPluginState", ET_Ignore, Param_String, Param_Cell);
 	g_hForwardRoundState = CreateGlobalForward("DLR_OnRoundState", ET_Ignore, Param_Cell);
+	g_fwPerkPre = CreateGlobalForward("DLR_OnPerkPre", ET_Hook, Param_Cell, Param_Cell, Param_String, Param_Cell);
+	g_fwPerkPost = CreateGlobalForward("DLR_OnPerkPost", ET_Ignore, Param_Cell, Param_Cell, Param_String);
+	g_fwCanAccessPerk = CreateGlobalForward("DLR_CanAccessPerk", ET_Event, Param_Cell, Param_Cell, Param_String, Param_CellByRef);
+	g_fwSlotName = CreateGlobalForward("DLR_OnGetSlotName", ET_Event, Param_Cell, Param_Cell, Param_String, Param_Cell);
 
+	// void DLR_OnLoad(int client);
 	//Create menu and set properties
 	g_hSkillMenu = CreateMenu(DlrSkillMenuHandler);
 	SetMenuTitle(g_hSkillMenu, "Registered plugins");
@@ -153,6 +169,7 @@ public OnPluginStart( )
 	ENGINEER_HEALTH = CreateConVar("talents_engineer_health", "150", "How much health a engineer should have");
 	BRAWLER_HEALTH = CreateConVar("talents_brawler_health", "600", "How much health a brawler should have");
 
+	SPECIAL_SKILL_LIMIT = CreateConVar("talents_skill_amount", "5", "How many times special skills can be used per round by default");
 	SOLDIER_MELEE_ATTACK_RATE = CreateConVar("talents_soldier_melee_rate", "0.45", "The interval for soldier swinging melee weapon (clamped between 0.3 < 0.9)", FCVAR_NOTIFY, true, 0.3, true, 0.9);
 	HookConVarChange(SOLDIER_MELEE_ATTACK_RATE, Convar_Melee_Rate);	
 	SOLDIER_ATTACK_RATE = CreateConVar("talents_soldier_attack_rate", "0.6666", "How fast the soldier should shoot with guns. Lower values = faster. Between 0.2 and 0.9", FCVAR_NONE|FCVAR_NOTIFY, true, 0.2, true, 0.9);
@@ -226,6 +243,7 @@ public OnPluginStart( )
 
 public ResetClientVariables(client)
 {
+
 	ClientData[client].SpecialsUsed = 0;	
 	ClientData[client].HideStartTime= GetGameTime();
 	ClientData[client].HealStartTime= GetGameTime();
@@ -235,7 +253,13 @@ public ResetClientVariables(client)
 	ClientData[client].SpecialSkill = SpecialSkill:No_Skill;
 	ClientData[client].LastDropTime = 0.0;
 	g_bInSaferoom[client] = false;
-	g_bHide[client] = false; 
+	g_bHide[client] = false;
+	
+	if (g_ReadyTimer[client] != null) 
+	{ 
+		delete g_ReadyTimer[client];
+	}
+	
 }
 
 public ClearCache()
@@ -269,6 +293,14 @@ public RebuildCache()
 	}
 }
 
+public void GetPlayerSkillReadyHint(client) {
+
+	int classId = view_as<int>(ClientData[client].ChosenClass);
+	if (ClientData[client].SpecialLimit > ClientData[client].SpecialsUsed) {
+		PrintHintText(client,"%s", SpecialReadyTips[classId]);	
+	}
+}
+
 public void SetupClasses(client, class)
 {
 	if (!client
@@ -280,17 +312,31 @@ public void SetupClasses(client, class)
 	
 	ClientData[client].ChosenClass = view_as<ClassTypes>(class);
 	ClientData[client].SpecialDropInterval = GetConVarInt(MINIMUM_DROP_INTERVAL);	
-	ClientData[client].SpecialLimit = 5;
+	ClientData[client].SpecialLimit = GetConVarInt(SPECIAL_SKILL_LIMIT);
 	new MaxPossibleHP = GetConVarInt(NONE_HEALTH);
 	DisableAllUpgrades(client);
+	bool useCustomModel = false;
+
+	#if defined _LMCL4D2SetTransmit_included
+	useCustomModel = true;
+	#endif
+
+	if (useCustomModel) {
+		int customModelIndex = view_as<int>(class);
+		char sModel[64];
+		Format(sModel, sizeof(sModel)	, ClassCustomModels[customModelIndex]);
+		LMC_L4D2_SetTransmit(client, LMC_SetClientOverlayModel(client, sModel));
+		PrintDebug(client, "Choosing custom model: %s", sModel);
+	}
 
 	switch (view_as<ClassTypes>(class))
 	{
+
 		case soldier:	
 		{
 			char text[64];
 			if (g_bAirstrike == true) {
-				text = "Press SHIFT for Airstrike!";
+				text = "Press MIDDLE BUTTON for Airstrike!";
 			}
 
 			PrintHintText(client,"You have armor, fast attack rate and movement %s", text );
@@ -301,7 +347,7 @@ public void SetupClasses(client, class)
 		
 		case medic:
 		{
-			PrintHintText(client,"Hold CROUCH to heal others. Press SHIFT to drop medkits & supplies.\nPress MIDDLE button to throw healing grenade");
+			PrintHintText(client,"Hold CROUCH to heal others. Press SHIFT to drop medkits & supplies.\nPress MIDDLE button to throw healing grenade!");
 			CreateTimer(GetConVarFloat(MEDIC_HEALTH_INTERVAL), TimerDetectHealthChanges, client, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 			ClientData[client].SpecialLimit = GetConVarInt(MEDIC_MAX_ITEMS);
 			MaxPossibleHP = GetConVarInt(MEDIC_HEALTH);
@@ -342,7 +388,7 @@ public void SetupClasses(client, class)
 		
 		case saboteur:
 		{
-			PrintHintText(client,"Press SHIFT to drop mines! Hold CROUCH for 3 sec to go invisible. \nPress MIDDLE button to toggle Dobbelganger if attacked!");
+			PrintHintText(client,"Press SHIFT to drop mines! Hold CROUCH for 3 sec to go invisible. \nPress MIDDLE button to summon Decoy. It can save you from being pinned");
 			MaxPossibleHP = GetConVarInt(SABOTEUR_HEALTH);
 			ClientData[client].SpecialLimit = GetConVarInt(SABOTEUR_MAX_BOMBS);
 //			ToggleNightVision(client);
@@ -426,6 +472,11 @@ public AssignSkills(client)
 
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
 {
+	g_AllPerks = CreateTrie();
+	g_SlotPerks = CreateTrie();
+	g_SlotIndexes = CreateArray();
+	g_bLateLoad = late;
+
 	EngineVersion test = GetEngineVersion();
 	if( test == Engine_Left4Dead ) g_bLeft4Dead2 = false;
 	else if( test == Engine_Left4Dead2 ) g_bLeft4Dead2 = true;
@@ -444,14 +495,15 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	CreateNative("FindSkillNameById", Native_FindSkillNameById);
 	CreateNative("FindSkillIdByName", Native_FindSkillIdByName);
 	CreateNative("GetPlayerSkillName", Native_GetPlayerSkillName);
+	
+	CreateNative("DLR_GetAllPerks", Native_GetAllPerks);
+	CreateNative("DLR_GetPlayerPerk", Native_GetPlayerPerk);
+	CreateNative("DLR_RegPerk", Native_RegPerk);
+	CreateNative("DLR_FindPerk", Native_FindPerk);
+
 	MarkNativeAsOptional("LMC_GetEntityOverlayModel"); // LMC
-	MarkNativeAsOptional("F18_ShowAirstrike");
 	MarkNativeAsOptional("OnCustomCommand");
 
-	//MarkNativeAsOptional("DLR_Berzerk");
-	//MarkNativeAsOptional("DLR_Infected2023");
-
-	g_bLateLoad = late;
 	return APLRes_Success;
 }
 
@@ -465,23 +517,6 @@ public void OnPluginEnd()
 	Call_PushString(plugin);
 	Call_PushCell(0);
 	Call_Finish();	
-}
-
-public void OnLibraryAdded(const char[] sName)
-{
-	if( g_bLeft4Dead2 && strcmp(sName, "l4d2_airstrike") == 0 )
-	{
-		g_bAirstrike = true;
-		// Assuming valid for late load
-		if( g_bLateLoad )
-		g_bAirstrikeValid = true;
-	}
-}
-
-public void OnLibraryRemoved(const char[] sName)
-{
-	if( g_bLeft4Dead2 && strcmp(sName, "l4d2_airstrike") == 0 )
-		g_bAirstrike = false;
 }
 
 public InitSkillArray()
@@ -539,7 +574,7 @@ public Native_RegisterSkill(Handle:plugin, numParams)
 		IntToString(g_iSkillCounter, szItemInfo, sizeof(szItemInfo));
 		int index = FindStringInArray(g_hSkillArray, szSkillName);		
 		if (index >= 0) {
-			PrintDebugAll("Skill %s already exists on index %i", szSkillName, index);
+			//PrintDebugAll("Skill %s already exists on index %i", szSkillName, index);
 			return index;
 		}
 		index = PushArrayString(g_hSkillArray, szSkillName);
@@ -577,39 +612,7 @@ public Native_UnregisterSkill(Handle:plugin, numParams)
 	}
 	return 0;
 }
-// ====================================================================================================
-//					L4D2 - F-18 AIRSTRIKE
-// ====================================================================================================
 
-public void F18_OnRoundState(int roundstate)
-{
-	static int mystate;
-	if(roundstate == 1 && mystate == 0 )
-	{
-		mystate = 1;
-		g_bAirstrikeValid = true;
-	}
-	else if(roundstate == 0 && mystate == 1)
-	{
-		mystate = 0;
-		g_bAirstrikeValid = false;
-	}
-}
-
-public void F18_OnPluginState(int pluginstate)
-{
-	static int mystate;
-	if(pluginstate == 1 && mystate == 0)
-	{
-		mystate = 1;
-		g_bAirstrikeValid = true;
-	}
-	else if(pluginstate == 0 && mystate == 1)
-	{
-		mystate = 0;
-		g_bAirstrikeValid = false;
-	}
-}
 // ====================================================================================================
 //					Native events
 // ====================================================================================================
@@ -634,6 +637,14 @@ any Native_OnSpecialSkillSuccess(Handle plugin, int numParams)
 	GetNativeString(2, str, len + 1);
 	ClientData[client].SpecialsUsed++;
 	ClientData[client].LastDropTime = GetGameTime();
+
+	int interval = ClientData[client].SpecialDropInterval;
+
+	if (interval >= 0 && (ClientData[client].SpecialsUsed < ClientData[client].SpecialLimit))
+	{ 
+		g_ReadyTimer[client] = CreateTimer(float(ClientData[client].SpecialDropInterval), Timer_Ready, client); 
+	}
+
 	return 1;
 }
 
@@ -840,7 +851,7 @@ public void useCustomCommand(char[] pluginName, int client, int entity, int type
 	Call_PushCell(entity);
 	Call_PushCell(type);	
 	Call_Finish();
-}	
+}
 
 public void useSpecialSkill(int client, int type)
 {
@@ -853,9 +864,10 @@ public void useSpecialSkill(int client, int type)
 		Call_PushCell(type);		
 		Call_Finish();
 	}
+
 }	
 
-public bool canUseSpecialSkill(client, char[] pendingMessage)
+bool canUseSpecialSkill(client, char[] pendingMessage, bool ignorePinned = false)
 {	
 	new Float:fCanDropTime = (GetGameTime() - ClientData[client].LastDropTime);
 	if (ClientData[client].LastDropTime == 0) {
@@ -868,17 +880,20 @@ public bool canUseSpecialSkill(client, char[] pendingMessage)
 	int iDropTime = RoundToFloor(fCanDropTime);
 
 	if (IsPlayerInSaferoom(client) || IsInEndingSaferoom(client)) {
-		PrintHintText(client, "Cannot deploy here");
+		PrintHintText(client, "Cannot use it here");
 		return false;
 	}
-	if (FindAttacker(client) > 0 || IsIncapacitated(client)) {
+	if ((FindAttacker(client) > 0 || IsIncapacitated(client)) && ignorePinned == false) {
 		PrintHintText(client, "You're too screwed to use special skills");
 		return false;
 	}
-	else if (CanDrop == false)
+	else if (CanDrop == false )
 	{
+
 		Format(pendMsg, sizeof(pendMsg), pendingMessage, (ClientData[client].SpecialDropInterval-iDropTime));
-		PrintHintText(client, pendMsg );
+		if (fCanDropTime > 5.0) {		
+			PrintHintText(client, pendMsg );
+		}
 		return false;
 	} else if (ClientData[client].SpecialsUsed >= ClientData[client].SpecialLimit) {
 		int limit = ClientData[client].SpecialLimit;
@@ -995,9 +1010,12 @@ public Event_PlayerSpawn(Handle:hEvent, String:sName[], bool:bDontBroadcast)
 
 public Event_PlayerDeath(Handle:hEvent, String:sName[], bool:bDontBroadcast)
 {
+	new isFake = GetEventInt(hEvent, "isfakedeath",0);
+	if (isFake == 1) return;
+
 	RebuildCache();
-	
 	new client = GetClientOfUserId(GetEventInt(hEvent, "userid"));
+
 	if(client > 0 && IsClientInGame(client) && GetClientTeam(client) == 2) DisableAllUpgrades(client);
 
 	ResetClientVariables(client);
@@ -1029,7 +1047,7 @@ public Event_PlayerTeam(Handle:hEvent, String:sName[], bool:bDontBroadcast)
 	if (team == 2 && LastClassConfirmed[client] != 0)
 	{
 		ClientData[client].ChosenClass = view_as<ClassTypes>(LastClassConfirmed[client]);
-		PrintToChat(client, "You are currently a \x04%s", MENU_OPTIONS[LastClassConfirmed[client]]);
+		PrintToChat(client, "\x01You are currently a \x04%s", MENU_OPTIONS[LastClassConfirmed[client]]);
 	}
 }
 
@@ -1683,65 +1701,6 @@ stock void SmashInfected(int zombie, int client)
 // Saboteur
 ///////////////////////////////////////////////////////////////////////////////////
 
-enum BombType {
-	Bomb = 0, 
-	Cluster, 
-	Firework,
-	Smoke, 
-	BlackHole,
-	Flashbang, 
-	Shield, 
-	Tesla, 
-	Chemical, 
-	Freeze, 
-	Medic, 
-	Vaporizer, 
-	Extinguisher, 
-	Glowing, 
-	AntiGravity, 
-	FireCluster, 
-	Bullets, 
-	Flak, 
-	Airstrike, 
-	Weapon
-}
-
-stock char[] formatBombName(char[] bombName) {
-	char temp[32];
-	Format(temp, sizeof(temp), "%s", bombName);
-	return temp;
-}
-
-stock char[] getBombName(int index) {
-
-	char bombName[32];
-
-	switch( index - 1 )
-	{
-		case 0: return formatBombName("Bomb");
-		case 1: return formatBombName("Cluster");
-		case 2: return formatBombName("Firework");
-		case 3: return formatBombName("Smoke");
-		case 4: return formatBombName("BlackHole");
-		case 5: return formatBombName("Flashbang");
-		case 6: return formatBombName("Shield");
-		case 7: return formatBombName("Tesla");
-		case 8: return formatBombName("Chemical");
-		case 9: return formatBombName("Freeze");
-		case 10: return formatBombName("Medic");
-		case 11: return formatBombName("Vaporizer");
-		case 12: return formatBombName("Extinguisher");
-		case 13: return formatBombName("Glow");
-		case 14: return formatBombName("Anti-Gravity");
-		case 15: return formatBombName("Fire Cluster");
-		case 16: return formatBombName("Bullets");
-		case 17: return formatBombName("Flak");
-		case 18: return formatBombName("Airstrike");
-		case 19: return formatBombName("Weapon");
-	}
-	return bombName;
-}
-
 public parseAvailableBombs()
 {
 	char buffers[MAX_BOMBS][3];
@@ -1749,7 +1708,7 @@ public parseAvailableBombs()
 	char bombs[128];
 	GetConVarString(SABOTEUR_BOMB_TYPES, bombs, sizeof(bombs));
 
-	int amount = ExplodeString(bombs, ",", buffers, sizeof(buffers), sizeof(buffers[]));
+	int amount = ExplodeString(bombs, ",", buffers, sizeof(buffers), 3);
 	PrintDebugAll("Found %i amount of mines from bombs: %s ",amount, bombs);
 
 	if (amount == 1) {
@@ -1767,7 +1726,7 @@ public parseAvailableBombs()
 		}
 
 		g_AvailableBombs[i].setItem(i, item);
-		PrintDebugAll("Added %i bombtype to inventory: %s", getBombName(item), g_AvailableBombs[i].getItem());
+		PrintDebugAll("Added %i bombtype to inventory: %s", item, g_AvailableBombs[i].getItem());
 	}
 }
 
@@ -1784,8 +1743,8 @@ public void CalculateSaboteurPlacePos(client, int value)
 		CloseHandle(trace);
 		
 		if (GetVectorDistance(endPos, vPos) <= GetConVarFloat(ENGINEER_MAX_BUILD_RANGE)) {
-			vAng[0] = 0.0;
-			vAng[2] = 0.0;
+			vAng[0] = 0.1;
+			vAng[2] = 0.1;
 			DropBomb(client, value);
 			PrintDebugAll("%N dropped a mine with index of %i to %f %f %f" , client, value, vPos[0], vPos[1], vPos[2]);			
 			ClientData[client].SpecialsUsed++;
@@ -1882,6 +1841,9 @@ public void OnClientDisconnect(int client) {
 stock DisableAllUpgrades(client)
 {
 	if (client > 0 && client <= 16 && IsValidEntity(client) && !IsFakeClient(client) && IsClientInGame(client) && GetClientTeam(client) == 2) {
+
+		SetEntDataFloat(client, g_flLaggedMovementValue, 1.0, true);
+
 		int iWeapon = GetPlayerWeaponSlot(client, 0); // Get primary weapon
 		if(iWeapon > 0 && IsValidEdict(iWeapon) && IsValidEntity(iWeapon))
 		{	
@@ -1894,6 +1856,7 @@ stock DisableAllUpgrades(client)
 			SetEntProp(client, Prop_Send, "m_bHasNightVision", 0, 4);
 		}
 	}
+
 }
 
 stock UnhookPlayer(client)
@@ -2223,6 +2186,7 @@ public void DropBomb(client, bombType)
 	char bombName[32];
 
 	bombName = getBombName(bombType);
+	PrintDebugAll("Planting #%i %s (index %d)", index, bombName, bombType);
 
 	new Handle:hPack = CreateDataPack();
 
@@ -2245,7 +2209,7 @@ public void DropBomb(client, bombType)
 
 	int entity = CreateBombParticleInPos(pos, BOMB_GLOW, index);
 	WritePackCell(hPack, entity);	
-	CreateTimer(GetConVarFloat(SABOTEUR_BOMB_ACTIVATE), TimerActivateBomb, hPack, TIMER_FLAG_NO_MAPCHANGE);
+	CreateTimer(GetConVarFloat(SABOTEUR_BOMB_ACTIVATE), TimerCheckBombSensors, hPack, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 	EmitSoundToAll(SOUND_DROP_BOMB);
 	PrintHintTextToAll("%N planted a %s mine! (%i/%i)", client, bombName, (1+ ClientData[client].SpecialsUsed), GetConVarInt(SABOTEUR_MAX_BOMBS));
 }
@@ -2272,40 +2236,6 @@ public DropMineEntity(Float:pos[3], int index)
 	return entity;
 }
 
-
-public void CreateAirStrike(int client) {
-	
-	float vPos[3];
-
-	if (SetClientLocation(client, vPos)) {
-		char color[12];
-
-		int entity = CreateEntityByName("info_particle_system");
-		TeleportEntity(entity, vPos, NULL_VECTOR, NULL_VECTOR);
-		DispatchKeyValue(entity, "effect_name", BOMB_GLOW);
-		DispatchSpawn(entity);
-		DispatchSpawn(entity);
-		ActivateEntity(entity);
-		AcceptEntityInput(entity, "start");
-
-		CreateBeamRing(entity, { 255, 0, 255, 255 },0.1, 180.0, 3);		
-		PrintHintTextToAll("%N ordered airstrike, take cover!", client);
-		GetConVarString(SABOTEUR_ACTIVE_BOMB_COLOR, color, sizeof(color));
-		SetupPrjEffects(entity, vPos, color); // Red
-
-		EmitSoundToAll(SOUND_DROP_BOMB);
-
-		new Handle:pack = CreateDataPack();
-		WritePackCell(pack, GetClientUserId(client));
-		WritePackFloat(pack, vPos[0]);
-		WritePackFloat(pack, vPos[1]);
-		WritePackFloat(pack, vPos[2]);
-		WritePackFloat(pack, GetGameTime());
-		WritePackCell(pack, entity);									
-		CreateTimer(1.0, TimerAirstrike, pack, TIMER_FLAG_NO_MAPCHANGE ); 	
- 		CreateTimer(10.0, DeleteParticles, entity, TIMER_FLAG_NO_MAPCHANGE ); 													
-	} 
-}
 /**
 * STOCK FUNCTIONS
 */
