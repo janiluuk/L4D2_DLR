@@ -29,7 +29,7 @@ public void
 {
 	RegAdminCmd("sm_dlr", CmdDLRMenu, ADMFLAG_ROOT);
 	RegAdminCmd("sm_guide", CmdDLRGuideMenu, ADMFLAG_ROOT);
-}
+}	
 
 public void OnLibraryAdded(const char[] name)
 {
@@ -171,7 +171,7 @@ Action CmdDLRGuideMenu(int client, int args)
 }
 
 // Game Menu selection handling
-public void DLRMenu_OnSelect(int client, int menu_id, int option, int value)
+public void ExtraMenu_OnSelect(int client, int menu_id, int option, int value)
 {
 	if (menu_id == g_iMenuID)
 	{
@@ -191,16 +191,30 @@ public void DLRMenu_OnSelect(int client, int menu_id, int option, int value)
                         case 8: PrintToChat(client, "Close after use %d", value);
                         case 9: PrintToChat(client, "Meter value %d", value);
                         case 10, 11, 12: PrintToChat(client, "Second page option %d", option - 9);
-                }
+
 
 	}
-}
 
 // Guide Menu selection handling
 public void DLRGuideMenu_OnSelect(int client, int menu_id, int option, int value)
 {
+
 	if (menu_id == g_iGuideMenuID)
 	{
 		PrintToChatAll("SELECTED %N Option: %d Value: %d", client, option, value);
+
+                switch (option)
+                {
+                        // foobar
+                }
+        }
+}
+
+// Forward handler for ExtraMenu selections
+public void ExtraMenu_OnSelect(int client, int menu_id, int option, int value)
+{
+        DLRMenu_OnSelect(client, menu_id, option, value);
+        DLRGuideMenu_OnSelect(client, menu_id, option, value);
+}
 
 
