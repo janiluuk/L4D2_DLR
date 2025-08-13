@@ -191,7 +191,6 @@ public void ExtraMenu_OnSelect(int client, int menu_id, int option, int value)
                         case 8: PrintToChat(client, "Close after use %d", value);
                         case 9: PrintToChat(client, "Meter value %d", value);
                         case 10, 11, 12: PrintToChat(client, "Second page option %d", option - 9);
-                }
 
 
 	}
@@ -217,4 +216,5 @@ public void ExtraMenu_OnSelect(int client, int menu_id, int option, int value)
         DLRMenu_OnSelect(client, menu_id, option, value);
         DLRGuideMenu_OnSelect(client, menu_id, option, value);
 }
+
 

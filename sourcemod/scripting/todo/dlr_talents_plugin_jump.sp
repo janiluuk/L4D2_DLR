@@ -295,7 +295,7 @@ public void OnPlayerRunCmdPost(int client, int buttons, int impulse, const float
 		float upVel = CaclJumpVelocity(client);
 		if(velocity[2] < upVel)
 			velocity[2] = upVel;
-		
+	
 		SetEntPropEnt(client, Prop_Send, "m_hGroundEntity", -1);
 		TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, velocity);
 		
