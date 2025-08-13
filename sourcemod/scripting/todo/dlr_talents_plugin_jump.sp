@@ -9,9 +9,9 @@
 
 public Plugin myinfo =
 {
+	name = "[DLR] Jump perk",
+	author = "zonde306, Yani",
 
-	name = "Bunnyhop plugin",
-	author = "Yani, zonde306",
 	description = "",
 	version = PLUGIN_VERSION,
 	url = "https://forums.alliedmods.net/",
@@ -295,7 +295,6 @@ public void OnPlayerRunCmdPost(int client, int buttons, int impulse, const float
 		float upVel = CaclJumpVelocity(client);
 		if(velocity[2] < upVel)
 			velocity[2] = upVel;
-	
 		SetEntPropEnt(client, Prop_Send, "m_hGroundEntity", -1);
 		TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, velocity);
 		

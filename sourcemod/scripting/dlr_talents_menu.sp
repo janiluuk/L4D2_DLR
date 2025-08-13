@@ -178,30 +178,66 @@ public void ExtraMenu_OnSelect(int client, int menu_id, int option, int value)
 	
 		PrintToChatAll("SELECTED %N Option: %d Value: %d", client, option, value);
 
-                switch( option )
-                {
-                        case 0: ClientCommand(client, "sm_godmode @me");
-                        case 1: FakeClientCommand(client, "sm_afk");
-                        case 2: FakeClientCommand(client, "sm_team");
-                        case 3: FakeClientCommand(client, "sm_class");
-                        case 4: PrintToChat(client, "Difficulty to %d", value);
-                        case 5: PrintToChat(client, "Tester to %d", value);
-                        case 6: FakeClientCommand(client, "sm_slay @me");
-                        case 7: PrintToChat(client, "Default value changed to %d", value);
-                        case 8: PrintToChat(client, "Close after use %d", value);
-                        case 9: PrintToChat(client, "Meter value %d", value);
-                        case 10, 11, 12: PrintToChat(client, "Second page option %d", option - 9);
+		switch( option )
+		{
 
+			case 0: ClientCommand(client, "sm_kit");
+			case 1: ClientCommand(client, "sm_afk");
+			case 2: ClientCommand(client, "sm_switchmenu");
+			case 3: ClientCommand(client, "sm_class");
+			case 4: ClientCommand(client, "sm_rankmenu");
+			case 5: ClientCommand(client, "sm_chmap");
+			case 6: ClientCommand(client, "sm_gamemode");
+
+//			case 3: PrintToChat(client, "Speed changed to %d", value);
+//			case 4: PrintToChat(client, "Difficulty to %d", value);
+			case 7: PrintToChat(client, "Tester to %d / %d", option, value);
+			case 8: PrintToChat(client, "Tester to %d / %d", option, value);
+			case 9: PrintToChat(client, "Tester to %d / %d", option, value);
+			case 10: PrintToChat(client, "Tester to %d / %d", option, value);
+			case 11: PrintToChat(client, "Tester to %d / %d", option, value);
+			case 12: PrintToChat(client, "Tester to %d / %d", option, value);
+			case 13: PrintToChat(client, "Close after use %d", value);
+			case 14: ClientCommand(client, "sm_music");
+			case 15: ClientCommand(client, "sm_wskin");
+			
+
+//			case 10, 11, 12: PrintToChat(client, "Second page option %d", option - 9);
+		}
 
 	}
 
 // Guide Menu selection handling
-public void DLRGuideMenu_OnSelect(int client, int menu_id, int option, int value)
+void DLRGuideMenu_OnSelect(int client, int menu_id, int option, int value)
 {
-
-	if (menu_id == g_iGuideMenuID)
+	if (menu_id != g_iGuideMenuID)
 	{
-		PrintToChatAll("SELECTED %N Option: %d Value: %d", client, option, value);
+		return;
+	}
+
+	switch (option)
+	{
+		case 1: // "How to" entry
+		{
+			if (value == 2) // "Special skills"
+			{
+				ShowNightVisionHelp(client);
+			}
+		}
+	}
+}
+
+void ShowNightVisionHelp(int client)
+{
+	PrintToChat(client, "\x04[Nightvision]\x01 Soldiers can press N or type !nv to toggle night vision goggles.");
+	PrintToChat(client, "\x04[Nightvision]\x01 Only the Soldier class can use this ability.");
+}
+
+public void ExtraMenu_OnSelect(int client, int menu_id, int option, int value)
+{
+	DLRMenu_OnSelect(client, menu_id, option, value);
+	DLRGuideMenu_OnSelect(client, menu_id, option, value);
+}
 
                 switch (option)
                 {
