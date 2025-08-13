@@ -203,16 +203,4 @@ public void DLRGuideMenu_OnSelect(int client, int menu_id, int option, int value
 	{
 		PrintToChatAll("SELECTED %N Option: %d Value: %d", client, option, value);
 
-                switch (option)
-                {
-                        // foobar
-                }
-        }
-}
 
-// Forward handler for ExtraMenu selections
-public void ExtraMenu_OnSelect(int client, int menu_id, int option, int value)
-{
-        DLRMenu_OnSelect(client, menu_id, option, value);
-        DLRGuideMenu_OnSelect(client, menu_id, option, value);
-}
