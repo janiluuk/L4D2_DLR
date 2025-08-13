@@ -1,6 +1,8 @@
-# L4D2_DLRTalents
+# L4D2 DLR Talents
+This is anniversary update for the infamous DLR mode for Left 4 Dead 2. Original is from 2013.
+Brutal and fun alternative for modern co-op shooters and major upgrade for original game.
 
-This is anniversary update for the infamous DLR mode for Left 4 Dead 2. Original is from 2013
+Recommended play mode is Versus, but works also in other modes.
 
 ## Changes:
 
@@ -80,7 +82,6 @@ This is anniversary update for the infamous DLR mode for Left 4 Dead 2. Original
 - Rewrite for missile plugin to fit better with this one and improve their function.
 - Docker image with rcon web admin tool integrated and plug'n play server generation
 - Skill editor to generate new perks / classes.
-- Downloadable UI upgrades
 - Incap players can struggle with attacker on shared progressbar. if indicator goes back to zero, player is freed.
 - When incapacitated without supplies and you have kit available, ask survivor if want to consume it.
 - Revamp infected skills to match the added ones for survivors;
@@ -92,8 +93,24 @@ This is anniversary update for the infamous DLR mode for Left 4 Dead 2. Original
 - Hunter can masquerade as survivor for 30 second time (Using LMC)
 - More suggestions welcome!
 
-
 See https://forums.alliedmods.net/showthread.php?t=273312 for more info
+
+## Features available for testing
+
+### New saboteur class. 
+
+- Hold crouch 4 sec, and you'll get 20 sec total invisibility with decoy outline.
+- Middle click to activate cloak mode 30 sec. If you get pinned, you leave a doppelganger ragdoll with fake weapon for them to toy with and have 10 seconds invisibility to make escape without ability to shoot.
+- During cloak you can see outlines of all special infected.
+- 7 minetypes to plant. Selection of best variation assigned as default.
+- Nightvision
+
+### Misc
+
+- Each class have now own playermodel. Current ones are guidelines, final models TBD
+-:3rd person with saveable preferences. Either always, melee only and disabled.
+- Soldier now throws realistic marker grenade for airstrike
+- Custom music player, includes free Doom 2 heavymetal remake album in playlist.
 
 ## Adding a plugin
 

@@ -3,13 +3,13 @@
 #include <sdktools>
 #include <sdkhooks>
 #include <left4dhooks>
-#include <l4d2_skill_framework>
-
-#define PLUGIN_VERSION			"0.0.1"
-#include "modules/l4d2ps.sp"
+#define PLUGIN_SKILL_NAME "Jumper"
+#define PLUGIN_VERSION			"0.0.2"
+#include "modules/baseplugin.sp"
 
 public Plugin myinfo =
 {
+
 	name = "Bunnyhop plugin",
 	author = "Yani, zonde306",
 	description = "",
@@ -41,9 +41,7 @@ public OnPluginStart()
 	g_pCvarJumpHeight.AddChangeHook(UpdateCache);
 	g_pCvarDuckHeight.AddChangeHook(UpdateCache);
 	g_pCvarCalmTime.AddChangeHook(UpdateCache);
-	
-	LoadTranslations("l4d2sf_jump.phrases.txt");
-	
+		
 	g_iOffVelocity = FindSendPropInfo("CBasePlayer", "m_vecVelocity[0]");
 	
 	HookEvent("player_spawn", Event_PlayerSpawn);
@@ -52,12 +50,12 @@ public OnPluginStart()
 	HookEvent("player_jump", Event_PlayerJump);
 	HookEvent("player_jump_apex", Event_PlayerJumpApex);
 	
-	g_iSlotAbility = L4D2SF_RegSlot("ability");
-	L4D2SF_RegPerk(g_iSlotAbility, "bunnyhop", 5, 70, 5, 0.1);
-	L4D2SF_RegPerk(g_iSlotAbility, "doublejump", 2, 80, 5, 0.1);
-	L4D2SF_RegPerk(g_iSlotAbility, "highjump", 4, 50, 5, 0.1);
-	L4D2SF_RegPerk(g_iSlotAbility, "longjump", 4, 60, 5, 0.1);
-	L4D2SF_RegPerk(g_iSlotAbility, "movespeed", 5, 90, 5, 0.1);
+	g_iSlotAbility = DLR_RegSlot("ability");
+	DLR_RegPerk(g_iSlotAbility, "bunnyhop", 5, 70, 5, 0.1);
+	DLR_RegPerk(g_iSlotAbility, "doublejump", 2, 80, 5, 0.1);
+	DLR_RegPerk(g_iSlotAbility, "highjump", 4, 50, 5, 0.1);
+	DLR_RegPerk(g_iSlotAbility, "longjump", 4, 60, 5, 0.1);
+	DLR_RegPerk(g_iSlotAbility, "movespeed", 5, 90, 5, 0.1);
 }
 
 float g_fGravity, g_fJumpHeight, g_fDuckHeight, g_fCalmTime;
@@ -70,41 +68,41 @@ public void UpdateCache(ConVar cvar, const char[] oldValue, const char[] newValu
 	g_fCalmTime = g_pCvarCalmTime.FloatValue;
 }
 
-public Action L4D2SF_OnGetPerkName(int client, const char[] name, int level, char[] result, int maxlen)
+public Action DLR_OnGetPerkName(int client, const char[] name, int level, char[] result, int maxlen)
 {
 	if(!strcmp(name, "bunnyhop"))
-		FormatEx(result, maxlen, "%T", "Bunnyhop", client, level);
+		FormatEx(result, maxlen, "Bunnyhop");
 	else if(!strcmp(name, "doublejump"))
-		FormatEx(result, maxlen, "%T", "Double jump", client, level);
+		FormatEx(result, maxlen, "Double Jump");
 	else if(!strcmp(name, "highjump"))
-		FormatEx(result, maxlen, "%T", "High jump", client, level);
+		FormatEx(result, maxlen, "High jump");
 	else if(!strcmp(name, "longjump"))
-		FormatEx(result, maxlen, "%T", "Long jump", client, level);
+		FormatEx(result, maxlen, "Jump far");
 	else if(!strcmp(name, "movespeed"))
-		FormatEx(result, maxlen, "%T", "Moovement speed", client, level);
+		FormatEx(result, maxlen, "Movement speed");
+
 	else
 		return Plugin_Continue;
 	return Plugin_Changed;
 }
 
-public Action L4D2SF_OnGetPerkDescription(int client, const char[] name, int level, char[] result, int maxlen)
+public Action DLR_OnGetPerkDescription(int client, const char[] name, int level, char[] result, int maxlen)
 {
 	if(!strcmp(name, "bunnyhop"))
-		FormatEx(result, maxlen, "%T", tr("连跳%d", IntBound(level, 1, 5)), client, level);
+		FormatEx(result, maxlen, "Hold space to bunnyhop");
 	else if(!strcmp(name, "doublejump"))
-		FormatEx(result, maxlen, "%T", tr("多重跳%d", IntBound(level, 1, 2)), client, level);
+		FormatEx(result, maxlen, "You can jump twice");
 	else if(!strcmp(name, "highjump"))
-		FormatEx(result, maxlen, "%T", tr("跳高%d", IntBound(level, 1, 4)), client, level, g_fHighJumpFactor * IntBound(level, 1, 4) * 100);
+		FormatEx(result, maxlen, "You can jump high");
 	else if(!strcmp(name, "longjump"))
-		FormatEx(result, maxlen, "%T", tr("跳远%d", IntBound(level, 1, 4)), client, level, g_fLongJumpFactor * IntBound(level, 1, 4) * 100);
+		FormatEx(result, maxlen, "You can jump far");
 	else if(!strcmp(name, "movespeed"))
-		FormatEx(result, maxlen, "%T", tr("地速%d", IntBound(level, 1, 5)), client, level, g_fSpeedFactor * IntBound(level, 1, 5) * 100);
-	else
+		FormatEx(result, maxlen, "You move faster");
 		return Plugin_Continue;
 	return Plugin_Changed;
 }
 
-public void L4D2SF_OnPerkPost(int client, int level, const char[] perk)
+public void DLR_OnPerkPost(int client, int level, const char[] perk)
 {
 	if(!strcmp(perk, "bunnyhop"))
 		g_iLevelBHop[client] = level;
@@ -121,13 +119,13 @@ public void L4D2SF_OnPerkPost(int client, int level, const char[] perk)
 bool g_bJumpReleased[MAXPLAYERS+1], g_bFirstJump[MAXPLAYERS+1];
 int g_iCountBHop[MAXPLAYERS+1], g_iCountMulJmp[MAXPLAYERS+1];
 
-public void L4D2SF_OnLoad(int client)
+public void DLR_OnLoad(int client)
 {
-	g_iLevelBHop[client] = L4D2SF_GetClientPerk(client, "bunnyhop");
-	g_iLevelDouble[client] = L4D2SF_GetClientPerk(client, "doublejump");
-	g_iLevelHigh[client] = L4D2SF_GetClientPerk(client, "highjump");
-	g_iLevelFar[client] = L4D2SF_GetClientPerk(client, "longjump");
-	g_iLevelSpeed[client] = L4D2SF_GetClientPerk(client, "movespeed");
+	g_iLevelBHop[client] = DLR_GetClientPerk(client, "bunnyhop");
+	g_iLevelDouble[client] = DLR_GetClientPerk(client, "doublejump");
+	g_iLevelHigh[client] = DLR_GetClientPerk(client, "highjump");
+	g_iLevelFar[client] = DLR_GetClientPerk(client, "longjump");
+	g_iLevelSpeed[client] = DLR_GetClientPerk(client, "movespeed");
 }
 
 public void Event_PlayerSpawn(Event event, const char[] eventName, bool dontBroadcast)
@@ -136,11 +134,11 @@ public void Event_PlayerSpawn(Event event, const char[] eventName, bool dontBroa
 	if(!IsValidClient(client))
 		return;
 	
-	g_iLevelBHop[client] = L4D2SF_GetClientPerk(client, "bunnyhop");
-	g_iLevelDouble[client] = L4D2SF_GetClientPerk(client, "doublejump");
-	g_iLevelHigh[client] = L4D2SF_GetClientPerk(client, "highjump");
-	g_iLevelFar[client] = L4D2SF_GetClientPerk(client, "longjump");
-	g_iLevelSpeed[client] = L4D2SF_GetClientPerk(client, "movespeed");
+	g_iLevelBHop[client] = DLR_GetClientPerk(client, "bunnyhop");
+	g_iLevelDouble[client] = DLR_GetClientPerk(client, "doublejump");
+	g_iLevelHigh[client] = DLR_GetClientPerk(client, "highjump");
+	g_iLevelFar[client] = DLR_GetClientPerk(client, "longjump");
+	g_iLevelSpeed[client] = DLR_GetClientPerk(client, "movespeed");
 	
 	// SDKUnhook(client, SDKHook_PreThinkPost, EntHook_PreThinkPost);
 	// SDKHook(client, SDKHook_PreThinkPost, EntHook_PreThinkPost);
@@ -177,7 +175,6 @@ public void Event_PlayerJumpApex(Event event, const char[] eventName, bool dontB
 	if(!IsValidAliveClient(client))
 		return;
 	
-	// 此时达到最高点
 	g_bFirstJump[client] = false;
 	
 	// PrintToChat(client, "player_jump_apex");
@@ -298,8 +295,7 @@ public void OnPlayerRunCmdPost(int client, int buttons, int impulse, const float
 		float upVel = CaclJumpVelocity(client);
 		if(velocity[2] < upVel)
 			velocity[2] = upVel;
-		
-
+	
 		SetEntPropEnt(client, Prop_Send, "m_hGroundEntity", -1);
 		TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, velocity);
 		
@@ -320,7 +316,6 @@ float CaclJumpVelocity(int client)
 	bool ducking = ((GetClientButtons(client) & IN_DUCK) && (GetEntityFlags(client) & FL_DUCKING));
 	
 	float height = SquareRoot(2.0 * g_fGravity * (ducking ? g_fDuckHeight : g_fJumpHeight)/* / GetEntityGravity(client)*/);
-	// PrintToChat(client, "d=%d, gg=%d, pg=%.2f, h=%.0f, jh=%.0f", ducking, g_hCvarGravity.IntValue, GetEntityGravity(client), height, (ducking ? g_fJumpHeightDucking : g_fJumpHeight));
 	
 	return height;
 }
