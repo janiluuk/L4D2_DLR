@@ -452,7 +452,7 @@ public Action:TimerCheckBombSensors(Handle:hTimer, Handle:hPack)
 
 					PrintDebugAll("Detonating Mine %s on entity %i", getBombName(bombType), entity );
 
-					useCustomCommand("Grenades", owner, entity, bombType);					
+					useCustomCommand("Grenades", owner, entity, bombType-1);					
 					
 					return Plugin_Stop;
 				}

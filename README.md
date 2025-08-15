@@ -1,6 +1,7 @@
-# L4D2 DLR Talents
+# L4D2: Rage Edition
 
-A brutal anniversary overhaul of the infamous DLR mode for Left 4 Dead 2. DLR Talents resurrects the 2013 classic with modular perks, class-based abilities and a plugin-friendly core that lets you sculpt chaotic co-op sessions.
+My pet project of A brutal anniversary overhaul of the infamous Left 4 Dead 2. Based loosely on my previous rewrite of DLR gamemode. 
+  Resurrects the 2013 classic with modular perks, class-based abilities and a plugin-friendly core that lets you sculpt chaotic versus sessions.
 
 ## Core Features
 - Sourcemod 1.11 compatible
@@ -76,7 +77,7 @@ Helper natives:
 
 ```sourcepawn
 forward FindSkillIdByName(const char[] skillName, int &skillId);
-native int GetPlayerClassName(int client);
+native int GetPlayerClaˇssName(int client);
 ```
 
 Add `DLRCore.sp` to your include folder and register your skill during `OnPluginStart` or `DLR_OnPluginState`. See the multiturret plugin for a complete example.
