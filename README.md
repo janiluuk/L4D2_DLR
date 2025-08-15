@@ -63,8 +63,8 @@ A brutal anniversary overhaul of the infamous DLR mode for Left 4 Dead 2. DLR Ta
 - **Map & Ambient Music** – `!music` menu lets players enable round-start tracks and looping ambience. Server vars `start_music_enabled` and `ambient_music_enabled` control the defaults.
 - **Multiturret** – Engineer presses the class skill key (default middle mouse or `sm_skill`) to open a turret menu. Pick a gun and ammo, left-click to deploy, and press **Use** to pick it back up. Admins can remove a turret via `sm_removemachine`.
 - **Ninja Kick** – Athlete leap‑kicks infected by jumping into them, knocking targets to the ground.
-- **Berserk Mode** – Commando builds rage as they deal damage; `sm_berserker` toggles the boost once charged.
-- **Airstrike** – Soldier calls in artillery at their crosshair using the class skill key.
+- **Berserk Mode** – Commando builds rage as they deal damage; press `!skill` (or `sm_berserker`) when prompted for a short speed and damage surge.
+- **Airstrike** – Soldier aims and hits `!skill` to mark a target for a missile barrage.
 
 All special skills provide a corresponding `sm_` console command so abilities can be activated consistently regardless of keybinds.
 
