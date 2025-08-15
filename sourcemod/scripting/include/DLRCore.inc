@@ -4,8 +4,8 @@
 #endif
 #define _DLRCore_included
 #define DLRCore_version "1.0.0"
-#define DLR_PLUGIN_NAME = "dlr_talents"
-#define DLR_PLUGIN_FILE = "dlr_talents.smx"
+#define DLR_PLUGIN_NAME "dlr_talents"
+#define DLR_PLUGIN_FILE "dlr_talents.smx"
 
 /**
  * Get player classname

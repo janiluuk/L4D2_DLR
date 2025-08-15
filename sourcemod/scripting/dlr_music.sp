@@ -55,7 +55,7 @@
      - ConVars in your server.cfg:
      1. sm_cvar sv_allowdownload "1"
      2. sm_cvar sv_downloadurl "http://your-content-server.com/game/left4dead/" <= here is your sound/valentine/ *.mp3
-     - don't forget to edit translations/MusicMapStart.phrases.txt greetings and congratulations.
+    - don't forget to edit translations/dlr_music.phrases.txt greetings and congratulations.
      - set #define DEBUG 1, compile plugin and test it with sm_music -1 to check every track is correctly played.
      
     Commands:
@@ -83,7 +83,7 @@
 
 public Plugin myinfo =
 {
-    name = "Map start music",
+    name = "[DLR] Music Controller",
     author = "Dragokas",
     description = "Download and play one random music on map start",
     version = PLUGIN_VERSION,
@@ -101,62 +101,62 @@ public Plugin myinfo =
 #define CVAR_FLAGS      FCVAR_NOTIFY
 #define SNDCHAN_DEFAULT SNDCHAN_STATIC // SNDCHAN_AUTO
 
-EngineVersion g_Engine;
+EngineVersion g_dlrEngine;
 
-ArrayList g_SoundPath;
-ArrayList g_SoundPathNewly;
+ArrayList g_dlrSoundPath;
+ArrayList g_dlrSoundPathNewly;
 
-Handle g_hCookieMusic = INVALID_HANDLE;
-Handle g_hTimerMusic[MAXPLAYERS+1];
-Handle g_hAmbientLoop[MAXPLAYERS+1];
-Handle g_hAmbientResume[MAXPLAYERS+1];
+Handle g_dlrCookieMusic = INVALID_HANDLE;
+Handle g_dlrTimerMusic[MAXPLAYERS+1];
+Handle g_dlrAmbientLoop[MAXPLAYERS+1];
+Handle g_dlrAmbientResume[MAXPLAYERS+1];
 
-bool g_bMusicPlaying[MAXPLAYERS+1];
+bool g_dlrMusicPlaying[MAXPLAYERS+1];
 
-int g_iSndIdx = -1;
-int g_iSndIdxNewly = -1;
-int g_iCookie[MAXPLAYERS+1];
+int g_dlrSndIdx = -1;
+int g_dlrSndIdxNewly = -1;
+int g_dlrCookie[MAXPLAYERS+1];
 
-int g_iSoundVolume[MAXPLAYERS+1];
+int g_dlrSoundVolume[MAXPLAYERS+1];
 
-char g_sListPath[PLATFORM_MAX_PATH];
-char g_sListPathNewly[PLATFORM_MAX_PATH];
+char g_dlrListPath[PLATFORM_MAX_PATH];
+char g_dlrListPathNewly[PLATFORM_MAX_PATH];
 
-KeyValues g_hAmbientConfig;
-char g_sAmbientSound[PLATFORM_MAX_PATH];
-char g_sMapName[PLATFORM_MAX_PATH];
-float g_fAmbientDuration;
-float g_fAmbientVolume = 1.0;
-bool g_bAmbientLoop = true;
-bool g_bAmbientLoaded = false;
-bool g_bClientAllowsDownload[MAXPLAYERS+1];
+KeyValues g_dlrAmbientConfig;
+char g_dlrAmbientSound[PLATFORM_MAX_PATH];
+char g_dlrMapName[PLATFORM_MAX_PATH];
+float g_dlrAmbientDuration;
+float g_dlrAmbientVolume = 1.0;
+bool g_dlrAmbientLoopEnabled = true;
+bool g_dlrAmbientLoaded = false;
+bool g_dlrClientAllowsDownload[MAXPLAYERS+1];
 
-bool g_bFirstConnect[MAXPLAYERS+1] = {true, ...};
+bool g_dlrFirstConnect[MAXPLAYERS+1] = {true, ...};
 
-ConVar g_hCvarEnable;
-ConVar g_hCvarDelay;
-ConVar g_hCvarShowMenu;
-ConVar g_hCvarUseNewly;
-ConVar g_hCvarDisplayName;
-ConVar g_hCvarPlayRoundStart;
-ConVar g_hCvarAmbient;
+ConVar g_dlrCvarStartEnabled;
+ConVar g_dlrCvarDelay;
+ConVar g_dlrCvarShowMenu;
+ConVar g_dlrCvarUseNewly;
+ConVar g_dlrCvarDisplayName;
+ConVar g_dlrCvarPlayRoundStart;
+ConVar g_dlrCvarAmbient;
 
-bool g_bEnabled;
+bool g_dlrEnabled;
 
 public void OnPluginStart()
 {
-    LoadTranslations("MusicMapStart.phrases");
+    LoadTranslations("dlr_music.phrases");
     
-    g_Engine = GetEngineVersion();
+    g_dlrEngine = GetEngineVersion();
     
     CreateConVar(                            "l4d_music_mapstart_version",                PLUGIN_VERSION, "Plugin version", FCVAR_DONTRECORD );
-    g_hCvarEnable = CreateConVar(            "l4d_music_mapstart_enable",                "1",            "Enable plugin (1 - On / 0 - Off)", CVAR_FLAGS );
-    g_hCvarDelay = CreateConVar(             "l4d_music_mapstart_delay",                 "17",           "Delay (in sec.) between player join and playing the music", CVAR_FLAGS );
-    g_hCvarShowMenu = CreateConVar(          "l4d_music_mapstart_showmenu",              "1",            "Show !music menu on round start? (1 - Yes, 0 - No)", CVAR_FLAGS );
-    g_hCvarUseNewly = CreateConVar(          "l4d_music_mapstart_use_firstconnect_list", "0",            "Use separate music list for newly connected players? (1 - Yes, 0 - No)", CVAR_FLAGS );
-    g_hCvarDisplayName = CreateConVar(       "l4d_music_mapstart_display_in_chat",       "1",            "Display music name in chat? (1 - Yes, 0 - No)", CVAR_FLAGS );
-    g_hCvarPlayRoundStart = CreateConVar(    "l4d_music_mapstart_play_roundstart",       "1",            "Play music on round start as well? (1 - Yes, 0 - No, mean play on new map start only)", CVAR_FLAGS );
-    g_hCvarAmbient = CreateConVar(           "l4d_music_mapstart_ambient",               "1",            "Enable ambient background sound when music stopped? (1 - Yes, 0 - No)", CVAR_FLAGS );
+    g_dlrCvarStartEnabled = CreateConVar(            "start_music_enabled",                "1",            "Play music when a map or round starts? (1 - Yes, 0 - No)", CVAR_FLAGS );
+    g_dlrCvarDelay = CreateConVar(             "l4d_music_mapstart_delay",                 "17",           "Delay (in sec.) between player join and playing the music", CVAR_FLAGS );
+    g_dlrCvarShowMenu = CreateConVar(          "l4d_music_mapstart_showmenu",              "1",            "Show !music menu on round start? (1 - Yes, 0 - No)", CVAR_FLAGS );
+    g_dlrCvarUseNewly = CreateConVar(          "l4d_music_mapstart_use_firstconnect_list", "0",            "Use separate music list for newly connected players? (1 - Yes, 0 - No)", CVAR_FLAGS );
+    g_dlrCvarDisplayName = CreateConVar(       "l4d_music_mapstart_display_in_chat",       "1",            "Display music name in chat? (1 - Yes, 0 - No)", CVAR_FLAGS );
+    g_dlrCvarPlayRoundStart = CreateConVar(    "l4d_music_mapstart_play_roundstart",       "1",            "Play music on round start as well? (1 - Yes, 0 - No, mean play on new map start only)", CVAR_FLAGS );
+    g_dlrCvarAmbient = CreateConVar(           "ambient_music_enabled",               "1",            "Enable ambient background sound when music stops? (1 - Yes, 0 - No)", CVAR_FLAGS );
     
     AutoExecConfig(true,            "l4d_music_mapstart");
     
@@ -169,21 +169,21 @@ public void OnPluginStart()
     RegConsoleCmd("sm_music_next",      Cmd_MusicNext,      "Skip to next music track");
     RegAdminCmd("sm_reload_ambient",    Cmd_ReloadAmbient,  ADMFLAG_GENERIC, "Reload ambient sound configuration");
     
-    g_SoundPath = new ArrayList(ByteCountToCells(PLATFORM_MAX_PATH));
-    g_SoundPathNewly = new ArrayList(ByteCountToCells(PLATFORM_MAX_PATH));
+    g_dlrSoundPath = new ArrayList(ByteCountToCells(PLATFORM_MAX_PATH));
+    g_dlrSoundPathNewly = new ArrayList(ByteCountToCells(PLATFORM_MAX_PATH));
     
-    BuildPath(Path_SM, g_sListPath, sizeof(g_sListPath), "data/music_mapstart.txt");
-    BuildPath(Path_SM, g_sListPathNewly, sizeof(g_sListPathNewly), "data/music_mapstart_newly.txt");
+    BuildPath(Path_SM, g_dlrListPath, sizeof(g_dlrListPath), "data/music_mapstart.txt");
+    BuildPath(Path_SM, g_dlrListPathNewly, sizeof(g_dlrListPathNewly), "data/music_mapstart_newly.txt");
 
     if (!UpdateList())
-        SetFailState("Cannot open config file \"%s\" or \"%s\"!", g_sListPath, g_sListPathNewly);
+        SetFailState("Cannot open config file \"%s\" or \"%s\"!", g_dlrListPath, g_dlrListPathNewly);
 
-    g_hAmbientConfig = new KeyValues("AmbientSounds");
+    g_dlrAmbientConfig = new KeyValues("AmbientSounds");
     LoadAmbientConfig();
 
-    g_hCookieMusic = RegClientCookie("music_mapstart_cookie", "", CookieAccess_Protected);
+    g_dlrCookieMusic = RegClientCookie("music_mapstart_cookie", "", CookieAccess_Protected);
     
-    HookConVarChange(g_hCvarEnable,             ConVarChanged);
+    HookConVarChange(g_dlrCvarStartEnabled,             ConVarChanged);
     GetCvars();
     
     SetRandomSeed(GetTime());
@@ -191,16 +191,16 @@ public void OnPluginStart()
 
 public void OnPluginEnd()
 {
-    delete g_SoundPath;
-    delete g_SoundPathNewly;
-    CloseHandle(g_hCookieMusic);
+    delete g_dlrSoundPath;
+    delete g_dlrSoundPathNewly;
+    CloseHandle(g_dlrCookieMusic);
     StopAllAmbient();
-    delete g_hAmbientConfig;
+    delete g_dlrAmbientConfig;
 }
 
 public void OnMapInit(const char[] mapName)
 {
-    strcopy(g_sMapName, sizeof(g_sMapName), mapName);
+    strcopy(g_dlrMapName, sizeof(g_dlrMapName), mapName);
 }
 
 public Action Cmd_Music(int client, int args)
@@ -221,22 +221,22 @@ public Action Cmd_Music(int client, int args)
         iIdx = StringToInt(sIdx);
         
         char sPath[PLATFORM_MAX_PATH];
-        g_SoundPath.GetString(g_iSndIdx, sPath, sizeof(sPath));
+        g_dlrSoundPath.GetString(g_dlrSndIdx, sPath, sizeof(sPath));
         StopCurrentSound(client);
-        PrintToChat(client, "stop - %i - %s", g_iSndIdx, sPath);
+        PrintToChat(client, "stop - %i - %s", g_dlrSndIdx, sPath);
         
         if (iIdx == -1) { // play next
-            iIdx = g_iSndIdx + 1;
-            if (iIdx >= g_SoundPath.Length)
+            iIdx = g_dlrSndIdx + 1;
+            if (iIdx >= g_dlrSoundPath.Length)
                 iIdx = 0;
         }
         
-        g_SoundPath.GetString(iIdx, sPath, sizeof(sPath));
+        g_dlrSoundPath.GetString(iIdx, sPath, sizeof(sPath));
         PrintToChat(client, "play - %i - %s", iIdx, sPath);
         PrecacheSound(sPath);
         EmitSoundCustom(client, sPath);
         
-        g_iSndIdx = iIdx;
+        g_dlrSndIdx = iIdx;
     }
     return Plugin_Handled;
 }
@@ -245,10 +245,10 @@ public Action Cmd_MusicPlay(int client, int args)
 {
     if (client == 0) return Plugin_Handled;
     char sPath[PLATFORM_MAX_PATH];
-    if (g_bFirstConnect[client] && g_hCvarUseNewly.IntValue == 1 && g_SoundPathNewly.Length > 0)
-        g_SoundPathNewly.GetString(g_iSndIdxNewly, sPath, sizeof(sPath));
-    else if (g_SoundPath.Length > 0)
-        g_SoundPath.GetString(g_iSndIdx, sPath, sizeof(sPath));
+    if (g_dlrFirstConnect[client] && g_dlrCvarUseNewly.IntValue == 1 && g_dlrSoundPathNewly.Length > 0)
+        g_dlrSoundPathNewly.GetString(g_dlrSndIdxNewly, sPath, sizeof(sPath));
+    else if (g_dlrSoundPath.Length > 0)
+        g_dlrSoundPath.GetString(g_dlrSndIdx, sPath, sizeof(sPath));
     else
         sPath[0] = '\0';
     if (sPath[0])
@@ -274,17 +274,17 @@ public Action Cmd_MusicNext(int client, int args)
 {
     if (client == 0) return Plugin_Handled;
     char sPath[PLATFORM_MAX_PATH];
-    if (g_bFirstConnect[client] && g_hCvarUseNewly.IntValue == 1 && g_SoundPathNewly.Length > 0)
+    if (g_dlrFirstConnect[client] && g_dlrCvarUseNewly.IntValue == 1 && g_dlrSoundPathNewly.Length > 0)
     {
-        if (++g_iSndIdxNewly >= g_SoundPathNewly.Length)
-            g_iSndIdxNewly = 0;
-        g_SoundPathNewly.GetString(g_iSndIdxNewly, sPath, sizeof(sPath));
+        if (++g_dlrSndIdxNewly >= g_dlrSoundPathNewly.Length)
+            g_dlrSndIdxNewly = 0;
+        g_dlrSoundPathNewly.GetString(g_dlrSndIdxNewly, sPath, sizeof(sPath));
     }
-    else if (g_SoundPath.Length > 0)
+    else if (g_dlrSoundPath.Length > 0)
     {
-        if (++g_iSndIdx >= g_SoundPath.Length)
-            g_iSndIdx = 0;
-        g_SoundPath.GetString(g_iSndIdx, sPath, sizeof(sPath));
+        if (++g_dlrSndIdx >= g_dlrSoundPath.Length)
+            g_dlrSndIdx = 0;
+        g_dlrSoundPath.GetString(g_dlrSndIdx, sPath, sizeof(sPath));
     }
     else
         sPath[0] = '\0';
@@ -311,17 +311,17 @@ public Action Cmd_MusicVolume(int client, int args)
     int vol = StringToInt(sArg);
     if (vol < 0) vol = 0;
     if (vol > 10) vol = 10;
-    g_iSoundVolume[client] = vol;
-    g_iCookie[client] = (g_iCookie[client] & 0x0F) | (g_iSoundVolume[client] << 4);
+    g_dlrSoundVolume[client] = vol;
+    g_dlrCookie[client] = (g_dlrCookie[client] & 0x0F) | (g_dlrSoundVolume[client] << 4);
     SaveCookie(client);
     PrintToChat(client, "Volume set to %d%%", vol * 10);
-    if (g_bMusicPlaying[client])
+    if (g_dlrMusicPlaying[client])
     {
         char sPath[PLATFORM_MAX_PATH];
-        if (g_bFirstConnect[client] && g_hCvarUseNewly.IntValue == 1 && g_SoundPathNewly.Length > 0)
-            g_SoundPathNewly.GetString(g_iSndIdxNewly, sPath, sizeof(sPath));
-        else if (g_SoundPath.Length > 0)
-            g_SoundPath.GetString(g_iSndIdx, sPath, sizeof(sPath));
+        if (g_dlrFirstConnect[client] && g_dlrCvarUseNewly.IntValue == 1 && g_dlrSoundPathNewly.Length > 0)
+            g_dlrSoundPathNewly.GetString(g_dlrSndIdxNewly, sPath, sizeof(sPath));
+        else if (g_dlrSoundPath.Length > 0)
+            g_dlrSoundPath.GetString(g_dlrSndIdx, sPath, sizeof(sPath));
         else
             sPath[0] = '\0';
         if (sPath[0])
@@ -337,10 +337,10 @@ public Action Cmd_MusicCurrent(int client, int args)
 {
     if (client == 0) return Plugin_Handled;
     char sPath[PLATFORM_MAX_PATH];
-    if (g_bFirstConnect[client] && g_hCvarUseNewly.IntValue == 1 && g_SoundPathNewly.Length > 0)
-        g_SoundPathNewly.GetString(g_iSndIdxNewly, sPath, sizeof(sPath));
-    else if (g_SoundPath.Length > 0)
-        g_SoundPath.GetString(g_iSndIdx, sPath, sizeof(sPath));
+    if (g_dlrFirstConnect[client] && g_dlrCvarUseNewly.IntValue == 1 && g_dlrSoundPathNewly.Length > 0)
+        g_dlrSoundPathNewly.GetString(g_dlrSndIdxNewly, sPath, sizeof(sPath));
+    else if (g_dlrSoundPath.Length > 0)
+        g_dlrSoundPath.GetString(g_dlrSndIdx, sPath, sizeof(sPath));
     else
         sPath[0] = '\0';
     if (sPath[0])
@@ -370,7 +370,7 @@ public void ConVarChanged(ConVar convar, const char[] oldValue, const char[] new
 
 void GetCvars()
 {
-    g_bEnabled = g_hCvarEnable.BoolValue;
+    g_dlrEnabled = g_dlrCvarStartEnabled.BoolValue;
     InitHook();
 }
 
@@ -378,7 +378,7 @@ void InitHook()
 {
     static bool bHooked;
     
-    if (g_bEnabled) {
+    if (g_dlrEnabled) {
         if (!bHooked) {
             HookEvent("round_start",            Event_RoundStart,  EventHookMode_PostNoCopy);
             HookEvent("round_end",              Event_RoundEnd,    EventHookMode_PostNoCopy);
@@ -409,26 +409,26 @@ public void OnClientCookiesCached(int client)
 void ReadCookie(int client)
 {
     char sCookie[16];
-    GetClientCookie(client, g_hCookieMusic, sCookie, sizeof(sCookie));
+    GetClientCookie(client, g_dlrCookieMusic, sCookie, sizeof(sCookie));
     if(sCookie[0] != '\0')
     {
-        g_iCookie[client] = StringToInt(sCookie);
+        g_dlrCookie[client] = StringToInt(sCookie);
     }
-    g_iSoundVolume[client] = GetCookieVolume(client);
+    g_dlrSoundVolume[client] = GetCookieVolume(client);
 }
 
 public void Event_PlayerDisconnect(Event event, const char[] name, bool dontBroadcast)
 {
     int client = GetClientOfUserId(event.GetInt("userid"));
-    g_iCookie[client] = 0;
-    g_hTimerMusic[client] = INVALID_HANDLE;
-    g_bFirstConnect[client] = true;
-    g_bMusicPlaying[client] = false;
+    g_dlrCookie[client] = 0;
+    g_dlrTimerMusic[client] = INVALID_HANDLE;
+    g_dlrFirstConnect[client] = true;
+    g_dlrMusicPlaying[client] = false;
     StopClientAmbientSound(client);
-    if (g_hAmbientResume[client] != null)
+    if (g_dlrAmbientResume[client] != null)
     {
-        KillTimer(g_hAmbientResume[client]);
-        g_hAmbientResume[client] = null;
+        KillTimer(g_dlrAmbientResume[client]);
+        g_dlrAmbientResume[client] = null;
     }
 }
 
@@ -436,8 +436,8 @@ public Action Cmd_MusicUpdate(int client, int args)
 {
     ReadCookie(client);
     UpdateList(client);
-    g_iSndIdx = -1;
-    g_iSndIdxNewly = -1;
+    g_dlrSndIdx = -1;
+    g_dlrSndIdxNewly = -1;
     OnMapStart();
     return Plugin_Handled;
 }
@@ -449,14 +449,14 @@ bool UpdateList(int client = 0)
 
 bool UpdateListDefault(int client = 0)
 {
-    g_SoundPath.Clear();
+    g_dlrSoundPath.Clear();
 
     char sLine[PLATFORM_MAX_PATH];
-    File hFile = OpenFile(g_sListPath, "r");
+    File hFile = OpenFile(g_dlrListPath, "r");
     if( hFile == null )
     {
         if (client != 0)
-            PrintToChat(client, "Cannot open config file \"%s\"!", g_sListPath);
+            PrintToChat(client, "Cannot open config file \"%s\"!", g_dlrListPath);
         return false;
     }
     else {
@@ -469,7 +469,7 @@ bool UpdateListDefault(int client = 0)
                 if (client != 0)
                     PrintToChat(client, "Added: %s", sLine);
                 #endif
-                g_SoundPath.PushString(sLine);
+                g_dlrSoundPath.PushString(sLine);
             }
         }
         CloseHandle(hFile);
@@ -478,18 +478,18 @@ bool UpdateListDefault(int client = 0)
 }
 bool UpdateListNewly(int client = 0)
 {
-    g_SoundPathNewly.Clear();
+    g_dlrSoundPathNewly.Clear();
     
-    if (g_hCvarUseNewly.IntValue == 0) {
+    if (g_dlrCvarUseNewly.IntValue == 0) {
         return true;
     }
     
     char sLine[PLATFORM_MAX_PATH];
-    File hFile = OpenFile(g_sListPathNewly, "r");
+    File hFile = OpenFile(g_dlrListPathNewly, "r");
     if( hFile == null )
     {
         if (client != 0)
-            PrintToChat(client, "Cannot open config file \"%s\"!", g_sListPathNewly);
+            PrintToChat(client, "Cannot open config file \"%s\"!", g_dlrListPathNewly);
         return false;
     }
     else {
@@ -501,7 +501,7 @@ bool UpdateListNewly(int client = 0)
             #endif
             
             TrimString(sLine); // walkaround against line break bug
-            g_SoundPathNewly.PushString(sLine);
+            g_dlrSoundPathNewly.PushString(sLine);
         }
         CloseHandle(hFile);
     }
@@ -513,31 +513,31 @@ public void OnClientPutInServer(int client)
     if (client && !IsFakeClient(client))
     {
         QueryClientConVar(client, "cl_downloadfilter", CheckDownloads);
-        if (g_hTimerMusic[client] == INVALID_HANDLE)
+        if (g_dlrTimerMusic[client] == INVALID_HANDLE)
         {
-            g_hTimerMusic[client] = CreateTimer(g_hCvarDelay.FloatValue, Timer_PlayMusic, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
+            g_dlrTimerMusic[client] = CreateTimer(g_dlrCvarDelay.FloatValue, Timer_PlayMusic, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
         }
     }
 }
 
 public void OnClientPostAdminCheck(int client)
 {
-    if (g_bAmbientLoaded && strlen(g_sAmbientSound) > 0)
+    if (g_dlrAmbientLoaded && strlen(g_dlrAmbientSound) > 0)
         CreateTimer(15.0, Timer_DelayedClientAmbient, GetClientUserId(client));
 }
 
 public Action Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
 {
-    if (g_hCvarPlayRoundStart.IntValue == 0)
+    if (g_dlrCvarPlayRoundStart.IntValue == 0)
         return;
 
     for (int i = 1; i <= MaxClients; i++)
     {
         if (IsClientInGame(i) && !IsFakeClient(i))
         {
-            if (g_hTimerMusic[i] == INVALID_HANDLE)
+            if (g_dlrTimerMusic[i] == INVALID_HANDLE)
             {
-                g_hTimerMusic[i] = CreateTimer(g_hCvarDelay.FloatValue, Timer_PlayMusic, GetClientUserId(i), TIMER_FLAG_NO_MAPCHANGE);
+                g_dlrTimerMusic[i] = CreateTimer(g_dlrCvarDelay.FloatValue, Timer_PlayMusic, GetClientUserId(i), TIMER_FLAG_NO_MAPCHANGE);
             }
         }
     }
@@ -557,14 +557,14 @@ void ResetTimer()
 {
     for (int i = 1; i <= MaxClients; i++)
     {
-        g_hTimerMusic[i] = INVALID_HANDLE;
+        g_dlrTimerMusic[i] = INVALID_HANDLE;
     }
 }
 
 public Action Timer_PlayMusic(Handle timer, int UserId)
 {
     int client = GetClientOfUserId(UserId);
-    g_hTimerMusic[client] = INVALID_HANDLE;
+    g_dlrTimerMusic[client] = INVALID_HANDLE;
     
     if (client != 0 && IsClientInGame(client)) 
     {
@@ -572,23 +572,23 @@ public Action Timer_PlayMusic(Handle timer, int UserId)
         {
             char sPath[PLATFORM_MAX_PATH];
             
-            if (g_bFirstConnect[client] && g_hCvarUseNewly.IntValue == 1 && g_SoundPathNewly.Length > 0)
+            if (g_dlrFirstConnect[client] && g_dlrCvarUseNewly.IntValue == 1 && g_dlrSoundPathNewly.Length > 0)
             {
-                g_SoundPathNewly.GetString(g_iSndIdxNewly, sPath, sizeof(sPath));
+                g_dlrSoundPathNewly.GetString(g_dlrSndIdxNewly, sPath, sizeof(sPath));
             }
-            else if (g_SoundPath.Length > 0)
+            else if (g_dlrSoundPath.Length > 0)
             {
-                g_SoundPath.GetString(g_iSndIdx, sPath, sizeof(sPath));
+                g_dlrSoundPath.GetString(g_dlrSndIdx, sPath, sizeof(sPath));
             }
             
             EmitSoundCustom(client, sPath);
         }
         if (GetCookieShowMenu(client))
         {
-            if (g_hCvarShowMenu.BoolValue)
+            if (g_dlrCvarShowMenu.BoolValue)
                 ShowMusicMenu(client);
         }
-        g_bFirstConnect[client] = false;
+        g_dlrFirstConnect[client] = false;
     }
 }
 
@@ -629,14 +629,14 @@ public int MenuHandler_MenuMusic(Menu menu, MenuAction action, int param1, int p
                 case 6: {
                     StopCurrentSound(client);
                     
-                    if (g_SoundPath.Length > 0)
+                    if (g_dlrSoundPath.Length > 0)
                     {
-                        g_SoundPath.GetString(g_iSndIdx, sPath, sizeof(sPath));
+                        g_dlrSoundPath.GetString(g_dlrSndIdx, sPath, sizeof(sPath));
                         EmitSoundCustom(client, sPath);
                     }
-                    else if (g_hCvarUseNewly.IntValue == 1 && g_SoundPathNewly.Length > 0)
+                    else if (g_dlrCvarUseNewly.IntValue == 1 && g_dlrSoundPathNewly.Length > 0)
                     {
-                        g_SoundPathNewly.GetString(g_iSndIdxNewly, sPath, sizeof(sPath));
+                        g_dlrSoundPathNewly.GetString(g_dlrSndIdxNewly, sPath, sizeof(sPath));
                         EmitSoundCustom(client, sPath);
                     }
                 }
@@ -675,10 +675,10 @@ void ShowMenuSettings(int client)
     }
     if (GetCookieAmbient(client))
     {
-        menu.AddItem("11", "Disable background music");
+        menu.AddItem("11", Translate(client, "%t", "DisableAmbient"));
     }
     else {
-        menu.AddItem("11", "Enable background music");
+        menu.AddItem("11", Translate(client, "%t", "EnableAmbient"));
     }
     menu.ExitBackButton = true;
     menu.Display(client, MENU_TIME_FOREVER);
@@ -713,19 +713,19 @@ public int MenuHandler_MenuSettings(Menu menu, MenuAction action, int param1, in
                     FakeClientCommand(client, "sm_music -1");
                 }
                 case 9: {
-                    g_iCookie[client] ^= 4;
+                    g_dlrCookie[client] ^= 4;
                     SaveCookie(client);
                 }
                 case 10: {
-                    g_iCookie[client] ^= 2;
+                    g_dlrCookie[client] ^= 2;
                     SaveCookie(client);
                 }
                 case 11: {
-                    g_iCookie[client] ^= 8;
+                    g_dlrCookie[client] ^= 8;
                     SaveCookie(client);
                     if (GetCookieAmbient(client))
                     {
-                        if (!g_bMusicPlaying[client])
+                        if (!g_dlrMusicPlaying[client])
                             StartClientAmbientSound(client);
                     }
                     else
@@ -741,23 +741,23 @@ void StopCurrentSound(int client)
 {
     char sPath[PLATFORM_MAX_PATH];
     
-    if (g_SoundPath.Length > 0)
+    if (g_dlrSoundPath.Length > 0)
     {
-        g_SoundPath.GetString(g_iSndIdx, sPath, sizeof(sPath));
+        g_dlrSoundPath.GetString(g_dlrSndIdx, sPath, sizeof(sPath));
         StopSound(client, SNDCHAN_DEFAULT, sPath);
     }
-    if (g_hCvarUseNewly.IntValue == 1 && g_SoundPathNewly.Length > 0)
+    if (g_dlrCvarUseNewly.IntValue == 1 && g_dlrSoundPathNewly.Length > 0)
     {
-        g_SoundPathNewly.GetString(g_iSndIdxNewly, sPath, sizeof(sPath));
+        g_dlrSoundPathNewly.GetString(g_dlrSndIdxNewly, sPath, sizeof(sPath));
         StopSound(client, SNDCHAN_DEFAULT, sPath);
     }
-    g_bMusicPlaying[client] = false;
-    if (g_hAmbientResume[client] != null)
+    g_dlrMusicPlaying[client] = false;
+    if (g_dlrAmbientResume[client] != null)
     {
-        KillTimer(g_hAmbientResume[client]);
-        g_hAmbientResume[client] = null;
+        KillTimer(g_dlrAmbientResume[client]);
+        g_dlrAmbientResume[client] = null;
     }
-    if (g_hCvarAmbient.BoolValue && GetCookieAmbient(client))
+    if (g_dlrCvarAmbient.BoolValue && GetCookieAmbient(client))
         StartClientAmbientSound(client);
 }
 
@@ -771,7 +771,7 @@ void ShowVolumeMenu(int client)
     for (int vol = 2; vol <= 10; vol += 2)
     {
         IntToString(vol, sItem, sizeof(sItem));
-        Format(sDisplay, sizeof(sDisplay), "%s%.1f", vol == g_iSoundVolume[client] ? "> " : "", float(vol) / 10.0);
+        Format(sDisplay, sizeof(sDisplay), "%s%.1f", vol == g_dlrSoundVolume[client] ? "> " : "", float(vol) / 10.0);
         menu.AddItem(sItem, sDisplay);
     }
     menu.ExitBackButton = true;
@@ -798,10 +798,10 @@ public int MenuHandler_MenuVolume(Menu menu, MenuAction action, int param1, int 
             char sPath[PLATFORM_MAX_PATH];
             menu.GetItem(ItemIndex, sItem, sizeof(sItem));
             
-            g_iSoundVolume[client] = StringToInt(sItem);
-            g_iCookie[client] = (g_iCookie[client] & 0x0F) | (g_iSoundVolume[client] << 4);
+            g_dlrSoundVolume[client] = StringToInt(sItem);
+            g_dlrCookie[client] = (g_dlrCookie[client] & 0x0F) | (g_dlrSoundVolume[client] << 4);
             SaveCookie(client);
-            g_SoundPath.GetString(g_iSndIdx, sPath, sizeof(sPath));
+            g_dlrSoundPath.GetString(g_dlrSndIdx, sPath, sizeof(sPath));
             StopSound(client, SNDCHAN_DEFAULT, sPath);
             EmitSoundCustom(client, sPath);
             ShowVolumeMenu(client);
@@ -838,33 +838,33 @@ public void OnMapStart()
 {
     LoadAmbientSound();
     // remove already played track from the list
-    if (g_iSndIdx != -1 && g_SoundPath.Length > 0)
+    if (g_dlrSndIdx != -1 && g_dlrSoundPath.Length > 0)
     {
-        g_SoundPath.Erase(g_iSndIdx);
+        g_dlrSoundPath.Erase(g_dlrSndIdx);
     }
-    if (g_iSndIdxNewly != -1 && g_hCvarUseNewly.IntValue == 1 && g_SoundPathNewly.Length > 0)
+    if (g_dlrSndIdxNewly != -1 && g_dlrCvarUseNewly.IntValue == 1 && g_dlrSoundPathNewly.Length > 0)
     {
-        g_SoundPathNewly.Erase(g_iSndIdxNewly);
+        g_dlrSoundPathNewly.Erase(g_dlrSndIdxNewly);
     }
     
     // fill the list if it become empty
-    if (g_SoundPath.Length == 0)
+    if (g_dlrSoundPath.Length == 0)
     {
         UpdateListDefault();
     }
-    if (g_hCvarUseNewly.IntValue == 1 && g_SoundPathNewly.Length == 0)
+    if (g_dlrCvarUseNewly.IntValue == 1 && g_dlrSoundPathNewly.Length == 0)
     {
         UpdateListNewly();
     }
     
     // select random track
-    if (g_SoundPath.Length > 0)
+    if (g_dlrSoundPath.Length > 0)
     {
-        g_iSndIdx = GetRandomInt(0, g_SoundPath.Length - 1);
+        g_dlrSndIdx = GetRandomInt(0, g_dlrSoundPath.Length - 1);
     }
-    if (g_hCvarUseNewly.IntValue == 1 && g_SoundPathNewly.Length > 0)
+    if (g_dlrCvarUseNewly.IntValue == 1 && g_dlrSoundPathNewly.Length > 0)
     {
-        g_iSndIdxNewly = GetRandomInt(0, g_SoundPathNewly.Length - 1);
+        g_dlrSndIdxNewly = GetRandomInt(0, g_dlrSoundPathNewly.Length - 1);
     }
     
     char sSoundPath[PLATFORM_MAX_PATH];
@@ -873,10 +873,10 @@ public void OnMapStart()
     char sDLPathNewly[PLATFORM_MAX_PATH];
     
     #if CACHE_ALL_SOUNDS
-        if (g_SoundPath.Length > 0)
+        if (g_dlrSoundPath.Length > 0)
         {
-            for (int i = 0; i < g_SoundPath.Length; i++) {
-                g_SoundPath.GetString(i, sSoundPath, sizeof(sSoundPath));
+            for (int i = 0; i < g_dlrSoundPath.Length; i++) {
+                g_dlrSoundPath.GetString(i, sSoundPath, sizeof(sSoundPath));
                 Format(sDLPath, sizeof(sDLPath), "sound/%s", sSoundPath);
                 AddFileToDownloadsTable(sDLPath);
                 #if (DEBUG)
@@ -885,10 +885,10 @@ public void OnMapStart()
                 PrecacheSound(sSoundPath, true);
             }
         }
-        if (g_hCvarUseNewly.IntValue == 1 && g_SoundPathNewly.Length > 0)
+        if (g_dlrCvarUseNewly.IntValue == 1 && g_dlrSoundPathNewly.Length > 0)
         {
-            for (int i = 0; i < g_SoundPathNewly.Length; i++) {
-                g_SoundPathNewly.GetString(i, sSoundPathNewly, sizeof(sSoundPathNewly));
+            for (int i = 0; i < g_dlrSoundPathNewly.Length; i++) {
+                g_dlrSoundPathNewly.GetString(i, sSoundPathNewly, sizeof(sSoundPathNewly));
                 Format(sDLPathNewly, sizeof(sDLPathNewly), "sound/%s", sSoundPathNewly);
                 AddFileToDownloadsTable(sDLPathNewly);
                 #if (DEBUG)
@@ -898,16 +898,16 @@ public void OnMapStart()
             }
         }
     #else
-        if (g_SoundPath.Length > 0)
+        if (g_dlrSoundPath.Length > 0)
         {
-            g_SoundPath.GetString(g_iSndIdx, sSoundPath, sizeof(sSoundPath));
+            g_dlrSoundPath.GetString(g_dlrSndIdx, sSoundPath, sizeof(sSoundPath));
             Format(sDLPath, sizeof(sDLPath), "sound/%s", sSoundPath);
             AddFileToDownloadsTable(sDLPath);
             PrecacheSound(sSoundPath, true);
         }
-        if (g_hCvarUseNewly.IntValue == 1 && g_SoundPathNewly.Length > 0)
+        if (g_dlrCvarUseNewly.IntValue == 1 && g_dlrSoundPathNewly.Length > 0)
         {
-            g_SoundPathNewly.GetString(g_iSndIdxNewly, sSoundPathNewly, sizeof(sSoundPathNewly));
+            g_dlrSoundPathNewly.GetString(g_dlrSndIdxNewly, sSoundPathNewly, sizeof(sSoundPathNewly));
             Format(sDLPathNewly, sizeof(sDLPathNewly), "sound/%s", sSoundPathNewly);
             if (strcmp(sDLPathNewly, sDLPath) != 0)
             {
@@ -920,31 +920,31 @@ public void OnMapStart()
 
 bool IsCookieLoaded(int client)
 {
-    return (g_iCookie[client] & 1) != 0;
+    return (g_dlrCookie[client] & 1) != 0;
 }
 bool GetCookieShowMenu(int client)
 {
     if (!IsCookieLoaded(client))
         return true;
-    return (g_iCookie[client] & 2) != 0;
+    return (g_dlrCookie[client] & 2) != 0;
 }
 bool GetCookiePlayMusic(int client)
 {
     if (!IsCookieLoaded(client))
         return true;
-    return (g_iCookie[client] & 4) != 0;
+    return (g_dlrCookie[client] & 4) != 0;
 }
 bool GetCookieAmbient(int client)
 {
     if (!IsCookieLoaded(client))
         return true;
-    return (g_iCookie[client] & 8) != 0;
+    return (g_dlrCookie[client] & 8) != 0;
 }
 int GetCookieVolume(int client)
 {
     if (!IsCookieLoaded(client))
         return 10;
-    int volume = (g_iCookie[client] & 0xF0) >> 4;
+    int volume = (g_dlrCookie[client] & 0xF0) >> 4;
     return volume == 0 ? 10 : volume;
 }
 void SaveCookie(int client)
@@ -953,11 +953,11 @@ void SaveCookie(int client)
         return;
     
     char sCookie[16];
-    g_iCookie[client] |= 1;
-    IntToString(g_iCookie[client], sCookie, sizeof(sCookie));
+    g_dlrCookie[client] |= 1;
+    IntToString(g_dlrCookie[client], sCookie, sizeof(sCookie));
     
     if (AreClientCookiesCached(client)) {
-        SetClientCookie(client, g_hCookieMusic, sCookie);
+        SetClientCookie(client, g_dlrCookieMusic, sCookie);
     }
 }
 
@@ -980,10 +980,10 @@ void EmitSoundCustom(
     int clients[1];
     clients[0] = client;
     
-    if (g_Engine == Engine_Left4Dead || g_Engine == Engine_Left4Dead2)
+    if (g_dlrEngine == Engine_Left4Dead || g_dlrEngine == Engine_Left4Dead2)
         level = SNDLEVEL_GUNFIRE;
 
-    volume = float(g_iSoundVolume[client]) / 10.0;
+    volume = float(g_dlrSoundVolume[client]) / 10.0;
     if (volume < 0.0)
         volume = 0.0;
 
@@ -992,21 +992,21 @@ void EmitSoundCustom(
     float fLen;
     if (IsValidGetSoundLength(sound, fLen))
     {
-        g_bMusicPlaying[client] = true;
-        if (g_hAmbientResume[client] != null)
+        g_dlrMusicPlaying[client] = true;
+        if (g_dlrAmbientResume[client] != null)
         {
-            KillTimer(g_hAmbientResume[client]);
-            g_hAmbientResume[client] = null;
+            KillTimer(g_dlrAmbientResume[client]);
+            g_dlrAmbientResume[client] = null;
         }
-        if (g_hCvarAmbient.BoolValue && GetCookieAmbient(client))
-            g_hAmbientResume[client] = CreateTimer(fLen, Timer_ResumeAmbient, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
+        if (g_dlrCvarAmbient.BoolValue && GetCookieAmbient(client))
+            g_dlrAmbientResume[client] = CreateTimer(fLen, Timer_ResumeAmbient, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
     }
     else
     {
-        g_bMusicPlaying[client] = true;
+        g_dlrMusicPlaying[client] = true;
     }
     
-    if (g_hCvarDisplayName.IntValue == 1)
+    if (g_dlrCvarDisplayName.IntValue == 1)
     {
         CPrintToChat(client, "%t%s", "Playing", sound);
         CPrintToChat(client, "%t", "Info");
@@ -1024,7 +1024,7 @@ void LoadAmbientConfig()
 {
     char sConfigPath[PLATFORM_MAX_PATH];
     BuildPath(Path_SM, sConfigPath, sizeof(sConfigPath), "configs/ambient_sounds.cfg");
-    if (!g_hAmbientConfig.ImportFromFile(sConfigPath))
+    if (!g_dlrAmbientConfig.ImportFromFile(sConfigPath))
     {
         LogError("Could not load ambient sounds config file: %s", sConfigPath);
     }
@@ -1032,28 +1032,28 @@ void LoadAmbientConfig()
 
 void LoadAmbientSound()
 {
-    g_bAmbientLoaded = false;
-    g_sAmbientSound[0] = '\0';
-    if (!g_hCvarAmbient.BoolValue)
+    g_dlrAmbientLoaded = false;
+    g_dlrAmbientSound[0] = '\0';
+    if (!g_dlrCvarAmbient.BoolValue)
         return;
-    if (g_hAmbientConfig == null)
+    if (g_dlrAmbientConfig == null)
         return;
-    if (g_hAmbientConfig.JumpToKey(g_sMapName))
+    if (g_dlrAmbientConfig.JumpToKey(g_dlrMapName))
     {
         char sSoundPath[PLATFORM_MAX_PATH];
-        g_hAmbientConfig.GetString("sound", sSoundPath, sizeof(sSoundPath));
-        if (strlen(sSoundPath) > 0 && IsValidGetSoundLength(sSoundPath, g_fAmbientDuration))
+        g_dlrAmbientConfig.GetString("sound", sSoundPath, sizeof(sSoundPath));
+        if (strlen(sSoundPath) > 0 && IsValidGetSoundLength(sSoundPath, g_dlrAmbientDuration))
         {
-            g_fAmbientVolume = g_hAmbientConfig.GetFloat("volume", 1.0);
-            g_bAmbientLoop = view_as<bool>(g_hAmbientConfig.GetNum("loop"));
-            strcopy(g_sAmbientSound, sizeof(g_sAmbientSound), sSoundPath);
+            g_dlrAmbientVolume = g_dlrAmbientConfig.GetFloat("volume", 1.0);
+            g_dlrAmbientLoopEnabled = view_as<bool>(g_dlrAmbientConfig.GetNum("loop"));
+            strcopy(g_dlrAmbientSound, sizeof(g_dlrAmbientSound), sSoundPath);
             char sDLPath[PLATFORM_MAX_PATH];
             Format(sDLPath, sizeof(sDLPath), "sound/%s", sSoundPath);
             AddFileToDownloadsTable(sDLPath);
             PrecacheSound(sSoundPath, true);
-            g_bAmbientLoaded = true;
+            g_dlrAmbientLoaded = true;
         }
-        g_hAmbientConfig.GoBack();
+        g_dlrAmbientConfig.GoBack();
     }
 }
 
@@ -1067,12 +1067,12 @@ public Action Cmd_ReloadAmbient(int client, int args)
 
 void StartClientAmbientSound(int client)
 {
-    if (!g_bAmbientLoaded || !IsClientInGame(client) || IsFakeClient(client))
+    if (!g_dlrAmbientLoaded || !IsClientInGame(client) || IsFakeClient(client))
         return;
     StopClientAmbientSound(client);
-    EmitSoundToClient(client, g_sAmbientSound, SOUND_FROM_PLAYER, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, g_fAmbientVolume);
-    if (g_bAmbientLoop)
-        g_hAmbientLoop[client] = CreateTimer(g_fAmbientDuration, Timer_AmbientLoop, GetClientUserId(client), TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+    EmitSoundToClient(client, g_dlrAmbientSound, SOUND_FROM_PLAYER, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, g_dlrAmbientVolume);
+    if (g_dlrAmbientLoopEnabled)
+        g_dlrAmbientLoop[client] = CreateTimer(g_dlrAmbientDuration, Timer_AmbientLoop, GetClientUserId(client), TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 }
 
 public Action Timer_AmbientLoop(Handle timer, any data)
@@ -1081,26 +1081,26 @@ public Action Timer_AmbientLoop(Handle timer, any data)
     int client = GetClientOfUserId(userid);
     if (client == 0 || !IsClientInGame(client) || IsFakeClient(client))
         return Plugin_Stop;
-    if (!g_bAmbientLoaded || !g_bAmbientLoop)
+    if (!g_dlrAmbientLoaded || !g_dlrAmbientLoopEnabled)
         return Plugin_Stop;
-    EmitSoundToClient(client, g_sAmbientSound, SOUND_FROM_PLAYER, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, g_fAmbientVolume);
+    EmitSoundToClient(client, g_dlrAmbientSound, SOUND_FROM_PLAYER, SNDCHAN_STATIC, SNDLEVEL_NORMAL, SND_NOFLAGS, g_dlrAmbientVolume);
     return Plugin_Continue;
 }
 
 void StopClientAmbientSound(int client)
 {
-    if (g_hAmbientLoop[client] != null)
+    if (g_dlrAmbientLoop[client] != null)
     {
-        KillTimer(g_hAmbientLoop[client]);
-        g_hAmbientLoop[client] = null;
+        KillTimer(g_dlrAmbientLoop[client]);
+        g_dlrAmbientLoop[client] = null;
     }
-    if (g_hAmbientResume[client] != null)
+    if (g_dlrAmbientResume[client] != null)
     {
-        KillTimer(g_hAmbientResume[client]);
-        g_hAmbientResume[client] = null;
+        KillTimer(g_dlrAmbientResume[client]);
+        g_dlrAmbientResume[client] = null;
     }
-    if (strlen(g_sAmbientSound) > 0 && IsClientInGame(client) && !IsFakeClient(client))
-        StopSound(client, SNDCHAN_STATIC, g_sAmbientSound);
+    if (strlen(g_dlrAmbientSound) > 0 && IsClientInGame(client) && !IsFakeClient(client))
+        StopSound(client, SNDCHAN_STATIC, g_dlrAmbientSound);
 }
 
 void StopAllAmbient()
@@ -1112,7 +1112,7 @@ void StopAllAmbient()
 public Action Timer_DelayedClientAmbient(Handle timer, int userid)
 {
     int client = GetClientOfUserId(userid);
-    if (client > 0 && IsClientInGame(client) && !IsFakeClient(client) && g_bClientAllowsDownload[client] && g_hCvarAmbient.BoolValue && GetCookieAmbient(client) && !g_bMusicPlaying[client])
+    if (client > 0 && IsClientInGame(client) && !IsFakeClient(client) && g_dlrClientAllowsDownload[client] && g_dlrCvarAmbient.BoolValue && GetCookieAmbient(client) && !g_dlrMusicPlaying[client])
         StartClientAmbientSound(client);
     return Plugin_Stop;
 }
@@ -1120,16 +1120,16 @@ public Action Timer_DelayedClientAmbient(Handle timer, int userid)
 public Action Timer_ResumeAmbient(Handle timer, int userid)
 {
     int client = GetClientOfUserId(userid);
-    g_hAmbientResume[client] = null;
-    g_bMusicPlaying[client] = false;
-    if (client > 0 && IsClientInGame(client) && !IsFakeClient(client) && g_hCvarAmbient.BoolValue && GetCookieAmbient(client))
+    g_dlrAmbientResume[client] = null;
+    g_dlrMusicPlaying[client] = false;
+    if (client > 0 && IsClientInGame(client) && !IsFakeClient(client) && g_dlrCvarAmbient.BoolValue && GetCookieAmbient(client))
         StartClientAmbientSound(client);
     return Plugin_Stop;
 }
 
 void CheckDownloads(QueryCookie cookie, int client, ConVarQueryResult result, const char[] cvarName, const char[] cvarValue, any value)
 {
-    g_bClientAllowsDownload[client] = StrEqual(cvarValue, "all");
+    g_dlrClientAllowsDownload[client] = StrEqual(cvarValue, "all");
 }
 
 bool IsValidGetSoundLength(const char[] sFile, float &fLength, bool bIsGameSound = false)

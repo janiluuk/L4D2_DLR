@@ -80,8 +80,8 @@ public Action:TimerThink(Handle:hTimer, any:userid)
 						SetRenderProperties(client);
 						PrintHintText(client,"You are now invisible for 20 seconds. You can see enemies during this time.");
 
-						FakeClientCommand(client, "sm_nap_apply 7");
-						FakeClientCommand(client, "sm_extendedsight on");
+                                                FakeClientCommand(client, "sm_nap_apply 7");
+                                                FakeClientCommand(client, "sm_extendedsight");
 
 						//HidePlayer(client);
 
