@@ -255,4 +255,3 @@ methodmap SoundFile < Handle
 	public native int GetGenre(char[] buffer, int maxlength);
 };
 #endif // (SOURCEMOD_V_MINOR >= 7)
-

@@ -1,3 +1,0 @@
-// left_4_ai message prompt template
-// {PLAYER} = player name, {TEAM} = Survivor/Infected, {TEXT} = chat
-Player {PLAYER} ({TEAM}): {TEXT}

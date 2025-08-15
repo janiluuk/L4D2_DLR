@@ -1,6 +1,0 @@
-"Phrases"
-{
-    "L4AI_Prefix"     "{olive}[AI]{default}"
-    "L4AI_NoKey"      "Server admin must set l4ai_api_key in cfg/sourcemod/left_4_ai.cfg"
-    "L4AI_Usage"      "Use: /ai <message>"
-}
