@@ -55,14 +55,6 @@ jobs:
         with:
           path: src
 
-      - name: Fetch soundlib
-        shell: bash
-        working-directory: src
-        run: |
-          git clone https://github.com/Adrianilloo/soundlib soundlib_repo
-          cp -f soundlib_repo/scripting/soundlib.sp sourcemod/scripting/ 2>/dev/null || true
-          cp -f soundlib_repo/scripting/include/soundlib.inc sourcemod/scripting/include/ 2>/dev/null || true
-
       - name: Compile plugins
         shell: bash
         working-directory: src
