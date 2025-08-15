@@ -2,100 +2,67 @@ name: Build
 
 on:
   push:
-    paths-ignore:
-      - LICENSE
-      - README.md
   pull_request:
-    paths-ignore:
-      - LICENSE
-      - README.md
   workflow_dispatch:
   schedule:
     - cron: '30 03 01 */3 *' # Artifacts expire every 3 months
 
 jobs:
   build:
-    name: build with sm${{ matrix.sm_version }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - ubuntu-latest
-          - ubuntu-22.04
-          - windows-latest
-        sm_version:
-          - "1.8"
-          - "1.9"
-          - "1.10"
-          - "1.11"
-        include:
-          - meta_version: "1.10"
-            meta_branch: "1.10-dev"
-          - meta_version: latest
-            meta_branch: master
-          - os_short: linux
-          - sm_version: "1.8"
-            sm_branch: "1.8-dev"
-          - sm_version: "1.9"
-            sm_branch: "1.9-dev"
-          - sm_version: "1.10"
-            sm_branch: "1.10-dev"
-          - sm_version: "1.11"
-            sm_branch: "1.11-dev"
-          - os: ubuntu-22.04
-            os_short: oldlinux
-          - os: windows-latest
-            os_short: win
+        os: [ubuntu-latest, windows-latest]
 
     steps:
       - name: Prepare env
         shell: bash
         run: echo "GITHUB_SHA_SHORT=${GITHUB_SHA::7}" >> $GITHUB_ENV
 
-      - name: Install (Linux)
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
           sudo dpkg --add-architecture i386
           sudo apt-get update
-          sudo apt-get install -y unzip wget
+          sudo apt-get install -y wget tar lib32z1 lib32stdc++6
 
-      - name: Install (Windows)
+      - name: Install dependencies (Windows)
         if: runner.os == 'Windows'
         run: choco install wget --no-progress
 
-      - name: Download SourceMod ${{ matrix.sm_version }}
+      - name: Download SourceMod
         shell: bash
         run: |
           if [ "${{ runner.os }}" = "Windows" ]; then
-            wget -nv "https://sm.alliedmods.net/smdrop/${{ matrix.sm_version }}/sourcemod-${{ matrix.sm_version }}-windows.zip" -O sm.zip
-            unzip sm.zip -d sourcemod
+            wget -nv "https://sm.alliedmods.net/smdrop/1.11/sourcemod-latest-windows.zip" -O sm.zip
+            mkdir sm
+            tar -xf sm.zip -C sm
           else
-            wget -nv "https://sm.alliedmods.net/smdrop/${{ matrix.sm_version }}/sourcemod-${{ matrix.sm_version }}-linux.tar.gz" -O sm.tar.gz
-            mkdir sourcemod
-            tar -xzf sm.tar.gz -C sourcemod
+            wget -nv "https://sm.alliedmods.net/smdrop/1.11/sourcemod-latest-linux.tar.gz" -O sm.tar.gz
+            mkdir sm
+            tar -xzf sm.tar.gz -C sm
+            chmod +x sm/addons/sourcemod/scripting/spcomp
           fi
-
-      - name: Getting own repository
-        uses: actions/checkout@v4
-        with:
-          path: src
 
       - name: Compile plugins
         shell: bash
-        working-directory: src
         run: |
-          mkdir -p package/addons/sourcemod/plugins
-          spcompbin="${{ github.workspace }}/sourcemod/addons/sourcemod/scripting/spcomp"
+          spcomp="$GITHUB_WORKSPACE/sm/addons/sourcemod/scripting/spcomp"
           if [ "${{ runner.os }}" = "Windows" ]; then
-            spcompbin="${spcompbin}.exe"
+            spcomp="${spcomp}.exe"
           fi
-          for sp in sourcemod/scripting/*.sp; do
-            "$spcompbin" -v0 "$sp" -o "package/addons/sourcemod/plugins/$(basename "${sp%.sp}.smx")"
-          done
+          mkdir -p package/addons/sourcemod/plugins
+          find sourcemod/scripting addons/sourcemod/scripting -type f -name '*.sp' ! -path 'sourcemod/scripting/todo/*' -print0 | \
+            while IFS= read -r -d '' sp; do
+              "$spcomp" -v0 "$sp" -o "package/addons/sourcemod/plugins/$(basename "${sp%.sp}.smx")"
+            done
 
-      - name: Uploading package
+      - name: Upload package
         uses: actions/upload-artifact@v4
         with:
-          name: l4d2_dlr-sm${{ matrix.sm_version }}-${{ matrix.os_short }}-${{ env.GITHUB_SHA_SHORT }}
-          path: src/package
+          name: l4d2_dlr-${{ matrix.os }}-${{ env.GITHUB_SHA_SHORT }}
+          path: package
+

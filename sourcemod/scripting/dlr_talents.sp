@@ -62,9 +62,10 @@ public Plugin:myinfo =
 public OnPluginStart( )
 {
 	// Concommands
-	RegConsoleCmd("sm_class", CmdClassMenu, "Shows the class selection menu");
-	RegConsoleCmd("sm_classinfo", CmdClassInfo, "Shows clClearMessagesass descriptions");
-	RegConsoleCmd("sm_classes", CmdClasses, "Shows class descriptions");
+        RegConsoleCmd("sm_class", CmdClassMenu, "Shows the class selection menu");
+        RegConsoleCmd("sm_classinfo", CmdClassInfo, "Shows clClearMessagesass descriptions");
+        RegConsoleCmd("sm_classes", CmdClasses, "Shows class descriptions");
+        RegConsoleCmd("sm_skill", CmdUseSkill, "Use your class special skill");
 	RegAdminCmd("sm_dlrm", CmdDlrMenu, ADMFLAG_ROOT, "Debug & Manage");
 	RegAdminCmd("sm_hide", HideCommand, ADMFLAG_ROOT, "Hide player");
 	RegAdminCmd("sm_dlr_plugins", CmdPlugins, ADMFLAG_ROOT, "List plugins");	
@@ -335,11 +336,11 @@ public void SetupClasses(client, class)
 		case soldier:	
 		{
 			char text[64];
-			if (g_bAirstrike == true) {
-				text = "Press MIDDLE BUTTON for Airstrike!";
-			}
+                        if (g_bAirstrike == true) {
+                                text = "Press MIDDLE BUTTON or type !skill for Airstrike!";
+                        }
 
-			PrintHintText(client,"You have armor, fast attack rate and movement %s", text );
+                        PrintHintText(client,"You have armor, fast attack rate and movement %s", text );
 			ClientData[client].SpecialDropInterval = GetConVarInt(MINIMUM_AIRSTRIKE_INTERVAL);
 			ClientData[client].SpecialLimit = GetConVarInt(SOLDIER_MAX_AIRSTRIKES);
 			MaxPossibleHP = GetConVarInt(SOLDIER_HEALTH);
@@ -347,7 +348,7 @@ public void SetupClasses(client, class)
 		
 		case medic:
 		{
-			PrintHintText(client,"Hold CROUCH to heal others. Press SHIFT to drop medkits & supplies.\nPress MIDDLE button to throw healing grenade!");
+                        PrintHintText(client,"Hold CROUCH to heal others. Press SHIFT to drop medkits & supplies.\nPress MIDDLE button or type !skill to throw healing grenade!");
 			CreateTimer(GetConVarFloat(MEDIC_HEALTH_INTERVAL), TimerDetectHealthChanges, client, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 			ClientData[client].SpecialLimit = GetConVarInt(MEDIC_MAX_ITEMS);
 			MaxPossibleHP = GetConVarInt(MEDIC_HEALTH);
@@ -375,20 +376,20 @@ public void SetupClasses(client, class)
 				text = ", You're immune to Tank knockdowns!";
 			} 
 
-			PrintHintText(client,"You have faster reload & increased damage%s!\nPress MIDDLE button to activate Berzerk mode!", text);
+                        PrintHintText(client,"You have faster reload & increased damage%s!\nPress MIDDLE button or type !skill to activate Berzerk mode!", text);
 			MaxPossibleHP = GetConVarInt(COMMANDO_HEALTH);
 		}
 		
 		case engineer:
 		{
-			PrintHintText(client,"Press SHIFT to drop ammo supplies and auto turrets!");
+                        PrintHintText(client,"Press MIDDLE button or type !skill to deploy turrets. Press SHIFT to drop ammo supplies!");
 			MaxPossibleHP = GetConVarInt(ENGINEER_HEALTH);
 			ClientData[client].SpecialLimit = GetConVarInt(ENGINEER_MAX_BUILDS);
 		}
 		
 		case saboteur:
 		{
-			PrintHintText(client,"Press SHIFT to drop mines! Hold CROUCH for 3 sec to go invisible. \nPress MIDDLE button to summon Decoy. It can save you from being pinned");
+                        PrintHintText(client,"Press SHIFT to drop mines! Hold CROUCH 3 sec to go invisible.\nPress MIDDLE or !skill to summon Decoy. Use !extendedsight for wallhack");
 			MaxPossibleHP = GetConVarInt(SABOTEUR_HEALTH);
 			ClientData[client].SpecialLimit = GetConVarInt(SABOTEUR_MAX_BOMBS);
 //			ToggleNightVision(client);
@@ -851,6 +852,12 @@ public void useCustomCommand(char[] pluginName, int client, int entity, int type
 	Call_PushCell(entity);
 	Call_PushCell(type);	
 	Call_Finish();
+}
+
+public Action CmdUseSkill(int client, int args)
+{
+        useSpecialSkill(client, 0);
+        return Plugin_Handled;
 }
 
 public void useSpecialSkill(int client, int type)
