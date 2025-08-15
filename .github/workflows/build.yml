@@ -9,6 +9,7 @@ on:
 
 jobs:
   build:
+    name: build on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -16,22 +17,10 @@ jobs:
         include:
           - os: ubuntu-latest
             os_short: linux
-            sm_version: "1.10"
-          - os: ubuntu-latest
-            os_short: linux
-            sm_version: "1.11"
           - os: ubuntu-22.04
             os_short: oldlinux
-            sm_version: "1.10"
-          - os: ubuntu-22.04
-            os_short: oldlinux
-            sm_version: "1.11"
           - os: windows-latest
             os_short: win
-            sm_version: "1.10"
-          - os: windows-latest
-            os_short: win
-            sm_version: "1.11"
 
     steps:
       - name: Prepare env
@@ -51,14 +40,14 @@ jobs:
         if: runner.os == 'Windows'
         run: choco install wget --no-progress
 
-      - name: Download SourceMod
+      - name: Download SourceMod 1.10.0-git6545
         shell: bash
         run: |
           if [ "${{ runner.os }}" = "Windows" ]; then
-            wget -nv "https://sm.alliedmods.net/smdrop/${{ matrix.sm_version }}/sourcemod-latest-windows.zip" -O sm.zip
+            wget -nv "https://sm.alliedmods.net/smdrop/1.10/sourcemod-1.10.0-git6545-windows.zip" -O sm.zip
             unzip sm.zip -d sourcemod
           else
-            wget -nv "https://sm.alliedmods.net/smdrop/${{ matrix.sm_version }}/sourcemod-latest-linux.tar.gz" -O sm.tar.gz
+            wget -nv "https://sm.alliedmods.net/smdrop/1.10/sourcemod-1.10.0-git6545-linux.tar.gz" -O sm.tar.gz
             mkdir sourcemod
             tar -xzf sm.tar.gz -C sourcemod
           fi
@@ -78,6 +67,5 @@ jobs:
       - name: Upload package
         uses: actions/upload-artifact@v4
         with:
-          name: l4d2_dlr-${{ matrix.os }}-${{ env.GITHUB_SHA_SHORT }}
-          path: package
-
+          name: l4d2_dlr-sm1.10.0-git6545-${{ matrix.os_short }}-${{ env.GITHUB_SHA_SHORT }}
+          path: src/package
