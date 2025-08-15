@@ -13,7 +13,25 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            os_short: linux
+            sm_version: "1.10"
+          - os: ubuntu-latest
+            os_short: linux
+            sm_version: "1.11"
+          - os: ubuntu-22.04
+            os_short: oldlinux
+            sm_version: "1.10"
+          - os: ubuntu-22.04
+            os_short: oldlinux
+            sm_version: "1.11"
+          - os: windows-latest
+            os_short: win
+            sm_version: "1.10"
+          - os: windows-latest
+            os_short: win
+            sm_version: "1.11"
 
     steps:
       - name: Prepare env
