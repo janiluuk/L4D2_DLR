@@ -73,7 +73,9 @@ public Action:TimerThink(Handle:hTimer, any:userid)
 					{
 						SetRenderProperties(client);
 
-						FakeClientCommand(client, "sm_nap_apply 7");
+                                                FakeClientCommand(client, "sm_nap_apply 7");
+                                                FakeClientCommand(client, "sm_extendedsight");
+
 						//HidePlayer(client);
 
 						//SetEntityRenderFx(client, RENDERFX_PULSE_SLOW);

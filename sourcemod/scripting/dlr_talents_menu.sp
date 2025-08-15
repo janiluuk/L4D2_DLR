@@ -108,8 +108,23 @@ public void OnLibraryAdded(const char[] name)
 		ExtraMenu_AddOptions(menu_id, "□□□□□□□□□□|■□□□□□□□□□|■■□□□□□□□□|■■■□□□□□□□|■■■■□□□□□□|■■■■■□□□□□|■■■■■■□□□□|■■■■■■■□□□|■■■■■■■■□□|■■■■■■■■■□|■■■■■■■■■■");	  // Various selectable options
 		ExtraMenu_AddEntry(menu_id, " ", MENU_ENTRY);																												  // Space to add blank entry
 
-		// Store menu ID to use later
-		g_iMenuID = menu_id;
+        ExtraMenu_AddEntry(guide_menu_id, "DLR GUIDE:", MENU_ENTRY);
+        ExtraMenu_AddEntry(guide_menu_id, "Use W/S to move row and A/D to select", MENU_ENTRY);
+        ExtraMenu_AddEntry(guide_menu_id, "!skill triggers your class ability", MENU_ENTRY);
+        ExtraMenu_AddEntry(guide_menu_id, "Soldier: aim and !skill for an airstrike", MENU_ENTRY);
+        ExtraMenu_AddEntry(guide_menu_id, "Commando: build rage then !skill to berserk", MENU_ENTRY);
+        ExtraMenu_AddEntry(guide_menu_id, "Engineer: !skill opens a turret menu", MENU_ENTRY);
+        ExtraMenu_AddEntry(guide_menu_id, " ", MENU_ENTRY);
+        ExtraMenu_AddEntry(guide_menu_id, "1. What is it", MENU_ENTRY, false, 250, 10, 100, 300);
+        ExtraMenu_AddEntry(guide_menu_id, "2. Features", MENU_SELECT_LIST);
+        ExtraMenu_AddOptions(guide_menu_id, "Common|Infected|Survivors");
+        ExtraMenu_AddEntry(guide_menu_id, "3. How to", MENU_SELECT_LIST);
+        ExtraMenu_AddOptions(guide_menu_id, "Missiles|Turrets|Special skills");
+        ExtraMenu_AddEntry(guide_menu_id, "4. Gameplay Tips", MENU_SELECT_ONLY);
+        ExtraMenu_AddEntry(guide_menu_id, "5. Survivor classes", MENU_SELECT_ONLY);
+        ExtraMenu_AddEntry(guide_menu_id, "6. Custom game modes", MENU_SELECT_ONLY);
+        ExtraMenu_AddEntry(guide_menu_id, "7. Add DLR servers to your serverlist", MENU_SELECT_ONLY);
+        ExtraMenu_NewPage(guide_menu_id);
 
 		//////////////////////////////////////////////////////////////////////////////////////
 		// Create a new guide menu

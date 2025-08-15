@@ -99,10 +99,9 @@ public void OnPluginEnd() {
 
 //---------------------------------------------------------------------------------------------------------------
 
-public int OnPlayerClassChange(int client, int newClass, int previousClass)
+public void OnPlayerClassChange(int client, int newClass, int previousClass)
 {
         g_dlrHasAbility[client] = (newClass == CLASS_SABOTEUR) ? 1 : 0;
-	return g_dlrHasAbility[client];
 }
 
 public void OnMapStart()
@@ -119,7 +118,7 @@ public void OnMapStart()
 
 
 
-public Action Command_ExtendedSight(int client, int args)
+public Action Command_ExtendedSight(int client, any args)
 {
         if (g_dlrHasAbility[client] <= 0) return Plugin_Handled;
 
@@ -385,4 +384,4 @@ void SetGlowColor()
 	g_dlrGlowColorFade4 = (RoundFloat(rgb[0]/3.0))+256*(RoundFloat(rgb[1]/3.0))+256*256*(RoundFloat(rgb[2]/3.0));
 	g_dlrGlowColorFade5 = (RoundFloat(rgb[0]/3.5))+256*(RoundFloat(rgb[1]/3.5))+256*256*(RoundFloat(rgb[2]/3.5));
 }
-
+
