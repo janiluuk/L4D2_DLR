@@ -60,7 +60,6 @@ A brutal anniversary overhaul of the infamous DLR mode for Left 4 Dead 2. DLR Ta
 - **Dead Ringer Cloak** – Saboteur-only decoy and invisibility; `sm_fd` toggles the effect and `sm_cloak` triggers it immediately.
 - **Extended Survivor Sight** – Saboteur-only wallhack for 20 s on a 2 min cooldown; activate with `sm_extendedsight`.
 - **Unvomit** – Clear Boomer bile with `sm_unvomit` as a Medic cleanse.
-- **Map & Ambient Music** – `!music` menu lets players enable round-start tracks and looping ambience. Server vars `start_music_enabled` and `ambient_music_enabled` control the defaults.
 - **Multiturret** – Engineer presses the class skill key (default middle mouse or `sm_skill`) to open a turret menu. Pick a gun and ammo, left-click to deploy, and press **Use** to pick it back up. Admins can remove a turret via `sm_removemachine`.
 - **Ninja Kick** – Athlete leap‑kicks infected by jumping into them, knocking targets to the ground.
 - **Berserk Mode** – Commando builds rage as they deal damage; press `!skill` (or `sm_berserker`) when prompted for a short speed and damage surge.
@@ -68,11 +67,8 @@ A brutal anniversary overhaul of the infamous DLR mode for Left 4 Dead 2. DLR Ta
 
 All special skills provide a corresponding `sm_` console command so abilities can be activated consistently regardless of keybinds.
 
-### Adding Music
-Store 44.1 kHz MP3s on a fast‑download server and list them in `data/music_mapstart.txt` (and optionally `music_mapstart_newly.txt` for first‑time players). Ambient loops and durations go into `configs/ambient_sounds.cfg`. Players can open `!music` to adjust volume or disable all custom tracks; their choices are saved in cookies until they opt back in.
-
 ## Game Menu & Guide
-A full-screen menu replaces tiny SourceMod popups. Navigate with **W/S** and **A/D**. Admins open the game menu with `sm_dlr` or the guide with `sm_guide`; players see the same overlay when using options like the music player.
+A full-screen menu replaces tiny SourceMod popups. Navigate with **W/S** and **A/D**. Admins open the game menu with `sm_dlr` or the guide with `sm_guide`; players see the same overlay whenever a feature uses this menu system.
 
 ## Roadmap
 - Cleaner UI with unified hint system and game instructor integration
