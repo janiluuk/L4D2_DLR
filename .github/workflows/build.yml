@@ -37,11 +37,11 @@ jobs:
         shell: bash
         run: |
           if [ "${{ runner.os }}" = "Windows" ]; then
-            wget -nv "https://sm.alliedmods.net/smdrop/1.11/sourcemod-latest-windows.zip" -O sm.zip
+            wget -nv "https://www.sourcemod.net/smdrop/1.11/sourcemod-1.11.0-git6970-windows.zip" -O sm.zip
             mkdir sm
             tar -xf sm.zip -C sm
           else
-            wget -nv "https://sm.alliedmods.net/smdrop/1.11/sourcemod-latest-linux.tar.gz" -O sm.tar.gz
+            wget -nv "https://www.sourcemod.net/smdrop/1.11/sourcemod-1.11.0-git6970-linux.tar.gz" -O sm.tar.gz
             mkdir sm
             tar -xzf sm.tar.gz -C sm
             chmod +x sm/addons/sourcemod/scripting/spcomp
