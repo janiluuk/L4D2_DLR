@@ -55,10 +55,10 @@ jobs:
         shell: bash
         run: |
           if [ "${{ runner.os }}" = "Windows" ]; then
-            wget -nv "https://sm.alliedmods.net/smdrop/${{ matrix.sm_version }}/sourcemod-latest-windows" -O sm.zip
+            wget -nv "https://sm.alliedmods.net/smdrop/${{ matrix.sm_version }}/sourcemod-latest-windows.zip" -O sm.zip
             unzip sm.zip -d sourcemod
           else
-            wget -nv "https://sm.alliedmods.net/smdrop/${{ matrix.sm_version }}/sourcemod-latest-linux" -O sm.tar.gz
+            wget -nv "https://sm.alliedmods.net/smdrop/${{ matrix.sm_version }}/sourcemod-latest-linux.tar.gz" -O sm.tar.gz
             mkdir sourcemod
             tar -xzf sm.tar.gz -C sourcemod
           fi
