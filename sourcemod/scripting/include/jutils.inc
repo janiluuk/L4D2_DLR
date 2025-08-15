@@ -230,7 +230,7 @@ stock int GetSurvivorType(const char[] modelName) {
 		return 2;
 	}else if(StrContains(modelName,"producer",false) > -1) {
 		return 1;
-	}else if(StrContains(modelName,"gambler",false) > -1) {
+	}else if(StrContains(modelName,"gambler",false) > -1) {	
 		return 0;
 	}else if(StrContains(modelName,"mechanic",false) > -1) {
 		return 3;
