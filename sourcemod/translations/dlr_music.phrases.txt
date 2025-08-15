@@ -60,4 +60,12 @@
     {
         "en" "Use !music for playback options"
     }
+    "DisableAmbient"
+    {
+        "en" "Disable background music"
+    }
+    "EnableAmbient"
+    {
+        "en" "Enable background music"
+    }
 }

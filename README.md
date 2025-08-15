@@ -55,7 +55,7 @@ A brutal anniversary overhaul of the infamous DLR mode for Left 4 Dead 2. DLR Ta
 - Reduced survivor damage, increased infected damage
 
 ## Additional Features & Commands
-- **Prototype Grenades** – Throw standard grenades to deploy wild effects. Hold **Primary Fire + Shove** (or open `sm_grenade`) to pick from 20 types such as Black Hole vortices, Tesla lightning, Medic healing clouds, or an Airstrike marker.
+- **Prototype Grenades** – Equip any grenade and press **Primary Fire** to throw. Hold **Primary Fire** and tap **Shove** (or type `sm_grenade`) to cycle through 20 experimental types like Black Hole vortices, Tesla lightning, Medic healing clouds, or an Airstrike marker.
 - **Class Skill Command** – Bind a key or type `!skill` to trigger your class's special ability.
 - **Dead Ringer Cloak** – Saboteur-only decoy and invisibility; `sm_fd` toggles the effect and `sm_cloak` triggers it immediately.
 - **Extended Survivor Sight** – Saboteur-only wallhack for 20 s on a 2 min cooldown; activate with `sm_extendedsight`.
