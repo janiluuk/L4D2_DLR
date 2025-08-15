@@ -11,10 +11,12 @@ public Plugin myinfo =
 {
 	name = "[DLR] Jump perk",
 	author = "zonde306, Yani",
+
 	description = "",
 	version = PLUGIN_VERSION,
 	url = "https://forums.alliedmods.net/",
 };
+
 
 const float g_fHighJumpFactor = 0.0625;
 const float g_fLongJumpFactor = 0.0625;
@@ -29,9 +31,9 @@ public OnPluginStart()
 {
 	InitPlugin("sfj");
 	g_hCvarGravity = FindConVar("sv_gravity");
-	g_pCvarJumpHeight = CreateConVar("l4d2_sfj_height", "35.0", "跳跃高度", CVAR_FLAGS, true, 0.0);
-	g_pCvarDuckHeight = CreateConVar("l4d2_sfj_duck_height", "52.0", "蹲下跳跃高度", CVAR_FLAGS, true, 0.0);
-	g_pCvarCalmTime = CreateConVar("l4d2_sfj_calm_time", "1.0", "重置计数时间", CVAR_FLAGS, true, 0.0);
+	g_pCvarJumpHeight = CreateConVar("l4d2_sfj_height", "35.0", "Height", CVAR_FLAGS, true, 0.0);
+	g_pCvarDuckHeight = CreateConVar("l4d2_sfj_duck_height", "52.0", "Duck height", CVAR_FLAGS, true, 0.0);
+	g_pCvarCalmTime = CreateConVar("l4d2_sfj_calm_time", "1.0", "Calm time", CVAR_FLAGS, true, 0.0);
 	AutoExecConfig(true, "l4d2_sfj");
 	
 	UpdateCache(null, "", "");
@@ -78,6 +80,7 @@ public Action DLR_OnGetPerkName(int client, const char[] name, int level, char[]
 		FormatEx(result, maxlen, "Jump far");
 	else if(!strcmp(name, "movespeed"))
 		FormatEx(result, maxlen, "Movement speed");
+
 	else
 		return Plugin_Continue;
 	return Plugin_Changed;
@@ -292,7 +295,6 @@ public void OnPlayerRunCmdPost(int client, int buttons, int impulse, const float
 		float upVel = CaclJumpVelocity(client);
 		if(velocity[2] < upVel)
 			velocity[2] = upVel;
-		
 		SetEntPropEnt(client, Prop_Send, "m_hGroundEntity", -1);
 		TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, velocity);
 		
