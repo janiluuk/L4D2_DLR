@@ -37,14 +37,12 @@ jobs:
         shell: bash
         run: |
           if [ "${{ runner.os }}" = "Windows" ]; then
-            wget -nv "https://www.sourcemod.net/smdrop/1.11/sourcemod-1.11.0-git6970-windows.zip" -O sm.zip
-            mkdir sm
-            tar -xf sm.zip -C sm
+            wget -nv "https://sm.alliedmods.net/smdrop/${{ matrix.sm_version }}/sourcemod-latest-windows" -O sm.zip
+            unzip sm.zip -d sourcemod
           else
-            wget -nv "https://www.sourcemod.net/smdrop/1.11/sourcemod-1.11.0-git6970-linux.tar.gz" -O sm.tar.gz
-            mkdir sm
-            tar -xzf sm.tar.gz -C sm
-            chmod +x sm/addons/sourcemod/scripting/spcomp
+            wget -nv "https://sm.alliedmods.net/smdrop/${{ matrix.sm_version }}/sourcemod-latest-linux" -O sm.tar.gz
+            mkdir sourcemod
+            tar -xzf sm.tar.gz -C sourcemod
           fi
 
       - name: Compile plugins
@@ -54,11 +52,10 @@ jobs:
           if [ "${{ runner.os }}" = "Windows" ]; then
             spcomp="${spcomp}.exe"
           fi
-          mkdir -p package/addons/sourcemod/plugins
-          find sourcemod/scripting addons/sourcemod/scripting -type f -name '*.sp' ! -path 'sourcemod/scripting/todo/*' -print0 | \
-            while IFS= read -r -d '' sp; do
-              "$spcomp" -v0 "$sp" -o "package/addons/sourcemod/plugins/$(basename "${sp%.sp}.smx")"
-            done
+          shopt -s nullglob
+          for sp in sourcemod/scripting/*.sp addons/sourcemod/scripting/*.sp; do
+            "$spcompbin" -v0 "$sp" -o "package/addons/sourcemod/plugins/$(basename "${sp%.sp}.smx")"
+          done
 
       - name: Upload package
         uses: actions/upload-artifact@v4
