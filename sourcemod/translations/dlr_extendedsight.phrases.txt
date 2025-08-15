@@ -1,0 +1,19 @@
+"Phrases"
+{
+    "ACTIVATED"
+    {
+        "en"    "Extended Sight activated!"
+    }
+    "DEACTIVATED"
+    {
+        "en"    "Extended Sight faded."
+    }
+    "ALREADYACTIVE"
+    {
+        "en"    "Extended Sight is already active!"
+    }
+    "COOLDOWN"
+    {
+        "en"    "Extended Sight recharges in %d s."
+    }
+}

@@ -98,6 +98,7 @@ public void OnLibraryAdded(const char[] name)
 
         ExtraMenu_AddEntry(guide_menu_id, "DLR GUIDE:", MENU_ENTRY);
         ExtraMenu_AddEntry(guide_menu_id, "Use W/S to move row and A/D to select", MENU_ENTRY);
+        ExtraMenu_AddEntry(guide_menu_id, "!skill triggers your class ability", MENU_ENTRY);
         ExtraMenu_AddEntry(guide_menu_id, " ", MENU_ENTRY);
         ExtraMenu_AddEntry(guide_menu_id, "1. What is it", MENU_ENTRY, false, 250, 10, 100, 300);
         ExtraMenu_AddEntry(guide_menu_id, "2. Features", MENU_SELECT_LIST);

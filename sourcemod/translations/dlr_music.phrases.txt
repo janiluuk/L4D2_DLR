@@ -1,0 +1,63 @@
+"Phrases"
+{
+    "Congratulation1"
+    {
+        "en" "Custom music enabled."
+    }
+    "Congratulation2"
+    {
+        "en" "Use this menu to control tracks."
+    }
+    "Congratulation3"
+    {
+        "en" "Type !music to reopen this menu."
+    }
+    "StopMusic"
+    {
+        "en" "Stop Music"
+    }
+    "PlayAgain"
+    {
+        "en" "Play Again"
+    }
+    "Settings"
+    {
+        "en" "Settings"
+    }
+    "Volume"
+    {
+        "en" "Volume"
+    }
+    "GoNext"
+    {
+        "en" "Next Track"
+    }
+    "NoMusicNextMap"
+    {
+        "en" "Disable next map music"
+    }
+    "MusicNextMap"
+    {
+        "en" "Enable next map music"
+    }
+    "NoMenuAutostart"
+    {
+        "en" "Don't auto-open menu"
+    }
+    "MenuAutostart"
+    {
+        "en" "Auto-open menu"
+    }
+    "NextVolume"
+    {
+        "en" "Select Volume"
+    }
+    "Playing"
+    {
+        "en" "Now playing: "
+    }
+    "Info"
+    {
+        "en" "Use !music for playback options"
+    }
+}
