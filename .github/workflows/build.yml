@@ -14,33 +14,25 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - ubuntu-latest
-          - ubuntu-22.04
-          - windows-latest
-        sm_version:
-          - "1.8"
-          - "1.9"
-          - "1.10"
-          - "1.11"
         include:
-          - meta_version: "1.10"
-            meta_branch: "1.10-dev"
-          - meta_version: latest
-            meta_branch: master
-          - os_short: linux
-          - sm_version: "1.8"
-            sm_branch: "1.8-dev"
-          - sm_version: "1.9"
-            sm_branch: "1.9-dev"
-          - sm_version: "1.10"
-            sm_branch: "1.10-dev"
-          - sm_version: "1.11"
-            sm_branch: "1.11-dev"
+          - os: ubuntu-latest
+            os_short: linux
+            sm_version: "1.10"
+          - os: ubuntu-latest
+            os_short: linux
+            sm_version: "1.11"
           - os: ubuntu-22.04
             os_short: oldlinux
+            sm_version: "1.10"
+          - os: ubuntu-22.04
+            os_short: oldlinux
+            sm_version: "1.11"
           - os: windows-latest
             os_short: win
+            sm_version: "1.10"
+          - os: windows-latest
+            os_short: win
+            sm_version: "1.11"
 
     steps:
       - name: Prepare env
