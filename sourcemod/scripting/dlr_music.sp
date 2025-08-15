@@ -675,10 +675,10 @@ void ShowMenuSettings(int client)
     }
     if (GetCookieAmbient(client))
     {
-        menu.AddItem("11", "Disable background music");
+        menu.AddItem("11", Translate(client, "%t", "DisableAmbient"));
     }
     else {
-        menu.AddItem("11", "Enable background music");
+        menu.AddItem("11", Translate(client, "%t", "EnableAmbient"));
     }
     menu.ExitBackButton = true;
     menu.Display(client, MENU_TIME_FOREVER);
