@@ -60,7 +60,7 @@ jobs:
           fi
           shopt -s nullglob
           for sp in sourcemod/scripting/*.sp addons/sourcemod/scripting/*.sp; do
-            "$spcompbin" -v0 "$sp" -o "package/addons/sourcemod/plugins/$(basename "${sp%.sp}.smx")"
+            "$spcomp" -v0 "$sp" -o "package/addons/sourcemod/plugins/$(basename "${sp%.sp}.smx")"
           done
     
       - name: Upload package
