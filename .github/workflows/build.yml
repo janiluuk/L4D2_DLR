@@ -9,7 +9,7 @@ on:
 
 jobs:
   build:
-    name: build on ${{ matrix.os }}
+  name: build on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -21,20 +21,21 @@ jobs:
             os_short: oldlinux
           - os: windows-latest
             os_short: win
-
     steps:
       - name: Prepare env
         shell: bash
         run: echo "GITHUB_SHA_SHORT=${GITHUB_SHA::7}" >> $GITHUB_ENV
 
-      - name: Install (Linux)
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
           sudo dpkg --add-architecture i386
           sudo apt-get update
-          sudo apt-get install -y unzip wget
+          sudo apt-get install -y wget tar lib32z1 lib32stdc++6
 
-      - name: Install (Windows)
+      - name: Install dependencies (Windows)
         if: runner.os == 'Windows'
         run: choco install wget --no-progress
 
@@ -50,26 +51,19 @@ jobs:
             tar -xzf sm.tar.gz -C sourcemod
           fi
 
-      - name: Getting own repository
-        uses: actions/checkout@v4
-        with:
-          path: src
-
       - name: Compile plugins
         shell: bash
-        working-directory: src
         run: |
-          mkdir -p package/addons/sourcemod/plugins
-          spcompbin="${{ github.workspace }}/sourcemod/addons/sourcemod/scripting/spcomp"
+          spcomp="$GITHUB_WORKSPACE/sm/addons/sourcemod/scripting/spcomp"
           if [ "${{ runner.os }}" = "Windows" ]; then
-            spcompbin="${spcompbin}.exe"
+            spcomp="${spcomp}.exe"
           fi
           shopt -s nullglob
           for sp in sourcemod/scripting/*.sp addons/sourcemod/scripting/*.sp; do
             "$spcompbin" -v0 "$sp" -o "package/addons/sourcemod/plugins/$(basename "${sp%.sp}.smx")"
           done
-
-      - name: Uploading package
+    
+      - name: Upload package
         uses: actions/upload-artifact@v4
         with:
           name: l4d2_dlr-sm1.10.0-git6545-${{ matrix.os_short }}-${{ env.GITHUB_SHA_SHORT }}
