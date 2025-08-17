@@ -9,7 +9,7 @@ on:
 
 jobs:
   build:
-  name: build on ${{ matrix.os }}
+    name: build on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
