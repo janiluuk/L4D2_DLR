@@ -209,19 +209,21 @@ enum BombType {
         FireCluster,
         Bullets,
         Flak,
-        Airstrike,
-        Weapon
+  Airstrike,
+  Weapon
 };
+
+#define BOMB_NAME_LENGTH 32
 
 enum struct Mine
 {
     int index;
-    char bombName[32];
+    char bombName[BOMB_NAME_LENGTH];
     int bombIndex;
 
         void setItem(int number, int bombIndex) {
                 this.index = number;
-                strcopy(this.bombName, sizeof(Mine::bombName), GetBombName(bombIndex));
+                strcopy(this.bombName, BOMB_NAME_LENGTH, GetBombName(bombIndex));
                 this.bombIndex = bombIndex;
         }
 
@@ -232,7 +234,7 @@ enum struct Mine
                 }
                 strcopy(buffer, maxlen, this.bombName);
         }
-};
+}
 
 stock const char[] GetBombName(int index)
 {

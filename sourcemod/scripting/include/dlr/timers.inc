@@ -1,3 +1,5 @@
+extern int g_flLaggedMovementValue;
+
 stock Action TimerStart(Handle timer)
 {
 	ResetPlugin();
