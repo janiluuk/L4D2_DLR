@@ -68,6 +68,9 @@ jobs:
           mkdir -p package/addons/sourcemod/plugins
           shopt -s nullglob
           for sp in sourcemod/scripting/*.sp addons/sourcemod/scripting/*.sp; do
+            case "$(basename "$sp")" in
+              left4dhooks*.sp|left4dhooks_test.sp) continue ;;
+            esac
             "$spcomp" $includes -v0 "$sp" -o "package/addons/sourcemod/plugins/$(basename "${sp%.sp}.smx")"
           done
 
