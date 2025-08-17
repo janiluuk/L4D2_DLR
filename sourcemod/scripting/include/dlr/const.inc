@@ -5,48 +5,48 @@ ArrayList g_SlotIndexes;
 GlobalForward g_fwPerkName, g_fwPerkDescription, g_fwCanAccessPerk, g_fwSlotName, g_fwPerkPre, g_fwPerkPost;
 
 enum struct playerClassProperties {
-    float maxHealth
-    float jumpVelocity
-    float attackDamage
-    float attackRate
-    float armorRate
-    float healingRate
-    float tankStumbleBlock
-}
+    float maxHealth;
+    float jumpVelocity;
+    float attackDamage;
+    float attackRate;
+    float armorRate;
+    float healingRate;
+float tankStumbleBlock;
+};
 
 enum struct playerClass {
-	int perkId
-	char className[32]
-	char classDescription[32]
-    playerClassProperties properties
-}
+        int perkId;
+        char className[32];
+        char classDescription[32];
+    playerClassProperties properties;
+};
 
 enum struct skillAction {
-	int client
-	int actionId
-	int actionType // 1 = Execute standard OnSpecialSKillUsed hooks // 2 = use OnCustomCommand hook // 3 = execute on startup	
-	int pluginName
-	char parameter[3]
-	char bindToKey[2]
-	int interval
-	float lastUsed
-	bool runInStartup
-	char successText[128]
-	char failureText[128]
-	char announceText[128]
-}
+        int client;
+        int actionId;
+        int actionType; // 1 = Execute standard OnSpecialSKillUsed hooks // 2 = use OnCustomCommand hook // 3 = execute on startup
+        int pluginName;
+        char parameter[3];
+        char bindToKey[2];
+        int interval;
+        float lastUsed;
+        bool runInStartup;
+        char successText[128];
+        char failureText[128];
+        char announceText[128];
+};
 
 
 enum struct skillSet {
-	int skillSetId
-	char skillSetName[32]
-	char skillSetDescription[128]
-	char skillISetdentifier[32]
-	int maxPlayers
-	int	skillSetType 
-	char menuIdentifier[16]
-	int actions[16]
-}
+	int skillSetId;
+	char skillSetName[32];
+	char skillSetDescription[128];
+	char skillISetdentifier[32];
+	int maxPlayers;
+	int	skillSetType; 
+        char menuIdentifier[16];
+        int actions[16];
+};
 
 enum ClassTypes {
 	NONE=0,
@@ -61,25 +61,25 @@ enum ClassTypes {
 };
 
 enum SpecialSkill {
-	No_Skill = 0,
-	F18_airstrike, 
-	Berzerk,
-	Grenade,
-	Multiturret
-}
+        No_Skill = 0,
+        F18_airstrike,
+        Berzerk,
+        Grenade,
+        Multiturret
+};
 
 enum SkillType {
-	On_Demand = 0,
-	Perk,
-	Constant
-}
+        On_Demand = 0,
+        Perk,
+        Constant
+};
 
 enum struct PerkData
 {
-	int slot;
-	char parameter[3];
-	int maxLevel;	
-}
+        int slot;
+        char parameter[3];
+        int maxLevel;
+};
 
 enum PerkPerm
 {
@@ -89,7 +89,7 @@ enum PerkPerm
 	FULL = (1 << 3)
 }
 
-enum struct PlayerInfo 
+enum struct PlayerInfo
 {
 	int SpecialsUsed;
 	float HideStartTime;
@@ -131,9 +131,9 @@ enum struct PlayerInfo
 		else
 			this.perks.SetValue(name, value);
 		
-		return true;
-	}
-}
+                return true;
+        }
+};
 
 enum Water_Level
 {
@@ -164,7 +164,7 @@ stock const String:ClassCustomModels[][64] =
 	"models/infected/common_male_riot.mdl",
 	"models/npcs/rescue_pilot_01.mdl",
 	"models/infected/common_military_male01.mdl" 
-}
+};
 
 stock String:ClassTips[][] =
 {
@@ -191,83 +191,76 @@ stock String:SpecialReadyTips[][] =
 };
 
 enum BombType {
-	Bomb = 0, 
-	Cluster, 
-	Firework,
-	Smoke, 
-	BlackHole,
-	Flashbang, 
-	Shield, 
-	Tesla, 
-	Chemical, 
-	Freeze, 
-	Medic, 
-	Vaporizer, 
-	Extinguisher, 
-	Glowing, 
-	AntiGravity, 
-	FireCluster, 
-	Bullets, 
-	Flak, 
-	Airstrike, 
-	Weapon
-}
+        Bomb = 0,
+        Cluster,
+        Firework,
+        Smoke,
+        BlackHole,
+        Flashbang,
+        Shield,
+        Tesla,
+        Chemical,
+        Freeze,
+        Medic,
+        Vaporizer,
+        Extinguisher,
+        Glowing,
+        AntiGravity,
+        FireCluster,
+        Bullets,
+        Flak,
+        Airstrike,
+        Weapon
+};
 
 enum struct Mine
 {
     int index;
     char bombName[32];
     int bombIndex;
-	
-	void setItem(int number, int bombIndex) { 
-		this.index = number;
-		this.bombName = getBombName(bombIndex);
-		this.bombIndex = bombIndex;
-	}
 
-	char[] getItem() {
-		char temp[32];
-		temp = this.bombName;
+    void setItem(int number, int bombIndex) {
+        this.index = number;
+        getBombName(bombIndex, this.bombName, sizeof(this.bombName));
+        this.bombIndex = bombIndex;
+    }
 
-		if (this.index < 0 || StrEqual(temp, "")) return temp;
-		char text[32];
-		Format(text, sizeof(text), "%s", this.bombName);
-		return text;
-	}
+    void getItem(char[] dest, int destLen) {
+        if (this.index < 0 || StrEqual(this.bombName, "")) {
+            dest[0] = '\0';
+            return;
+        }
+        Format(dest, destLen, "%s", this.bombName);
+    }
+};
+
+stock void formatBombName(const char[] bombName, char[] dest, int destLen) {
+Format(dest, destLen, "%s", bombName);
 }
 
-stock char[] formatBombName(char[] bombName) {
-	char temp[32];
-	Format(temp, sizeof(temp), "%s", bombName);
-	return temp;
+stock void getBombName(int index, char[] dest, int destLen) {
+switch( index - 1 )
+{
+case 0: formatBombName("Bomb", dest, destLen);
+case 1: formatBombName("Cluster", dest, destLen);
+case 2: formatBombName("Firework", dest, destLen);
+case 3: formatBombName("Smoke", dest, destLen);
+case 4: formatBombName("BlackHole", dest, destLen);
+case 5: formatBombName("Flashbang", dest, destLen);
+case 6: formatBombName("Shield", dest, destLen);
+case 7: formatBombName("Tesla", dest, destLen);
+case 8: formatBombName("Chemical", dest, destLen);
+case 9: formatBombName("Freeze", dest, destLen);
+case 10: formatBombName("Medic", dest, destLen);
+case 11: formatBombName("Vaporizer", dest, destLen);
+case 12: formatBombName("Extinguisher", dest, destLen);
+case 13: formatBombName("Glow", dest, destLen);
+case 14: formatBombName("Anti-Gravity", dest, destLen);
+case 15: formatBombName("Fire Cluster", dest, destLen);
+case 16: formatBombName("Bullets", dest, destLen);
+case 17: formatBombName("Flak", dest, destLen);
+case 18: formatBombName("Airstrike", dest, destLen);
+case 19: formatBombName("Weapon", dest, destLen);
+default: dest[0] = '\0';
 }
-
-stock char[] getBombName(int index) {
-
-	char bombName[32];
-
-	switch( index - 1 )
-	{
-		case 0: return formatBombName("Bomb");
-		case 1: return formatBombName("Cluster");
-		case 2: return formatBombName("Firework");
-		case 3: return formatBombName("Smoke");
-		case 4: return formatBombName("BlackHole");
-		case 5: return formatBombName("Flashbang");
-		case 6: return formatBombName("Shield");
-		case 7: return formatBombName("Tesla");
-		case 8: return formatBombName("Chemical");
-		case 9: return formatBombName("Freeze");
-		case 10: return formatBombName("Medic");
-		case 11: return formatBombName("Vaporizer");
-		case 12: return formatBombName("Extinguisher");
-		case 13: return formatBombName("Glow");
-		case 14: return formatBombName("Anti-Gravity");
-		case 15: return formatBombName("Fire Cluster");
-		case 16: return formatBombName("Bullets");
-		case 17: return formatBombName("Flak");
-		case 18: return formatBombName("Airstrike");
-		case 19: return formatBombName("Weapon");
-	}
-	return bombName;
 }

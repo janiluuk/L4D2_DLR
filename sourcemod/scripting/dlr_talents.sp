@@ -34,6 +34,7 @@ public Plugin:myinfo =
 };
 
 #include <adminmenu>
+#include <sdktools>
 #include <l4d2hud>
 #include <talents>
 #include <jutils>
@@ -1720,8 +1721,10 @@ public parseAvailableBombs()
 
 	if (amount == 1) {
 
-		g_AvailableBombs[0].setItem(0, StringToInt(buffers[0]));
-		PrintDebugAll("Added single bombtype to inventory: %s", g_AvailableBombs[0].getItem());
+                g_AvailableBombs[0].setItem(0, StringToInt(buffers[0]));
+                char bombName[32];
+                g_AvailableBombs[0].getItem(bombName, sizeof(bombName));
+                PrintDebugAll("Added single bombtype to inventory: %s", bombName);
 		return;
 	}
 
@@ -1732,8 +1735,10 @@ public parseAvailableBombs()
 			continue;
 		}
 
-		g_AvailableBombs[i].setItem(i, item);
-		PrintDebugAll("Added %i bombtype to inventory: %s", item, g_AvailableBombs[i].getItem());
+                g_AvailableBombs[i].setItem(i, item);
+                char bombName[32];
+                g_AvailableBombs[i].getItem(bombName, sizeof(bombName));
+                PrintDebugAll("Added %i bombtype to inventory: %s", item, bombName);
 	}
 }
 
@@ -2190,10 +2195,9 @@ public void DropBomb(client, bombType)
 	decl Float:pos[3];
 	GetClientAbsOrigin(client, pos);
 	int index = ClientData[client].SpecialsUsed;		
-	char bombName[32];
-
-	bombName = getBombName(bombType);
-	PrintDebugAll("Planting #%i %s (index %d)", index, bombName, bombType);
+        char bombName[32];
+        getBombName(bombType, bombName, sizeof(bombName));
+        PrintDebugAll("Planting #%i %s (index %d)", index, bombName, bombType);
 
 	new Handle:hPack = CreateDataPack();
 

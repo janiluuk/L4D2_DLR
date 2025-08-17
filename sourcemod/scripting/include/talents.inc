@@ -1,5 +1,20 @@
 // What formatting string to use when printing to the chatbox
-#define PRINT_PREFIX 	"\x04[DLR]\x01" 
+#define PRINT_PREFIX    "\x04[DLR]\x01"
+
+#include <sourcemod>
+#include <sdktools>
+#include <sdkhooks>
+#include <left4dhooks>
+#include <dlr/const>
+#include <dlr/debug>
+stock PlayerInfo ClientData[MAXPLAYERS+1];
+#include <dlr/timers>
+#include <dlr/commands>
+#include <dlr/perks>
+//#include <dlr/classes>
+#include <dlr/effects>
+#include <dlr/hud>
+#include <dlr/menus>
 
 // top menu
 new Handle:hTopMenu = INVALID_HANDLE;
@@ -149,7 +164,6 @@ new Float:g_SpawnPos[MAXPLAYERS+1][3];
 new bool:RoundStarted =false;
 new bool:disableInfected = false;
 stock int g_iPlayerSkill[MAXPLAYERS+1];
-stock PlayerInfo ClientData[MAXPLAYERS+1];
 stock bool:g_iPlayerSpawn;
 stock bool:ClassHint = false;
 Handle g_ReadyTimer[MAXPLAYERS+1] = {null, ...};
@@ -234,29 +248,3 @@ new Handle:COMMANDO_ENABLE_STUMBLE_BLOCK;
 new Handle:COMMANDO_ENABLE_STOMPING;
 new Handle:COMMANDO_STOMPING_SLOWDOWN;
 
-// Engineer
-new Handle:ENGINEER_MAX_BUILDS;
-new Handle:ENGINEER_MAX_BUILD_RANGE;
-
-// Saboteur, Engineer, Medic
-new Handle:SABOTEUR_ACTIVE_BOMB_COLOR;
-new Handle:MINIMUM_DROP_INTERVAL;
-new Handle:SPECIAL_SKILL_LIMIT;
-new Handle:MINIMUM_AIRSTRIKE_INTERVAL;
-
-ConVar healthModEnabled;
-ConVar parachuteEnabled;
-
-#include <sourcemod>
-#include <sdktools>
-#include <sdkhooks>
-#include <left4dhooks.inc>
-#include <dlr/const>
-#include <dlr/debug>
-#include <dlr/timers>
-#include <dlr/commands>
-#include <dlr/perks>
-//#include <dlr/classes>
-#include <dlr/effects>
-#include <dlr/hud>
-#include <dlr/menus>

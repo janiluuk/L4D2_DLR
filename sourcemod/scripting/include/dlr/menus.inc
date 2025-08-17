@@ -348,14 +348,14 @@ public bool:CreatePlayerSaboteurMenu(client)
 	SetMenuTitle(menu, "Select mine type:");	
 	for (new i = 0; i < MAX_BOMBS; i++ ) {
 
-		char bombInfo[32];
-		char bombIndex[3];
-		IntToString(g_AvailableBombs[i].bombIndex, bombIndex, sizeof(bombIndex));
-		Format(bombInfo, sizeof(bombInfo), "%s", g_AvailableBombs[i].getItem());
+                char bombInfo[32];
+                char bombIndex[3];
+                IntToString(g_AvailableBombs[i].bombIndex, bombIndex, sizeof(bombIndex));
+                g_AvailableBombs[i].getItem(bombInfo, sizeof(bombInfo));
 
-		if (!StrEqual(bombInfo, "")) {
-			AddMenuItem(menu, bombIndex, bombInfo);
-		}
+                if (!StrEqual(bombInfo, "")) {
+                        AddMenuItem(menu, bombIndex, bombInfo);
+                }
 	}
 
 	DisplayMenu(menu, client, MENU_TIME_FOREVER);
@@ -372,8 +372,10 @@ public SelectSaboteurItem(Handle:menu, MenuAction:action, param1, param2)
 			decl String:menucmd[256];
 			GetMenuItem(menu, param2, menucmd, sizeof(menucmd));
 			if (StringToInt(menucmd) > 0) {
-				PrintDebug(param1, "Placing type %s mine. Original value was %s", getBombName(StringToInt(menucmd)), menucmd);
-				CalculateSaboteurPlacePos(param1, StringToInt(menucmd));
+                                char bombName[32];
+                                getBombName(StringToInt(menucmd), bombName, sizeof(bombName));
+                                PrintDebug(param1, "Placing type %s mine. Original value was %s", bombName, menucmd);
+                                CalculateSaboteurPlacePos(param1, StringToInt(menucmd));
 			}
 		}
 		case MenuAction_Cancel:

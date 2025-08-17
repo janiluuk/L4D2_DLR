@@ -450,7 +450,9 @@ public Action:TimerCheckBombSensors(Handle:hTimer, Handle:hPack)
 					PrintHintTextToAll("%N's mine detonated!", owner);
 		
 
-					PrintDebugAll("Detonating Mine %s on entity %i", getBombName(bombType), entity );
+                                        char bombName[32];
+                                        getBombName(bombType, bombName, sizeof(bombName));
+                                        PrintDebugAll("Detonating Mine %s on entity %i", bombName, entity );
 
 					useCustomCommand("Grenades", owner, entity, bombType-1);					
 					

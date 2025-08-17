@@ -9,7 +9,7 @@ on:
 
 jobs:
   build:
-  name: build on ${{ matrix.os }}
+    name: build on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -39,16 +39,16 @@ jobs:
         if: runner.os == 'Windows'
         run: choco install wget --no-progress
 
-      - name: Download SourceMod 1.10.0-git6545
+      - name: Download SourceMod 1.11.0-git6453
         shell: bash
         run: |
           if [ "${{ runner.os }}" = "Windows" ]; then
-            wget -nv "https://sm.alliedmods.net/smdrop/1.10/sourcemod-1.10.0-git6545-windows.zip" -O sm.zip
-            unzip sm.zip -d sourcemod
+            wget -nv "https://www.sourcemod.net/smdrop/1.11/sourcemod-1.11.0-git6453-windows.zip" -O sm.zip
+            unzip sm.zip -d sm
           else
-            wget -nv "https://sm.alliedmods.net/smdrop/1.10/sourcemod-1.10.0-git6545-linux.tar.gz" -O sm.tar.gz
-            mkdir sourcemod
-            tar -xzf sm.tar.gz -C sourcemod
+            wget -nv "https://www.sourcemod.net/smdrop/1.11/sourcemod-1.11.0-git6453-linux.tar.gz" -O sm.tar.gz
+            mkdir -p sm
+            tar -xzf sm.tar.gz -C sm
           fi
 
       - name: Compile plugins
@@ -58,13 +58,18 @@ jobs:
           if [ "${{ runner.os }}" = "Windows" ]; then
             spcomp="${spcomp}.exe"
           fi
+          includes="-i sourcemod/scripting/include"
+          mkdir -p package/addons/sourcemod/plugins
           shopt -s nullglob
           for sp in sourcemod/scripting/*.sp addons/sourcemod/scripting/*.sp; do
-            "$spcompbin" -v0 "$sp" -o "package/addons/sourcemod/plugins/$(basename "${sp%.sp}.smx")"
+            case "$(basename "$sp")" in
+              left4dhooks*.sp|left4dhooks_test.sp) continue ;;
+            esac
+            "$spcomp" $includes -v0 "$sp" -o "package/addons/sourcemod/plugins/$(basename "${sp%.sp}.smx")"
           done
     
       - name: Upload package
         uses: actions/upload-artifact@v4
         with:
-          name: l4d2_dlr-sm1.10.0-git6545-${{ matrix.os_short }}-${{ env.GITHUB_SHA_SHORT }}
-          path: src/package
+          name: l4d2_dlr-sm1.11.0-git6453-${{ matrix.os_short }}-${{ env.GITHUB_SHA_SHORT }}
+          path: package
