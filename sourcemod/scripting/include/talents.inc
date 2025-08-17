@@ -4,7 +4,7 @@
 #include <sourcemod>
 #include <sdktools>
 #include <sdkhooks>
-#include <left4dhooks>
+#tryinclude <left4dhooks>
 #include <dlr/const>
 #include <dlr/debug>
 #include <dlr/timers>
@@ -163,7 +163,6 @@ new Float:g_SpawnPos[MAXPLAYERS+1][3];
 new bool:RoundStarted =false;
 new bool:disableInfected = false;
 stock int g_iPlayerSkill[MAXPLAYERS+1];
-stock PlayerInfo ClientData[MAXPLAYERS+1];
 stock bool:g_iPlayerSpawn;
 stock bool:ClassHint = false;
 Handle g_ReadyTimer[MAXPLAYERS+1] = {null, ...};

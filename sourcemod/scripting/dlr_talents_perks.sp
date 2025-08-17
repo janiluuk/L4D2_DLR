@@ -12,7 +12,7 @@
 #include <sdktools>
 #include <sdkhooks>
 #include <jutils>
-#include <left4dhooks>
+#tryinclude <left4dhooks>
 #tryinclude <sceneprocessor>
 #tryinclude <actions>
 #include <basecomm>
