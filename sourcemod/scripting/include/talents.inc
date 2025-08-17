@@ -7,7 +7,6 @@
 #tryinclude <left4dhooks>
 #include <dlr/const>
 #include <dlr/debug>
-#include <dlr/timers>
 #include <dlr/commands>
 #include <dlr/perks>
 //#include <dlr/classes>
@@ -89,6 +88,9 @@ new Handle:g_hPluginEnabled;
 
 // Speed vars
 new g_flLaggedMovementValue;
+new Handle:ATHLETE_SPEED;
+
+#include <dlr/timers>
 
 // Soldier vars
 
@@ -210,7 +212,6 @@ new Handle:SOLDIER_SHOVE_PENALTY;
 new Handle:SOLDIER_MAX_AIRSTRIKES;
 
 // Athlete
-new Handle:ATHLETE_SPEED;
 new Handle:ATHLETE_JUMP_VEL;
 
 // Medic

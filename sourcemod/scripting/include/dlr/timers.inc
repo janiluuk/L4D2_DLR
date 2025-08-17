@@ -1,8 +1,6 @@
-extern int g_flLaggedMovementValue;
-
 stock Action TimerStart(Handle timer)
 {
-	ResetPlugin();
+        ResetPlugin();
 	OnRoundState(1);
 	DmgHookUnhook(true);
 

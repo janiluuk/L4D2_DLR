@@ -223,7 +223,7 @@ enum struct Mine
 
         void setItem(int number, int bombIndex) {
                 this.index = number;
-                strcopy(this.bombName, BOMB_NAME_LENGTH, GetBombName(bombIndex));
+                strcopy(this.bombName, sizeof(this.bombName), GetBombName(bombIndex));
                 this.bombIndex = bombIndex;
         }
 
@@ -234,7 +234,7 @@ enum struct Mine
                 }
                 strcopy(buffer, maxlen, this.bombName);
         }
-}
+};
 
 stock const char[] GetBombName(int index)
 {
