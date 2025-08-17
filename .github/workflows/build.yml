@@ -64,7 +64,6 @@ jobs:
           if [ "${{ runner.os }}" = "Windows" ]; then
             spcomp="${spcomp}.exe"
           fi
-          includes="-i sourcemod/scripting/include"
           mkdir -p package/addons/sourcemod/plugins
           shopt -s nullglob
           for sp in sourcemod/scripting/*.sp addons/sourcemod/scripting/*.sp; do
