@@ -1,3 +1,11 @@
+#if !defined _LMCL4D2SetTransmit_included
+        native int LMC_L4D2_SetTransmit(int iEntity);
+#endif
+
+#if !defined _LMCCore_included
+        native int LMC_SetClientOverlayModel(int iEntity, const char[] sModel);
+#endif
+
 public Action:Command_Debug(client, args) {
 	
 	if (args < 1)

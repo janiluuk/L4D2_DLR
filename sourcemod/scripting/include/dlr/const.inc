@@ -221,18 +221,21 @@ enum struct Mine
     char bombName[BOMB_NAME_LENGTH];
     int bombIndex;
 
-        void setItem(int number, int bombIndex) {
+        void setItem(int number, int bombIndex)
+        {
                 this.index = number;
-                strcopy(this.bombName, sizeof(Mine::bombName), GetBombName(bombIndex));
+                Format(this.bombName, sizeof(Mine::bombName), "%s", GetBombName(bombIndex));
                 this.bombIndex = bombIndex;
         }
 
-        void getItem(char[] buffer, int maxlen) {
-                if (this.index < 0 || this.bombName[0] == '\0') {
+        void getItem(char[] buffer, int maxlen)
+        {
+                if (this.index < 0 || this.bombName[0] == '\0')
+                {
                         buffer[0] = '\0';
                         return;
                 }
-                strcopy(buffer, maxlen, this.bombName);
+                Format(buffer, maxlen, "%s", this.bombName);
         }
 };
 
