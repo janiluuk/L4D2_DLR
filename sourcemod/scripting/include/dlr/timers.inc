@@ -1,3 +1,5 @@
+extern PlayerInfo ClientData[MAXPLAYERS+1];
+
 stock Action TimerStart(Handle timer)
 {
 	ResetPlugin();
