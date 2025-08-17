@@ -25,7 +25,7 @@ enum struct skillAction {
         int client;
         int actionId;
         int actionType; // 1 = Execute standard OnSpecialSkillUsed hooks // 2 = use OnCustomCommand hook // 3 = execute on startup
-        int pluginName;
+        char pluginName[64];
         char parameter[3];
         char bindToKey[2];
         int interval;
