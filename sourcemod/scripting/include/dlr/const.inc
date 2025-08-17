@@ -216,7 +216,7 @@ enum struct Mine
 
         void setItem(int number, int bombIndex) {
                 this.index = number;
-                strcopy(this.bombName, sizeof(this.bombName), GetBombName(bombIndex));
+                strcopy(this.bombName, sizeof(Mine::bombName), GetBombName(bombIndex));
                 this.bombIndex = bombIndex;
         }
 
