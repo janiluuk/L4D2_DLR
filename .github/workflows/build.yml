@@ -45,11 +45,11 @@ jobs:
         run: |
           if [ "${{ runner.os }}" = "Windows" ]; then
             wget -nv "https://sm.alliedmods.net/smdrop/1.10/sourcemod-1.10.0-git6545-windows.zip" -O sm.zip
-            unzip sm.zip -d sourcemod
+            unzip sm.zip -d sm
           else
             wget -nv "https://sm.alliedmods.net/smdrop/1.10/sourcemod-1.10.0-git6545-linux.tar.gz" -O sm.tar.gz
-            mkdir sourcemod
-            tar -xzf sm.tar.gz -C sourcemod
+            mkdir -p sm
+            tar -xzf sm.tar.gz -C sm
           fi
 
       - name: Getting own repository
@@ -64,6 +64,7 @@ jobs:
           if [ "${{ runner.os }}" = "Windows" ]; then
             spcomp="${spcomp}.exe"
           fi
+          mkdir -p package/addons/sourcemod/plugins
           shopt -s nullglob
           for sp in sourcemod/scripting/*.sp addons/sourcemod/scripting/*.sp; do
             "$spcomp" -v0 "$sp" -o "package/addons/sourcemod/plugins/$(basename "${sp%.sp}.smx")"
@@ -73,4 +74,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: l4d2_dlr-sm1.10.0-git6545-${{ matrix.os_short }}-${{ env.GITHUB_SHA_SHORT }}
-          path: src/package
+          path: package
