@@ -67,7 +67,7 @@ jobs:
           includes="-i sourcemod/scripting/include"
           mkdir -p package/addons/sourcemod/plugins
           shopt -s nullglob
-          for sp in sourcemod/scripting/*.sp addons/sourcemod/scripting/*.sp; do
+          for sp in sourcemod/scripting/dlr_talents*.sp addons/sourcemod/scripting/dlr_*.sp; do
             case "$(basename "$sp")" in
               left4dhooks*.sp|left4dhooks_test.sp) continue ;;
             esac
