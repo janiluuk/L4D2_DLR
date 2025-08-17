@@ -227,9 +227,9 @@ enum struct Mine
                 }
                 strcopy(buffer, maxlen, this.bombName);
         }
-}
+};
 
-stock const char[] GetBombName(int index) 
+stock const char[] GetBombName(int index)
 {
         switch( index - 1 )
         {
