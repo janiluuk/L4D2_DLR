@@ -34,6 +34,7 @@ public Plugin:myinfo =
 };
 
 #include <adminmenu>
+#include <sdktools>
 #include <l4d2hud>
 #include <talents>
 #include <jutils>
