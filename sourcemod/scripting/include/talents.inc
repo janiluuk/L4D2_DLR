@@ -4,7 +4,7 @@
 #include <sourcemod>
 #include <sdktools>
 #include <sdkhooks>
-#include <left4dhooks>
+#tryinclude <left4dhooks>
 #include <dlr/const>
 #include <dlr/debug>
 #include <dlr/timers>
