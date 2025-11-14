@@ -132,6 +132,9 @@ ConVar g_dlrCvarPlayRoundStart;
 
 bool g_dlrEnabled;
 
+void ClearClientTrackState(int client);
+void BeginTrackingClientTrack(int client, const char[] sound);
+
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
 {
     CreateNative("DLR_Music_IsPlaying", Native_DLR_Music_IsPlaying);
@@ -184,9 +187,7 @@ public void OnPluginStart()
 
     for (int i = 1; i <= MaxClients; i++)
     {
-        g_dlrMusicPlaying[i] = false;
-        g_dlrCurrentTrack[i][0] = '\0';
-        g_dlrTrackStartedAt[i] = 0.0;
+        ClearClientTrackState(i);
     }
 }
 
@@ -417,7 +418,7 @@ public void Event_PlayerDisconnect(Event event, const char[] name, bool dontBroa
     g_dlrCookie[client] = 0;
     g_dlrTimerMusic[client] = INVALID_HANDLE;
     g_dlrFirstConnect[client] = true;
-    g_dlrMusicPlaying[client] = false;
+    ClearClientTrackState(client);
 }
 
 public Action Cmd_MusicUpdate(int client, int args)
@@ -500,9 +501,7 @@ public void OnClientPutInServer(int client)
 {
     if (client && !IsFakeClient(client))
     {
-        g_dlrMusicPlaying[client] = false;
-        g_dlrCurrentTrack[client][0] = '\0';
-        g_dlrTrackStartedAt[client] = 0.0;
+        ClearClientTrackState(client);
 
         if (g_dlrTimerMusic[client] == INVALID_HANDLE)
         {
@@ -518,9 +517,7 @@ public void OnClientDisconnect(int client)
         return;
     }
 
-    g_dlrMusicPlaying[client] = false;
-    g_dlrTrackStartedAt[client] = 0.0;
-    g_dlrCurrentTrack[client][0] = '\0';
+    ClearClientTrackState(client);
 }
 
 public Action Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
@@ -952,13 +949,7 @@ void EmitSoundCustom(
     if (volume < 0.0)
         volume = 0.0;
 
-    g_dlrMusicPlaying[client] = true;
-    g_dlrTrackStartedAt[client] = GetGameTime();
-
-    if (client >= 1 && client <= MaxClients)
-    {
-        GetTrackDisplayName(sound, g_dlrCurrentTrack[client], sizeof(g_dlrCurrentTrack[]));
-    }
+    BeginTrackingClientTrack(client, sound);
 
     if (g_dlrCvarDisplayName.IntValue == 1)
     {
@@ -1006,6 +997,30 @@ void GetTrackDisplayName(const char[] path, char[] output, int maxlen)
             break;
         }
     }
+}
+
+void ClearClientTrackState(int client)
+{
+    if (client < 1 || client > MaxClients)
+    {
+        return;
+    }
+
+    g_dlrMusicPlaying[client] = false;
+    g_dlrCurrentTrack[client][0] = '\0';
+    g_dlrTrackStartedAt[client] = 0.0;
+}
+
+void BeginTrackingClientTrack(int client, const char[] sound)
+{
+    if (client < 1 || client > MaxClients)
+    {
+        return;
+    }
+
+    g_dlrMusicPlaying[client] = true;
+    g_dlrTrackStartedAt[client] = GetGameTime();
+    GetTrackDisplayName(sound, g_dlrCurrentTrack[client], sizeof(g_dlrCurrentTrack[]));
 }
 
 public any Native_DLR_Music_IsPlaying(Handle plugin, int numParams)
