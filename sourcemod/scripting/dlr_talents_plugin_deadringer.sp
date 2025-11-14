@@ -306,11 +306,11 @@ public void OnPluginEnd()
 //					DLR
 // ====================================================================================================
 
-public void OnPlayerClassChange(int client, int newClass, int previousClass)
+/*public void OnPlayerClassChange(int client, int newClass, int previousClass)
 {
-        isTriggerable[client] = (newClass == CLASS_SABOTEUR);
+	isTriggerable[client] = (newClass == CLASS_SABOTEUR) ? 1 : 0;
 }
-
+*/
 public void OnSkillSelected(int iClient, int iClass)
 {
         char szSkillName[32];
