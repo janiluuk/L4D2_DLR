@@ -58,7 +58,7 @@ jobs:
           if [ "${{ runner.os }}" = "Windows" ]; then
             spcomp="${spcomp}.exe"
           fi
-          includes="-i sourcemod/scripting/include"
+          includes="-i sourcemod/scripting/include -i $GITHUB_WORKSPACE/sm/addons/sourcemod/scripting/include"
           mkdir -p package/addons/sourcemod/plugins
           shopt -s nullglob
           for sp in sourcemod/scripting/dlr_talents*.sp addons/sourcemod/scripting/dlr_*.sp; do
