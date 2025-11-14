@@ -61,11 +61,8 @@ jobs:
           includes="-i sourcemod/scripting/include -i $GITHUB_WORKSPACE/sm/addons/sourcemod/scripting/include"
           mkdir -p package/addons/sourcemod/plugins
           shopt -s nullglob
-          for sp in sourcemod/scripting/dlr_talents*.sp addons/sourcemod/scripting/dlr_*.sp; do
-            case "$(basename "$sp")" in
-              left4dhooks*.sp|left4dhooks_test.sp) continue ;;
-            esac
-            "$spcomp" $includes -v0 "$sp" -o "package/addons/sourcemod/plugins/$(basename "${sp%.sp}.smx")"
+          for sp in sourcemod/scripting/dlr_talents*.sp; do
+            "$spcomp" "$includes" -v0 "$sp" -o "addons/sourcemod/plugins/$(basename "${sp%.sp}.smx")"
           done
     
       - name: Upload package
