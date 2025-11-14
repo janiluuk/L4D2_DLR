@@ -799,6 +799,7 @@ public int MenuHandler_MenuVolume(Menu menu, MenuAction action, int param1, int 
         case MenuAction_End:
         {
             delete menu;
+            break;
         }
         case MenuAction_Cancel:
         {
@@ -807,6 +808,7 @@ public int MenuHandler_MenuVolume(Menu menu, MenuAction action, int param1, int 
                 ShowMusicMenu(param1);
             }
 
+            break;
         }
         case MenuAction_Select:
         {
@@ -824,6 +826,7 @@ public int MenuHandler_MenuVolume(Menu menu, MenuAction action, int param1, int 
             StopSound(client, SNDCHAN_DEFAULT, sPath);
             EmitSoundCustom(client, sPath);
             ShowVolumeMenu(client);
+            break;
         }
     }
 
