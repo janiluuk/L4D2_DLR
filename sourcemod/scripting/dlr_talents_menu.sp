@@ -13,17 +13,29 @@ native bool DLR_Music_IsPlaying(int client);
 native bool DLR_Music_GetCurrentTrack(int client, char[] buffer, int maxlen);
 native float DLR_Music_GetPlaybackTime(int client);
 
+const float MENU_OPEN_GRACE = 0.2;
+const float MENU_RELEASE_GRACE = 0.1;
+
 #pragma semicolon 1
 #pragma newdecls required
 
 bool g_bExtraMenuLoaded;
 bool g_bMusicLibraryAvailable;
 int g_iGuideMenuID;
-int g_iClientMenuID[MAXPLAYERS + 1];
-int g_iKitUsesLeft[MAXPLAYERS + 1];
-bool g_bClientHoldingMenu[MAXPLAYERS + 1];
-float g_fMenuHoldGraceUntil[MAXPLAYERS + 1];
 ConVar g_hHudEnabledCvar;
+
+enum struct ClientMenuState
+{
+    int menuId;
+    int kitUsesLeft;
+    bool holdingMenu;
+    float graceEndsAt;
+}
+
+ClientMenuState g_ClientMenu[MAXPLAYERS + 1];
+
+bool IsValidClient(int client);
+bool IsValidClientIndex(int client);
 
 public Plugin myinfo =
 {
@@ -101,8 +113,8 @@ Action CmdDLRMenu(int client, int args)
     int menu_id = BuildGameMenu(client);
     if (menu_id)
     {
-        g_bClientHoldingMenu[client] = true;
-        g_fMenuHoldGraceUntil[client] = GetGameTime() + 0.2;
+        g_ClientMenu[client].holdingMenu = true;
+        g_ClientMenu[client].graceEndsAt = GetGameTime() + MENU_OPEN_GRACE;
         PrintHintText(client, "Use W/S to move and A/D to select options.");
         ExtraMenu_Display(client, menu_id, MENU_TIME_FOREVER);
     }
@@ -135,7 +147,7 @@ public void ExtraMenu_OnSelect(int client, int menu_id, int option, int value)
         return;
     }
 
-    if (menu_id != g_iClientMenuID[client])
+    if (menu_id != g_ClientMenu[client].menuId)
     {
         return;
     }
@@ -199,30 +211,23 @@ void ResetAllClientData()
 {
     for (int i = 1; i <= MaxClients; i++)
     {
-        g_iClientMenuID[i] = 0;
-        g_iKitUsesLeft[i] = 1;
-        g_bClientHoldingMenu[i] = false;
-        g_fMenuHoldGraceUntil[i] = 0.0;
+        ResetClientState(i);
     }
 }
 
 public void OnClientPutInServer(int client)
 {
-    if (client > 0 && client <= MaxClients)
-    {
-        g_iKitUsesLeft[client] = 1;
-        g_bClientHoldingMenu[client] = false;
-        g_fMenuHoldGraceUntil[client] = 0.0;
-    }
+    ResetClientState(client);
 }
 
 public void OnClientDisconnect(int client)
 {
-    if (client > 0 && client <= MaxClients)
+    if (!IsValidClientIndex(client))
     {
-        CloseClientGameMenu(client);
-        g_iKitUsesLeft[client] = 1;
+        return;
     }
+
+    ResetClientState(client);
 }
 
 int BuildGuideMenu()
@@ -257,25 +262,43 @@ int BuildGameMenu(int client)
         return 0;
     }
 
-    if (g_iClientMenuID[client] != 0)
+    if (g_ClientMenu[client].menuId != 0)
     {
-        ExtraMenu_Delete(g_iClientMenuID[client]);
-        g_iClientMenuID[client] = 0;
+        ExtraMenu_Delete(g_ClientMenu[client].menuId);
+        g_ClientMenu[client].menuId = 0;
     }
 
     int menu_id = ExtraMenu_Create();
 
+    AddGameMenuHeader(menu_id, client);
+    AddPlayerActionsSection(menu_id, client);
+    AddVotingSection(menu_id);
+
+    ExtraMenu_NewPage(menu_id);
+
+    AddOptionsPage(menu_id, client);
+
+    g_ClientMenu[client].menuId = menu_id;
+
+    return menu_id;
+}
+
+void AddGameMenuHeader(int menu_id, int client)
+{
     ExtraMenu_AddEntry(menu_id, "GAME MENU:", MENU_ENTRY);
     ExtraMenu_AddEntry(menu_id, "Use W/S to move row and A/D to select", MENU_ENTRY);
     AppendTrackHeader(menu_id, client);
     ExtraMenu_AddEntry(menu_id, " ", MENU_ENTRY);
+}
 
+void AddPlayerActionsSection(int menu_id, int client)
+{
     ExtraMenu_AddEntry(menu_id, "1. 3rd person mode: _OPT_", MENU_SELECT_LIST);
     ExtraMenu_AddOptions(menu_id, "Off|Melee Only|Always");
 
-    char sBuffer[64];
-    Format(sBuffer, sizeof(sBuffer), "2. Get Kit (%d left)", g_iKitUsesLeft[client]);
-    ExtraMenu_AddEntry(menu_id, sBuffer, MENU_SELECT_LIST);
+    char kitLine[64];
+    Format(kitLine, sizeof(kitLine), "2. Get Kit (%d left)", g_ClientMenu[client].kitUsesLeft);
+    ExtraMenu_AddEntry(menu_id, kitLine, MENU_SELECT_LIST);
     ExtraMenu_AddOptions(menu_id, "Medic kit|Rambo kit|Counter-terrorist kit|Ninja kit");
 
     ExtraMenu_AddEntry(menu_id, "3. Change class", MENU_SELECT_ONLY);
@@ -285,14 +308,19 @@ int BuildGameMenu(int client)
     ExtraMenu_AddEntry(menu_id, "7. See your ranking", MENU_SELECT_ONLY);
 
     ExtraMenu_AddEntry(menu_id, " ", MENU_ENTRY);
+}
+
+void AddVotingSection(int menu_id)
+{
     ExtraMenu_AddEntry(menu_id, "MATCH VOTES:", MENU_ENTRY);
     ExtraMenu_AddEntry(menu_id, "Use W/S to move row and A/D to select", MENU_ENTRY);
     ExtraMenu_AddEntry(menu_id, "8. Vote for gamemode", MENU_SELECT_LIST);
     ExtraMenu_AddOptions(menu_id, "Off|Escort run|Deathmatch|Race Jockey");
     ExtraMenu_AddEntry(menu_id, "9. Vote for custom map", MENU_SELECT_ADD, false, 250, 10, 100, 300);
+}
 
-    ExtraMenu_NewPage(menu_id);
-
+void AddOptionsPage(int menu_id, int client)
+{
     ExtraMenu_AddEntry(menu_id, "GAME OPTIONS:", MENU_ENTRY);
     ExtraMenu_AddEntry(menu_id, "Use W/S to move row and A/D to select", MENU_ENTRY);
     AppendTrackHeader(menu_id, client);
@@ -302,17 +330,24 @@ int BuildGameMenu(int client)
     ExtraMenu_AddEntry(menu_id, "2. HUD: _OPT_", MENU_SELECT_ONOFF, false, GetHudOptionDefault());
     ExtraMenu_AddEntry(menu_id, "3. Music player: _OPT_", MENU_SELECT_ONOFF);
     ExtraMenu_AddEntry(menu_id, "4. Music Volume: _OPT_", MENU_SELECT_LIST);
-    ExtraMenu_AddOptions(menu_id, "□□□□□□□□□□|■□□□□□□□□□|■■□□□□□□□□|■■■□□□□□□□|■■■■□□□□□□|■■■■■□□□□□|■■■■■■□□□□|■■■■■■■□□□|■■■■■■■□□|■■■■■■■■■□|■■■■■■■■■■");
+    ExtraMenu_AddOptions(menu_id, "□□□□□□□□□□|■□□□□□□□□□|■■□□□□□□□□|■■■□□□□□□□|■■■■□□□□□□|■■■■■□□□□□|■■■■■■□□□□|■■■■■■■□□□|■■■■■■■■□□|■■■■■■■■■□|■■■■■■■■■■");
     ExtraMenu_AddEntry(menu_id, " ", MENU_ENTRY);
-
-    g_iClientMenuID[client] = menu_id;
-
-    return menu_id;
 }
 
 bool ExtraMenuAvailable()
 {
     return LibraryExists("extra_menu");
+}
+
+void ResetClientState(int client)
+{
+    if (!IsValidClientIndex(client))
+    {
+        return;
+    }
+
+    CloseClientGameMenu(client);
+    g_ClientMenu[client].kitUsesLeft = 1;
 }
 
 void DeleteGuideMenu()
@@ -338,21 +373,21 @@ void DeleteAllClientMenus()
 
 void HandleKitSelection(int client)
 {
-    if (g_iKitUsesLeft[client] <= 0)
+    if (g_ClientMenu[client].kitUsesLeft <= 0)
     {
         PrintToChat(client, "[DLR] You have already collected your kit.");
         RefreshClientMenu(client);
         return;
     }
 
-    g_iKitUsesLeft[client]--;
+    g_ClientMenu[client].kitUsesLeft--;
     ClientCommand(client, "sm_kit");
     RefreshClientMenu(client);
 }
 
 void RefreshClientMenu(int client)
 {
-    if (!g_bExtraMenuLoaded || !g_bClientHoldingMenu[client])
+    if (!g_bExtraMenuLoaded || !g_ClientMenu[client].holdingMenu)
     {
         return;
     }
@@ -366,30 +401,38 @@ void RefreshClientMenu(int client)
 
 bool IsValidClient(int client)
 {
-    return (client > 0 && client <= MaxClients && IsClientInGame(client));
+    return IsValidClientIndex(client) && IsClientInGame(client);
+}
+
+bool IsValidClientIndex(int client)
+{
+    return (client > 0 && client <= MaxClients);
 }
 
 void CloseClientGameMenu(int client)
 {
-    if (client <= 0 || client > MaxClients)
+    if (!IsValidClientIndex(client))
     {
         return;
     }
 
-    if (g_iClientMenuID[client] != 0)
+    if (g_ClientMenu[client].menuId != 0)
     {
-        CancelClientMenu(client);
+        if (IsClientInGame(client))
+        {
+            CancelClientMenu(client);
+        }
 
         if (ExtraMenuAvailable())
         {
-            ExtraMenu_Delete(g_iClientMenuID[client]);
+            ExtraMenu_Delete(g_ClientMenu[client].menuId);
         }
 
-        g_iClientMenuID[client] = 0;
+        g_ClientMenu[client].menuId = 0;
     }
 
-    g_bClientHoldingMenu[client] = false;
-    g_fMenuHoldGraceUntil[client] = 0.0;
+    g_ClientMenu[client].holdingMenu = false;
+    g_ClientMenu[client].graceEndsAt = 0.0;
 }
 
 public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3], float angles[3], int &weapon, int &subtype, int &cmdnum, int &tickcount, int &seed, int mouse[2])
@@ -399,35 +442,18 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
         return Plugin_Continue;
     }
 
-    if (!g_bClientHoldingMenu[client] || g_iClientMenuID[client] == 0)
+    if (!g_ClientMenu[client].holdingMenu || g_ClientMenu[client].menuId == 0)
     {
         return Plugin_Continue;
     }
 
     float gameTime = GetGameTime();
 
-    bool holding = false;
-
-    if (buttons & IN_SPEED)
+    if (buttons & (IN_SPEED | IN_WALK | IN_ALT1))
     {
-        holding = true;
+        g_ClientMenu[client].graceEndsAt = gameTime + MENU_RELEASE_GRACE;
     }
-
-    if (buttons & IN_WALK)
-    {
-        holding = true;
-    }
-
-    if (buttons & IN_ALT1)
-    {
-        holding = true;
-    }
-
-    if (holding)
-    {
-        g_fMenuHoldGraceUntil[client] = gameTime + 0.1;
-    }
-    else if (gameTime > g_fMenuHoldGraceUntil[client])
+    else if (gameTime > g_ClientMenu[client].graceEndsAt)
     {
         CloseClientGameMenu(client);
     }
