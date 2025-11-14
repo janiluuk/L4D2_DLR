@@ -109,6 +109,8 @@ Handle g_dlrCookieMusic = INVALID_HANDLE;
 Handle g_dlrTimerMusic[MAXPLAYERS+1];
 
 bool g_dlrMusicPlaying[MAXPLAYERS+1];
+char g_dlrCurrentTrack[MAXPLAYERS+1][PLATFORM_MAX_PATH];
+float g_dlrTrackStartedAt[MAXPLAYERS+1];
 
 int g_dlrSndIdx = -1;
 int g_dlrSndIdxNewly = -1;
@@ -130,10 +132,20 @@ ConVar g_dlrCvarPlayRoundStart;
 
 bool g_dlrEnabled;
 
+public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
+{
+    CreateNative("DLR_Music_IsPlaying", Native_DLR_Music_IsPlaying);
+    CreateNative("DLR_Music_GetCurrentTrack", Native_DLR_Music_GetCurrentTrack);
+    CreateNative("DLR_Music_GetPlaybackTime", Native_DLR_Music_GetPlaybackTime);
+    RegPluginLibrary("dlr_music");
+
+    return APLRes_Success;
+}
+
 public void OnPluginStart()
 {
     LoadTranslations("dlr_music.phrases");
-    
+
     g_dlrEngine = GetEngineVersion();
     
     CreateConVar(                            "l4d_music_mapstart_version",                PLUGIN_VERSION, "Plugin version", FCVAR_DONTRECORD );
@@ -167,8 +179,15 @@ public void OnPluginStart()
     
     HookConVarChange(g_dlrCvarStartEnabled,             ConVarChanged);
     GetCvars();
-    
+
     SetRandomSeed(GetTime());
+
+    for (int i = 1; i <= MaxClients; i++)
+    {
+        g_dlrMusicPlaying[i] = false;
+        g_dlrCurrentTrack[i][0] = '\0';
+        g_dlrTrackStartedAt[i] = 0.0;
+    }
 }
 
 public void OnPluginEnd()
@@ -481,11 +500,27 @@ public void OnClientPutInServer(int client)
 {
     if (client && !IsFakeClient(client))
     {
+        g_dlrMusicPlaying[client] = false;
+        g_dlrCurrentTrack[client][0] = '\0';
+        g_dlrTrackStartedAt[client] = 0.0;
+
         if (g_dlrTimerMusic[client] == INVALID_HANDLE)
         {
             g_dlrTimerMusic[client] = CreateTimer(g_dlrCvarDelay.FloatValue, Timer_PlayMusic, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
         }
     }
+}
+
+public void OnClientDisconnect(int client)
+{
+    if (client < 1 || client > MaxClients)
+    {
+        return;
+    }
+
+    g_dlrMusicPlaying[client] = false;
+    g_dlrTrackStartedAt[client] = 0.0;
+    g_dlrCurrentTrack[client][0] = '\0';
 }
 
 public Action Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
@@ -683,7 +718,7 @@ public int MenuHandler_MenuSettings(Menu menu, MenuAction action, int param1, in
 void StopCurrentSound(int client)
 {
     char sPath[PLATFORM_MAX_PATH];
-    
+
     if (g_dlrSoundPath.Length > 0)
     {
         g_dlrSoundPath.GetString(g_dlrSndIdx, sPath, sizeof(sPath));
@@ -695,6 +730,7 @@ void StopCurrentSound(int client)
         StopSound(client, SNDCHAN_DEFAULT, sPath);
     }
     g_dlrMusicPlaying[client] = false;
+    g_dlrTrackStartedAt[client] = 0.0;
 }
 
 void ShowVolumeMenu(int client)
@@ -917,7 +953,13 @@ void EmitSoundCustom(
         volume = 0.0;
 
     g_dlrMusicPlaying[client] = true;
-    
+    g_dlrTrackStartedAt[client] = GetGameTime();
+
+    if (client >= 1 && client <= MaxClients)
+    {
+        GetTrackDisplayName(sound, g_dlrCurrentTrack[client], sizeof(g_dlrCurrentTrack[]));
+    }
+
     if (g_dlrCvarDisplayName.IntValue == 1)
     {
         CPrintToChat(client, "%t%s", "Playing", sound);
@@ -930,6 +972,88 @@ void EmitSoundCustom(
 stock bool IsClientRootAdmin(int client)
 {
     return ((GetUserFlagBits(client) & ADMFLAG_ROOT) != 0);
+}
+
+
+void GetTrackDisplayName(const char[] path, char[] output, int maxlen)
+{
+    int start = 0;
+    int length = strlen(path);
+
+    for (int i = 0; i < length; i++)
+    {
+        if (path[i] == '/' || path[i] == '\\')
+        {
+            start = i + 1;
+        }
+    }
+
+    if (start < length)
+    {
+        strcopy(output, maxlen, path[start]);
+    }
+    else
+    {
+        output[0] = '\0';
+    }
+
+    int end = strlen(output);
+    for (int i = end - 1; i >= 0; i--)
+    {
+        if (output[i] == '.')
+        {
+            output[i] = '\0';
+            break;
+        }
+    }
+}
+
+public any Native_DLR_Music_IsPlaying(Handle plugin, int numParams)
+{
+    int client = GetNativeCell(1);
+    if (client < 1 || client > MaxClients)
+    {
+        return false;
+    }
+
+    return g_dlrMusicPlaying[client];
+}
+
+public any Native_DLR_Music_GetCurrentTrack(Handle plugin, int numParams)
+{
+    int client = GetNativeCell(1);
+    int maxlen = GetNativeCell(3);
+
+    if (maxlen > 0)
+    {
+        SetNativeString(2, "", maxlen);
+    }
+
+    if (client < 1 || client > MaxClients || maxlen <= 0)
+    {
+        return false;
+    }
+
+    SetNativeString(2, g_dlrCurrentTrack[client], maxlen);
+    return g_dlrCurrentTrack[client][0] != '\0';
+}
+
+public any Native_DLR_Music_GetPlaybackTime(Handle plugin, int numParams)
+{
+    int client = GetNativeCell(1);
+
+    if (client < 1 || client > MaxClients || !g_dlrMusicPlaying[client])
+    {
+        return view_as<any>(0.0);
+    }
+
+    float elapsed = GetGameTime() - g_dlrTrackStartedAt[client];
+    if (elapsed < 0.0)
+    {
+        elapsed = 0.0;
+    }
+
+    return view_as<any>(elapsed);
 }
 
 
