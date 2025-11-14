@@ -5,34 +5,34 @@ ArrayList g_SlotIndexes;
 GlobalForward g_fwPerkName, g_fwPerkDescription, g_fwCanAccessPerk, g_fwSlotName, g_fwPerkPre, g_fwPerkPost;
 
 enum struct playerClassProperties {
-    float maxHealth
-    float jumpVelocity
-    float attackDamage
-    float attackRate
-    float armorRate
-    float healingRate
+    float maxHealth,
+    float jumpVelocity,
+    float attackDamage,
+    float attackRate,
+    float armorRate,
+    float healingRate,
     float tankStumbleBlock
 }
 
 enum struct playerClass {
-	int perkId
-	char className[32]
-	char classDescription[32]
+	int perkId,
+	char className[32],
+	char classDescription[32],
     playerClassProperties properties
 }
 
 enum struct skillAction {
-	int client
-	int actionId
-	int actionType // 1 = Execute standard OnSpecialSKillUsed hooks // 2 = use OnCustomCommand hook // 3 = execute on startup	
-	int pluginName
-	char parameter[3]
-	char bindToKey[2]
-	int interval
-	float lastUsed
-	bool runInStartup
-	char successText[128]
-	char failureText[128]
+	int client,
+	int actionId,
+	int actionType, // 1 = Execute standard OnSpecialSKillUsed hooks // 2 = use OnCustomCommand hook // 3 = execute on startup	
+	int pluginName,
+	char parameter[3],
+	char bindToKey[2],
+	int interval,
+	float lastUsed,
+	bool runInStartup,
+	char successText[128],
+	char failureText[128],
 	char announceText[128]
 }
 
@@ -44,7 +44,7 @@ enum struct skillSet {
 	char skillISetdentifier[32],
 	int maxPlayers,
 	int	skillSetType,
-	char menuIdentifier[16,]
+	char menuIdentifier[16],
 	int actions[16]
 }
 
