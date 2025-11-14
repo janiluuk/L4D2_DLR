@@ -132,6 +132,9 @@ ConVar g_dlrCvarPlayRoundStart;
 
 bool g_dlrEnabled;
 
+void ClearClientTrackState(int client);
+void BeginTrackingClientTrack(int client, const char[] sound);
+
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
 {
     CreateNative("DLR_Music_IsPlaying", Native_DLR_Music_IsPlaying);
@@ -184,9 +187,7 @@ public void OnPluginStart()
 
     for (int i = 1; i <= MaxClients; i++)
     {
-        g_dlrMusicPlaying[i] = false;
-        g_dlrCurrentTrack[i][0] = '\0';
-        g_dlrTrackStartedAt[i] = 0.0;
+        ClearClientTrackState(i);
     }
 }
 
@@ -500,9 +501,7 @@ public void OnClientPutInServer(int client)
 {
     if (client && !IsFakeClient(client))
     {
-        g_dlrMusicPlaying[client] = false;
-        g_dlrCurrentTrack[client][0] = '\0';
-        g_dlrTrackStartedAt[client] = 0.0;
+        ClearClientTrackState(client);
 
         if (g_dlrTimerMusic[client] == INVALID_HANDLE)
         {
@@ -518,9 +517,7 @@ public void OnClientDisconnect(int client)
         return;
     }
 
-    g_dlrMusicPlaying[client] = false;
-    g_dlrTrackStartedAt[client] = 0.0;
-    g_dlrCurrentTrack[client][0] = '\0';
+    ClearClientTrackState(client);
 }
 
 public Action Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
@@ -622,7 +619,6 @@ public int MenuHandler_MenuMusic(Menu menu, MenuAction action, int param1, int p
         case MenuAction_End:
         {
             delete menu;
-            break;
         }
         case MenuAction_Select:
         {
@@ -638,7 +634,6 @@ public int MenuHandler_MenuMusic(Menu menu, MenuAction action, int param1, int p
                 case 5:
                 {
                     StopCurrentSound(client);
-                    break;
                 }
                 case 6:
                 {
@@ -655,7 +650,6 @@ public int MenuHandler_MenuMusic(Menu menu, MenuAction action, int param1, int p
                         EmitSoundCustom(client, sPath);
                     }
 
-                    break;
                 }
                 case -1:
                 {
@@ -665,7 +659,6 @@ public int MenuHandler_MenuMusic(Menu menu, MenuAction action, int param1, int p
             }
 
             ShowMusicMenu(client);
-            break;
         }
     }
 
@@ -707,7 +700,6 @@ public int MenuHandler_MenuSettings(Menu menu, MenuAction action, int param1, in
         case MenuAction_End:
         {
             delete menu;
-            break;
         }
         case MenuAction_Cancel:
         {
@@ -716,7 +708,6 @@ public int MenuHandler_MenuSettings(Menu menu, MenuAction action, int param1, in
                 ShowMusicMenu(param1);
             }
 
-            break;
         }
         case MenuAction_Select:
         {
@@ -736,24 +727,20 @@ public int MenuHandler_MenuSettings(Menu menu, MenuAction action, int param1, in
                 case 8:
                 {
                     FakeClientCommand(client, "sm_music -1");
-                    break;
                 }
                 case 9:
                 {
                     g_dlrCookie[client] ^= 4;
                     SaveCookie(client);
-                    break;
                 }
                 case 10:
                 {
                     g_dlrCookie[client] ^= 2;
                     SaveCookie(client);
-                    break;
                 }
             }
 
             ShowMenuSettings(client);
-            break;
         }
     }
 
@@ -1004,13 +991,7 @@ void EmitSoundCustom(
     if (volume < 0.0)
         volume = 0.0;
 
-    g_dlrMusicPlaying[client] = true;
-    g_dlrTrackStartedAt[client] = GetGameTime();
-
-    if (client >= 1 && client <= MaxClients)
-    {
-        GetTrackDisplayName(sound, g_dlrCurrentTrack[client], sizeof(g_dlrCurrentTrack[]));
-    }
+    BeginTrackingClientTrack(client, sound);
 
     if (g_dlrCvarDisplayName.IntValue == 1)
     {
@@ -1055,9 +1036,32 @@ void GetTrackDisplayName(const char[] path, char[] output, int maxlen)
         if (output[i] == '.')
         {
             output[i] = '\0';
-            break;
         }
     }
+}
+
+void ClearClientTrackState(int client)
+{
+    if (client < 1 || client > MaxClients)
+    {
+        return;
+    }
+
+    g_dlrMusicPlaying[client] = false;
+    g_dlrCurrentTrack[client][0] = '\0';
+    g_dlrTrackStartedAt[client] = 0.0;
+}
+
+void BeginTrackingClientTrack(int client, const char[] sound)
+{
+    if (client < 1 || client > MaxClients)
+    {
+        return;
+    }
+
+    g_dlrMusicPlaying[client] = true;
+    g_dlrTrackStartedAt[client] = GetGameTime();
+    GetTrackDisplayName(sound, g_dlrCurrentTrack[client], sizeof(g_dlrCurrentTrack[]));
 }
 
 public any Native_DLR_Music_IsPlaying(Handle plugin, int numParams)
