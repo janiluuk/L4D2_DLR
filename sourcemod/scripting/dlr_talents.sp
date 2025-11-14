@@ -183,7 +183,7 @@ public OnPluginStart( )
 
 	ATHLETE_JUMP_VEL = CreateConVar("talents_athlete_jump", "450.0", "How high a soldier should be able to jump. Make this higher to make them jump higher, or 0.0 for normal height");
 	ATHLETE_SPEED = CreateConVar("talents_athlete_speed", "1.20", "How fast athlete should run. A value of 1.0 = normal speed");
-	parachuteEnabled = CreateConVar("talents_athlete_enable_parachute","0.0","Enable parachute for athlete. Hold E in air to use it. 0 = OFF, 1 = ON.", FCVAR_NOTIFY, true, 0.0, true, 1.0);		
+	ATHLETE_PARACHUTE_ENABLED = CreateConVar("talents_athlete_enable_parachute","0.0","Enable parachute for athlete. Hold E in air to use it. 0 = OFF, 1 = ON.", FCVAR_NOTIFY, true, 0.0, true, 1.0);		
 	
 	MEDIC_HEAL_DIST = CreateConVar("talents_medic_heal_dist", "256.0", "How close other survivors have to be to heal. Larger values = larger radius");
 	MEDIC_HEALTH_VALUE = CreateConVar("talents_medic_health", "10", "How much health to restore");
@@ -225,7 +225,7 @@ public OnPluginStart( )
 	MINIMUM_AIRSTRIKE_INTERVAL = CreateConVar("talents_airstrike_interval", "180.0", "Time before soldier can order airstrikes again.");
 
 	// Revive & health modifiers
-	healthModEnabled = CreateConVar("talents_health_modifiers_enabled","0.0","Enables/Disables health modifiers. 0 = OFF, 1 = ON.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+	HEALTH_MODIFIERS_ENABLED = CreateConVar("talents_health_modifiers_enabled","0.0","Enables/Disables health modifiers. 0 = OFF, 1 = ON.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	REVIVE_DURATION = CreateConVar("talents_revive_duration", "4.0", "Default reviving duration in seconds");
 	HEAL_DURATION = CreateConVar("talents_heal_duration", "4.0", "Default healing duration in seconds");
 	REVIVE_HEALTH =  CreateConVar("talents_revive_health", "100.0", "Default health given 0n revive");
@@ -323,14 +323,6 @@ public void SetupClasses(client, class)
 	useCustomModel = true;
 	#endif
 
-	if (useCustomModel) {
-		int customModelIndex = view_as<int>(class);
-		char sModel[64];
-		Format(sModel, sizeof(sModel)	, ClassCustomModels[customModelIndex]);
-		LMC_L4D2_SetTransmit(client, LMC_SetClientOverlayModel(client, sModel));
-		PrintDebug(client, "Choosing custom model: %s", sModel);
-	}
-
 	switch (view_as<ClassTypes>(class))
 	{
 
@@ -359,7 +351,7 @@ public void SetupClasses(client, class)
 		{
 			decl String:text[64];
 			text = "";
-			if (parachuteEnabled.BoolValue) {
+			if (GetConVarBool(ATHLETE_PARACHUTE_ENABLED) == true) {
 				text = "While in air, hold E to use parachute!";
 			}
 			PrintHintText(client,"You move faster, Hold JUMP to bunny hop! %s", text);
@@ -1307,7 +1299,7 @@ stock SetClientTempHealth(client, iValue)
 
 public void Event_ServerCvar( Event hEvent, const char[] sNamel, bool bDontBroadcast ) 
 {
-	if (GetConVarBool(healthModEnabled) == false) return;
+	if (GetConVarBool(HEALTH_MODIFIERS_ENABLED) == false) return;
 	
 	InitHealthModifiers();
 }
@@ -2406,7 +2398,7 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
 
 		}
 
-		if(parachuteEnabled.BoolValue == false) return Plugin_Continue;
+		if(GetConVarBool(ATHLETE_PARACHUTE_ENABLED) == false) return Plugin_Continue;
 
 		if(g_bParachute[client])
 		{

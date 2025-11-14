@@ -46,7 +46,7 @@ jobs:
             wget -nv "https://www.sourcemod.net/smdrop/1.11/sourcemod-1.11.0-git6453-windows.zip" -O sm.zip
             unzip sm.zip -d sm
           else
-            wget -nv "https://www.sourcemod.net/smdrop/1.11/sourcemod-1.11.0-git6453-linux.tar.gz" -O sm.tar.gz
+            wget -nv "https://sm.alliedmods.net/smdrop/1.12/sourcemod-1.12.0-git7219-linux.tar.gz" -O sm.tar.gz
             mkdir -p sm
             tar -xzf sm.tar.gz -C sm
           fi
@@ -58,14 +58,10 @@ jobs:
           if [ "${{ runner.os }}" = "Windows" ]; then
             spcomp="${spcomp}.exe"
           fi
-          includes="-i sourcemod/scripting/include"
+          includes="-i $GITHUB_WORKSPACE/sourcemod/scripting/include -i $GITHUB_WORKSPACE/sm/addons/sourcemod/scripting/include"
           mkdir -p package/addons/sourcemod/plugins
-          shopt -s nullglob
-          for sp in sourcemod/scripting/dlr_talents*.sp addons/sourcemod/scripting/dlr_*.sp; do
-            case "$(basename "$sp")" in
-              left4dhooks*.sp|left4dhooks_test.sp) continue ;;
-            esac
-            "$spcomp" $includes -v0 "$sp" -o "package/addons/sourcemod/plugins/$(basename "${sp%.sp}.smx")"
+          for sp in sourcemod/scripting/dlr_*.sp; do
+            "$spcomp" $includes -v0 "$sp" 
           done
     
       - name: Upload package

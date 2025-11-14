@@ -1,3 +1,8 @@
+
+#include <sourcemod>
+#include <sdktools>
+#include <sdkhooks>
+
 public Action Command_InstaSpecial(int client, int args) {
 	if(args < 1) {
 		Menu menu = new Menu(Insta_PlayerHandler);
