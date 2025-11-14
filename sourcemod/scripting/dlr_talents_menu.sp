@@ -9,6 +9,8 @@ bool g_bExtraMenuLoaded;
 int g_iGuideMenuID;
 int g_iClientMenuID[MAXPLAYERS + 1];
 int g_iKitUsesLeft[MAXPLAYERS + 1];
+bool g_bClientHoldingMenu[MAXPLAYERS + 1];
+float g_fMenuHoldGraceUntil[MAXPLAYERS + 1];
 
 public Plugin myinfo =
 {
@@ -62,6 +64,8 @@ Action CmdDLRMenu(int client, int args)
     int menu_id = BuildGameMenu(client);
     if (menu_id)
     {
+        g_bClientHoldingMenu[client] = true;
+        g_fMenuHoldGraceUntil[client] = GetGameTime() + 0.2;
         PrintHintText(client, "Use W/S to move and A/D to select options.");
         ExtraMenu_Display(client, menu_id, MENU_TIME_FOREVER);
     }
@@ -155,6 +159,8 @@ void ResetAllClientData()
     {
         g_iClientMenuID[i] = 0;
         g_iKitUsesLeft[i] = 1;
+        g_bClientHoldingMenu[i] = false;
+        g_fMenuHoldGraceUntil[i] = 0.0;
     }
 }
 
@@ -163,6 +169,8 @@ public void OnClientPutInServer(int client)
     if (client > 0 && client <= MaxClients)
     {
         g_iKitUsesLeft[client] = 1;
+        g_bClientHoldingMenu[client] = false;
+        g_fMenuHoldGraceUntil[client] = 0.0;
     }
 }
 
@@ -170,12 +178,7 @@ public void OnClientDisconnect(int client)
 {
     if (client > 0 && client <= MaxClients)
     {
-        if (g_iClientMenuID[client] != 0 && ExtraMenuAvailable())
-        {
-            ExtraMenu_Delete(g_iClientMenuID[client]);
-            g_iClientMenuID[client] = 0;
-        }
-
+        CloseClientGameMenu(client);
         g_iKitUsesLeft[client] = 1;
     }
 }
@@ -285,15 +288,7 @@ void DeleteAllClientMenus()
 {
     for (int i = 1; i <= MaxClients; i++)
     {
-        if (g_iClientMenuID[i] != 0 && ExtraMenuAvailable())
-        {
-            ExtraMenu_Delete(g_iClientMenuID[i]);
-            g_iClientMenuID[i] = 0;
-        }
-        else if (g_iClientMenuID[i] != 0)
-        {
-            g_iClientMenuID[i] = 0;
-        }
+        CloseClientGameMenu(i);
     }
 }
 
@@ -313,7 +308,7 @@ void HandleKitSelection(int client)
 
 void RefreshClientMenu(int client)
 {
-    if (!g_bExtraMenuLoaded)
+    if (!g_bExtraMenuLoaded || !g_bClientHoldingMenu[client])
     {
         return;
     }
@@ -328,4 +323,53 @@ void RefreshClientMenu(int client)
 bool IsValidClient(int client)
 {
     return (client > 0 && client <= MaxClients && IsClientInGame(client));
+}
+
+void CloseClientGameMenu(int client)
+{
+    if (client <= 0 || client > MaxClients)
+    {
+        return;
+    }
+
+    if (g_iClientMenuID[client] != 0)
+    {
+        CancelClientMenu(client);
+
+        if (ExtraMenuAvailable())
+        {
+            ExtraMenu_Delete(g_iClientMenuID[client]);
+        }
+
+        g_iClientMenuID[client] = 0;
+    }
+
+    g_bClientHoldingMenu[client] = false;
+    g_fMenuHoldGraceUntil[client] = 0.0;
+}
+
+public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3], float angles[3], int &weapon, int &subtype, int &cmdnum, int &tickcount, int &seed, int mouse[2])
+{
+    if (!IsValidClient(client) || IsFakeClient(client))
+    {
+        return Plugin_Continue;
+    }
+
+    if (!g_bClientHoldingMenu[client] || g_iClientMenuID[client] == 0)
+    {
+        return Plugin_Continue;
+    }
+
+    float gameTime = GetGameTime();
+
+    if (buttons & IN_SPEED)
+    {
+        g_fMenuHoldGraceUntil[client] = gameTime + 0.1;
+    }
+    else if (gameTime > g_fMenuHoldGraceUntil[client])
+    {
+        CloseClientGameMenu(client);
+    }
+
+    return Plugin_Continue;
 }
