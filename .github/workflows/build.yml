@@ -62,7 +62,7 @@ jobs:
           mkdir -p package/addons/sourcemod/plugins
           shopt -s nullglob
           for sp in sourcemod/scripting/dlr_talents*.sp; do
-            "$spcomp" "$includes" -v0 "$sp" -o "addons/sourcemod/plugins/$(basename "${sp%.sp}.smx")"
+            $spcomp $includes -v0 "$sp" -o sourcemod/plugins/$(basename "${sp%.sp}.smx")
           done
     
       - name: Upload package
