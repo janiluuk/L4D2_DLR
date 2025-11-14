@@ -53,7 +53,7 @@ public Plugin:myinfo =
 #define REQUIRE_PLUGIN
 
 #if !defined _LMCL4D2SetTransmit_included
-	native int LMC_L4D2_SetTransmit(int iEntity);
+	native int LMC_L4D2_SetTransmit(int iEntity, int client);
 #endif
 
 /**
