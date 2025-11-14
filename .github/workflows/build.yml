@@ -61,7 +61,7 @@ jobs:
           includes="-i $GITHUB_WORKSPACE/sourcemod/scripting/include -i $GITHUB_WORKSPACE/sm/addons/sourcemod/scripting/include"
           mkdir -p spackage/addons/sourcemod/plugins
           for sp in sourcemod/scripting/dlr_*.sp; do
-            "$spcomp" $includes -v0 "$sp" -o sourcemod/plugins/$(basename "${sp%.sp}.smx")
+            "$spcomp" $includes -v0 "$sp" -o package/addons/sourcemod/plugins/$(basename "${sp%.sp}.smx")
           done
 
       - name: Upload package
