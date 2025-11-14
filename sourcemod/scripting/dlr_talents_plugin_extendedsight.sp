@@ -119,7 +119,7 @@ public void OnMapStart()
 
 
 
-public Action Command_ExtendedSight(int client, any args)
+public Action Command_ExtendedSight(int client, int args)
 {
         if (g_dlrHasAbility[client] <= 0) return Plugin_Handled;
 
