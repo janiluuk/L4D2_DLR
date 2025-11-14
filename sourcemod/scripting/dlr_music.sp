@@ -523,7 +523,9 @@ public void OnClientDisconnect(int client)
 public Action Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
 {
     if (g_dlrCvarPlayRoundStart.IntValue == 0)
-        return;
+    {
+        return Plugin_Continue;
+    }
 
     for (int i = 1; i <= MaxClients; i++)
     {
@@ -535,11 +537,15 @@ public Action Event_RoundStart(Event event, const char[] name, bool dontBroadcas
             }
         }
     }
+
+    return Plugin_Continue;
 }
 
 public Action Event_RoundEnd(Event event, const char[] name, bool dontBroadcast)
 {
     ResetTimer();
+
+    return Plugin_Continue;
 }
 public void OnMapEnd()
 {
@@ -557,14 +563,19 @@ void ResetTimer()
 public Action Timer_PlayMusic(Handle timer, int UserId)
 {
     int client = GetClientOfUserId(UserId);
+    if (client < 1 || client > MaxClients)
+    {
+        return Plugin_Stop;
+    }
+
     g_dlrTimerMusic[client] = INVALID_HANDLE;
-    
-    if (client != 0 && IsClientInGame(client)) 
+
+    if (IsClientInGame(client))
     {
         if (GetCookiePlayMusic(client))
         {
             char sPath[PLATFORM_MAX_PATH];
-            
+
             if (g_dlrFirstConnect[client] && g_dlrCvarUseNewly.IntValue == 1 && g_dlrSoundPathNewly.Length > 0)
             {
                 g_dlrSoundPathNewly.GetString(g_dlrSndIdxNewly, sPath, sizeof(sPath));
@@ -583,6 +594,8 @@ public Action Timer_PlayMusic(Handle timer, int UserId)
         }
         g_dlrFirstConnect[client] = false;
     }
+
+    return Plugin_Stop;
 }
 
 void ShowMusicMenu(int client)
@@ -604,24 +617,30 @@ public int MenuHandler_MenuMusic(Menu menu, MenuAction action, int param1, int p
     switch (action)
     {
         case MenuAction_End:
+        {
             delete menu;
-        
+            break;
+        }
         case MenuAction_Select:
         {
             int client = param1;
-            int ItemIndex = param2;
-            
+            int itemIndex = param2;
+
             char sItem[16];
             char sPath[PLATFORM_MAX_PATH];
-            menu.GetItem(ItemIndex, sItem, sizeof(sItem));
-            
-            switch(StringToInt(sItem)) {
-                case 5: {
+            menu.GetItem(itemIndex, sItem, sizeof(sItem));
+
+            switch (StringToInt(sItem))
+            {
+                case 5:
+                {
                     StopCurrentSound(client);
+                    break;
                 }
-                case 6: {
+                case 6:
+                {
                     StopCurrentSound(client);
-                    
+
                     if (g_dlrSoundPath.Length > 0)
                     {
                         g_dlrSoundPath.GetString(g_dlrSndIdx, sPath, sizeof(sPath));
@@ -632,15 +651,22 @@ public int MenuHandler_MenuMusic(Menu menu, MenuAction action, int param1, int p
                         g_dlrSoundPathNewly.GetString(g_dlrSndIdxNewly, sPath, sizeof(sPath));
                         EmitSoundCustom(client, sPath);
                     }
+
+                    break;
                 }
-                case -1: {
+                case -1:
+                {
                     ShowMenuSettings(client);
-                    return;
+                    return 0;
                 }
             }
+
             ShowMusicMenu(client);
+            break;
         }
     }
+
+    return 0;
 }
 
 void ShowMenuSettings(int client)
@@ -676,40 +702,59 @@ public int MenuHandler_MenuSettings(Menu menu, MenuAction action, int param1, in
     switch (action)
     {
         case MenuAction_End:
+        {
             delete menu;
-        
+            break;
+        }
         case MenuAction_Cancel:
+        {
             if (param2 == MenuCancel_ExitBack)
+            {
                 ShowMusicMenu(param1);
-        
+            }
+
+            break;
+        }
         case MenuAction_Select:
         {
             int client = param1;
-            int ItemIndex = param2;
-            
+            int itemIndex = param2;
+
             char sItem[16];
-            menu.GetItem(ItemIndex, sItem, sizeof(sItem));
-            
-            switch(StringToInt(sItem)) {
-                case 7: {
+            menu.GetItem(itemIndex, sItem, sizeof(sItem));
+
+            switch (StringToInt(sItem))
+            {
+                case 7:
+                {
                     ShowVolumeMenu(client);
-                    return;
+                    return 0;
                 }
-                case 8: {
+                case 8:
+                {
                     FakeClientCommand(client, "sm_music -1");
+                    break;
                 }
-                case 9: {
+                case 9:
+                {
                     g_dlrCookie[client] ^= 4;
                     SaveCookie(client);
+                    break;
                 }
-                case 10: {
+                case 10:
+                {
                     g_dlrCookie[client] ^= 2;
                     SaveCookie(client);
+                    break;
                 }
             }
+
             ShowMenuSettings(client);
+            break;
         }
     }
+
+    return 0;
 }
 
 void StopCurrentSound(int client)
@@ -752,21 +797,28 @@ public int MenuHandler_MenuVolume(Menu menu, MenuAction action, int param1, int 
     switch (action)
     {
         case MenuAction_End:
+        {
             delete menu;
-        
+            break;
+        }
         case MenuAction_Cancel:
+        {
             if (param2 == MenuCancel_ExitBack)
+            {
                 ShowMusicMenu(param1);
-        
+            }
+
+            break;
+        }
         case MenuAction_Select:
         {
             int client = param1;
-            int ItemIndex = param2;
-            
+            int itemIndex = param2;
+
             char sItem[16];
             char sPath[PLATFORM_MAX_PATH];
-            menu.GetItem(ItemIndex, sItem, sizeof(sItem));
-            
+            menu.GetItem(itemIndex, sItem, sizeof(sItem));
+
             g_dlrSoundVolume[client] = StringToInt(sItem);
             g_dlrCookie[client] = (g_dlrCookie[client] & 0x0F) | (g_dlrSoundVolume[client] << 4);
             SaveCookie(client);
@@ -774,8 +826,11 @@ public int MenuHandler_MenuVolume(Menu menu, MenuAction action, int param1, int 
             StopSound(client, SNDCHAN_DEFAULT, sPath);
             EmitSoundCustom(client, sPath);
             ShowVolumeMenu(client);
+            break;
         }
     }
+
+    return 0;
 }
 
 stock char[] Translate(int client, const char[] format, any ...)
