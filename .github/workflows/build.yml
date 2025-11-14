@@ -54,7 +54,7 @@ jobs:
       - name: Compile plugins
         shell: bash
         run: |
-          spcomp="$GITHUB_WORKSPACE/sm/addons/sourcemod/scripting/spcomp"
+          spcomp="$GITHUB_WORKSPACE/sm/addons/sourcemod/scripting/spcomp64"
           if [ "${{ runner.os }}" = "Windows" ]; then
             spcomp="${spcomp}.exe"
           fi
