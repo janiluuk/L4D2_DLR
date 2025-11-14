@@ -25,8 +25,6 @@ jobs:
           - ubuntu-22.04
           - windows-latest
         sm_version:
-          - "1.8"
-          - "1.9"
           - "1.10"
           - "1.11"
         include:
@@ -35,14 +33,10 @@ jobs:
           - meta_version: latest
             meta_branch: master
           - os_short: linux
-          - sm_version: "1.8"
-            sm_branch: "1.8-dev"
-          - sm_version: "1.9"
-            sm_branch: "1.9-dev"
           - sm_version: "1.10"
             sm_branch: "1.10-dev"
           - sm_version: "1.11"
-            sm_branch: "1.11-dev"
+            sm_branch: "1.11.0-git6970"
           - os: ubuntu-22.04
             os_short: oldlinux
           - os: windows-latest
@@ -66,12 +60,12 @@ jobs:
 
       - name: Download SourceMod ${{ matrix.sm_version }}
         shell: bash
-        run: |
+        run: |https://sm.alliedmods.net/smdrop/1.11/sourcemod-1.11.0-git6970-linux.tar.gz
           if [ "${{ runner.os }}" = "Windows" ]; then
-            wget -nv "https://sm.alliedmods.net/smdrop/${{ matrix.sm_version }}/sourcemod-${{ matrix.sm_version }}-windows.zip" -O sm.zip
+            wget -nv https://sm.alliedmods.net/smdrop/${{ matrix.sm_version }}/sourcemod-${{ matrix.sm_version }}-windows.zip" -O sm.zip
             unzip sm.zip -d sourcemod
           else
-            wget -nv "https://sm.alliedmods.net/smdrop/${{ matrix.sm_version }}/sourcemod-${{ matrix.sm_version }}-linux.tar.gz" -O sm.tar.gz
+            wget -nv "https://sm.alliedmods.net/smdrop/${{ matrix.sm_version }}/sourcemod-${{ matrix.sm_version }}-git6970-linux.tar.gz" -O sm.tar.gz
             mkdir sourcemod
             tar -xzf sm.tar.gz -C sourcemod
           fi
