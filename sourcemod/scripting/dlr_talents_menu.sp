@@ -2,15 +2,28 @@
 #include <sourcemod>
 #include <extra_menu>
 
+#if !defined IN_WALK
+#define IN_WALK (1<<18)
+#endif
+#if !defined IN_ALT1
+#define IN_ALT1 (1<<13)
+#endif
+
+native bool DLR_Music_IsPlaying(int client);
+native bool DLR_Music_GetCurrentTrack(int client, char[] buffer, int maxlen);
+native float DLR_Music_GetPlaybackTime(int client);
+
 #pragma semicolon 1
 #pragma newdecls required
 
 bool g_bExtraMenuLoaded;
+bool g_bMusicLibraryAvailable;
 int g_iGuideMenuID;
 int g_iClientMenuID[MAXPLAYERS + 1];
 int g_iKitUsesLeft[MAXPLAYERS + 1];
 bool g_bClientHoldingMenu[MAXPLAYERS + 1];
 float g_fMenuHoldGraceUntil[MAXPLAYERS + 1];
+ConVar g_hHudEnabledCvar;
 
 public Plugin myinfo =
 {
@@ -26,6 +39,19 @@ public void OnPluginStart()
     RegAdminCmd("sm_dlr", CmdDLRMenu, ADMFLAG_ROOT);
     RegAdminCmd("sm_guide", CmdDLRGuideMenu, ADMFLAG_ROOT);
 
+    MarkNativeAsOptional("DLR_Music_IsPlaying");
+    MarkNativeAsOptional("DLR_Music_GetCurrentTrack");
+    MarkNativeAsOptional("DLR_Music_GetPlaybackTime");
+
+    g_bExtraMenuLoaded = LibraryExists("extra_menu");
+    g_bMusicLibraryAvailable = LibraryExists("dlr_music");
+    g_hHudEnabledCvar = FindConVar("l4d2_scripted_hud_enable");
+
+    if (g_bExtraMenuLoaded)
+    {
+        g_iGuideMenuID = BuildGuideMenu();
+    }
+
     ResetAllClientData();
 }
 
@@ -34,7 +60,14 @@ public void OnLibraryAdded(const char[] name)
     if (strcmp(name, "extra_menu") == 0)
     {
         g_bExtraMenuLoaded = true;
-        g_iGuideMenuID = BuildGuideMenu();
+        if (g_iGuideMenuID == 0)
+        {
+            g_iGuideMenuID = BuildGuideMenu();
+        }
+    }
+    else if (strcmp(name, "dlr_music") == 0)
+    {
+        g_bMusicLibraryAvailable = true;
     }
 }
 
@@ -45,6 +78,10 @@ public void OnLibraryRemoved(const char[] name)
         DeleteGuideMenu();
         DeleteAllClientMenus();
         g_bExtraMenuLoaded = false;
+    }
+    else if (strcmp(name, "dlr_music") == 0)
+    {
+        g_bMusicLibraryAvailable = false;
     }
 }
 
@@ -118,6 +155,11 @@ public void ExtraMenu_OnSelect(int client, int menu_id, int option, int value)
         case MENU_OPTION_CHANGE_CLASS:
         {
             ClientCommand(client, "sm_class");
+            break;
+        }
+        case MENU_OPTION_HUD:
+        {
+            HandleHudSelection(client, value);
             break;
         }
     }
@@ -225,6 +267,7 @@ int BuildGameMenu(int client)
 
     ExtraMenu_AddEntry(menu_id, "GAME MENU:", MENU_ENTRY);
     ExtraMenu_AddEntry(menu_id, "Use W/S to move row and A/D to select", MENU_ENTRY);
+    AppendTrackHeader(menu_id, client);
     ExtraMenu_AddEntry(menu_id, " ", MENU_ENTRY);
 
     ExtraMenu_AddEntry(menu_id, "1. 3rd person mode: _OPT_", MENU_SELECT_LIST);
@@ -252,10 +295,11 @@ int BuildGameMenu(int client)
 
     ExtraMenu_AddEntry(menu_id, "GAME OPTIONS:", MENU_ENTRY);
     ExtraMenu_AddEntry(menu_id, "Use W/S to move row and A/D to select", MENU_ENTRY);
+    AppendTrackHeader(menu_id, client);
     ExtraMenu_AddEntry(menu_id, " ", MENU_ENTRY);
     ExtraMenu_AddEntry(menu_id, "1. Multiple Equipment Mode: _OPT_", MENU_SELECT_LIST);
     ExtraMenu_AddOptions(menu_id, "Off|Single Tap|Double tap");
-    ExtraMenu_AddEntry(menu_id, "2. HUD: _OPT_", MENU_SELECT_ONOFF);
+    ExtraMenu_AddEntry(menu_id, "2. HUD: _OPT_", MENU_SELECT_ONOFF, false, GetHudOptionDefault());
     ExtraMenu_AddEntry(menu_id, "3. Music player: _OPT_", MENU_SELECT_ONOFF);
     ExtraMenu_AddEntry(menu_id, "4. Music Volume: _OPT_", MENU_SELECT_LIST);
     ExtraMenu_AddOptions(menu_id, "□□□□□□□□□□|■□□□□□□□□□|■■□□□□□□□□|■■■□□□□□□□|■■■■□□□□□□|■■■■■□□□□□|■■■■■■□□□□|■■■■■■■□□□|■■■■■■■□□|■■■■■■■■■□|■■■■■■■■■■");
@@ -362,7 +406,24 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 
     float gameTime = GetGameTime();
 
+    bool holding = false;
+
     if (buttons & IN_SPEED)
+    {
+        holding = true;
+    }
+
+    if (buttons & IN_WALK)
+    {
+        holding = true;
+    }
+
+    if (buttons & IN_ALT1)
+    {
+        holding = true;
+    }
+
+    if (holding)
     {
         g_fMenuHoldGraceUntil[client] = gameTime + 0.1;
     }
@@ -372,4 +433,78 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
     }
 
     return Plugin_Continue;
+}
+
+void AppendTrackHeader(int menu_id, int client)
+{
+    char sLine[128];
+
+    if (!g_bMusicLibraryAvailable)
+    {
+        ExtraMenu_AddEntry(menu_id, "♫ Music player unavailable", MENU_ENTRY);
+        return;
+    }
+
+    char sTrack[96];
+    bool hasTrack = DLR_Music_GetCurrentTrack(client, sTrack, sizeof(sTrack));
+
+    if (!hasTrack || sTrack[0] == '\0')
+    {
+        strcopy(sLine, sizeof(sLine), "♫ Music: Not playing");
+    }
+    else if (DLR_Music_IsPlaying(client))
+    {
+        float elapsed = DLR_Music_GetPlaybackTime(client);
+        if (elapsed < 0.0)
+        {
+            elapsed = 0.0;
+        }
+
+        int totalSeconds = RoundToFloor(elapsed);
+        if (totalSeconds < 0)
+        {
+            totalSeconds = 0;
+        }
+
+        int minutes = totalSeconds / 60;
+        int seconds = totalSeconds % 60;
+        Format(sLine, sizeof(sLine), "♫ %s (%d:%02d)", sTrack, minutes, seconds);
+    }
+    else
+    {
+        Format(sLine, sizeof(sLine), "♫ %s (stopped)", sTrack);
+    }
+
+    ExtraMenu_AddEntry(menu_id, sLine, MENU_ENTRY);
+}
+
+int GetHudOptionDefault()
+{
+    if (g_hHudEnabledCvar == null)
+    {
+        return 0;
+    }
+
+    return g_hHudEnabledCvar.BoolValue ? 1 : 0;
+}
+
+void HandleHudSelection(int client, int value)
+{
+    if (g_hHudEnabledCvar == null)
+    {
+        PrintToChat(client, "[DLR] HUD controls are currently unavailable.");
+        return;
+    }
+
+    bool enable = (value != 0);
+    g_hHudEnabledCvar.SetBool(enable);
+
+    if (enable)
+    {
+        PrintToChat(client, "[DLR] HUD enabled.");
+    }
+    else
+    {
+        PrintToChat(client, "[DLR] HUD disabled.");
+    }
 }
