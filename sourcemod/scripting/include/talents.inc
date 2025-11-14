@@ -1,5 +1,5 @@
 // What formatting string to use when printing to the chatbox
-#define PRINT_PREFIX    "\x04[DLR]\x01"
+#define PRINT_PREFIX    "\x04[RAGE]\x01"
 
 #include <sourcemod>
 #include <sdktools>
@@ -7,13 +7,8 @@
 #include <left4dhooks>
 #include <dlr/const>
 #include <dlr/debug>
-#include <dlr/timers>
-#include <dlr/commands>
-#include <dlr/perks>
 //#include <dlr/classes>
-#include <dlr/effects>
 #include <dlr/hud>
-#include <dlr/menus>
 
 // top menu
 new Handle:hTopMenu = INVALID_HANDLE;
@@ -197,10 +192,15 @@ new Handle:BRAWLER_HEALTH;
 // Health
 new Handle:REVIVE_DURATION;
 new Handle:HEAL_DURATION;
+new Handle:HEALTH_MODIFIERS_ENABLED;
 new Handle:REVIVE_HEALTH;
 new Handle:PILLS_HEALTH_BUFFER;
 new Handle:ADRENALINE_DURATION;
 new Handle:ADRENALINE_HEALTH_BUFFER;
+
+new Handle:ENGINEER_MAX_BUILDS;
+new Handle:ENGINEER_MAX_BUILD_RANGE;
+new Handle:MINIMUM_DROP_INTERVAL;
 
 // Soldier
 new Handle:SOLDIER_ATTACK_RATE;
@@ -209,10 +209,12 @@ new Handle:SOLDIER_DAMAGE_REDUCE_RATIO;
 new Handle:SOLDIER_SPEED;
 new Handle:SOLDIER_SHOVE_PENALTY;
 new Handle:SOLDIER_MAX_AIRSTRIKES;
+new Handle:MINIMUM_AIRSTRIKE_INTERVAL;
 
 // Athlete
 new Handle:ATHLETE_SPEED;
 new Handle:ATHLETE_JUMP_VEL;
+new Handle:ATHLETE_PARACHUTE_ENABLED;
 
 // Medic
 new Handle:MEDIC_HEAL_DIST;
@@ -230,6 +232,7 @@ new Handle:SABOTEUR_BOMB_RADIUS;
 new Handle:SABOTEUR_MAX_BOMBS;
 new Handle:SABOTEUR_BOMB_TYPES;
 new Handle:SABOTEUR_BOMB_DAMAGE_SURV;
+new Handle:SABOTEUR_ACTIVE_BOMB_COLOR;
 new Handle:SABOTEUR_BOMB_DAMAGE_INF;
 new Handle:SABOTEUR_BOMB_POWER;
 new Handle:SABOTEUR_ENABLE_NIGHT_VISION;
@@ -247,4 +250,10 @@ new Handle:COMMANDO_DAMAGE_SMG;
 new Handle:COMMANDO_ENABLE_STUMBLE_BLOCK;
 new Handle:COMMANDO_ENABLE_STOMPING;
 new Handle:COMMANDO_STOMPING_SLOWDOWN;
+new Handle:SPECIAL_SKILL_LIMIT;
+#include <dlr/timers>
+#include <dlr/effects>
+#include <dlr/menus>
+#include <dlr/perks>
+#include <dlr/commands>
 
