@@ -54,16 +54,14 @@ jobs:
       - name: Compile plugins
         shell: bash
         run: |
-          spcomp="$GITHUB_WORKSPACE/sm/addons/sourcemod/scripting/spcomp64"
+          spcomp="$GITHUB_WORKSPACE/sm/addons/sourcemod/scripting/spcomp"
           if [ "${{ runner.os }}" = "Windows" ]; then
             spcomp="${spcomp}.exe"
           fi
-          includes="-i sourcemod/scripting/include -i $GITHUB_WORKSPACE/sm/addons/sourcemod/scripting/include"
+          includes="-i $GITHUB_WORKSPACE/sourcemod/scripting/include -i $GITHUB_WORKSPACE/sm/addons/sourcemod/scripting/include"
           mkdir -p package/addons/sourcemod/plugins
           for sp in sourcemod/scripting/dlr_*.sp; do
-            CMD="$spcomp $includes $sp"
-            echo $CMD
-            "$CMD"
+            "$spcomp" $includes -v0 "$sp" 
           done
     
       - name: Upload package
