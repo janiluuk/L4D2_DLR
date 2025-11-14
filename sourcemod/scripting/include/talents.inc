@@ -1,5 +1,5 @@
 // What formatting string to use when printing to the chatbox
-#define PRINT_PREFIX    "\x04[DLR]\x01"
+#define PRINT_PREFIX    "\x04[RAGE]\x01"
 
 #include <sourcemod>
 #include <sdktools>
@@ -7,13 +7,8 @@
 #include <left4dhooks>
 #include <dlr/const>
 #include <dlr/debug>
-#include <dlr/timers>
-#include <dlr/commands>
-#include <dlr/perks>
 //#include <dlr/classes>
-#include <dlr/effects>
 #include <dlr/hud>
-#include <dlr/menus>
 
 // top menu
 new Handle:hTopMenu = INVALID_HANDLE;
@@ -255,4 +250,10 @@ new Handle:COMMANDO_DAMAGE_SMG;
 new Handle:COMMANDO_ENABLE_STUMBLE_BLOCK;
 new Handle:COMMANDO_ENABLE_STOMPING;
 new Handle:COMMANDO_STOMPING_SLOWDOWN;
+new Handle:SPECIAL_SKILL_LIMIT;
+#include <dlr/timers>
+#include <dlr/effects>
+#include <dlr/menus>
+#include <dlr/perks>
+#include <dlr/commands>
 

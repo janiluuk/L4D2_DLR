@@ -37,8 +37,9 @@ public Action:CmdModel(client, args) {
 	char sModel[128];
 	GetCmdArg(1, sModel, sizeof(sModel));
 
-	LMC_L4D2_SetTransmit(client, LMC_SetClientOverlayModel(client, sModel));
-	ReplyToCommand(client, "Changing model to %s", sModel);
+	LMC_L4D2_SetTransmit(client);
+	LMC_SetClientOverlayModel(client, arg1);
+	ReplyToCommand(client, "Changing model to %s", arg1);
 	
 }
 public Action:CmdClassMenu(client, args)
