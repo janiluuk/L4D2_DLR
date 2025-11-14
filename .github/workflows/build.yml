@@ -59,11 +59,11 @@ jobs:
             spcomp="${spcomp}.exe"
           fi
           includes="-i $GITHUB_WORKSPACE/sourcemod/scripting/include -i $GITHUB_WORKSPACE/sm/addons/sourcemod/scripting/include"
-          mkdir -p package/addons/sourcemod/plugins
+          mkdir -p spackage/addons/sourcemod/plugins
           for sp in sourcemod/scripting/dlr_*.sp; do
-            "$spcomp" $includes -v0 "$sp" 
+            "$spcomp" $includes -v0 "$sp" -o "sourcemod/plugins/$sp".smx
           done
-    
+
       - name: Upload package
         uses: actions/upload-artifact@v4
         with:
