@@ -1,108 +1,56 @@
 # L4D2: Rage Edition
 
-My pet project of A brutal anniversary overhaul of the infamous Left 4 Dead 2. Based loosely on my previous rewrite of DLR gamemode. 
-  Resurrects the 2013 classic with modular perks, class-based abilities and a plugin-friendly core that lets you sculpt chaotic versus sessions.
+A celebratory remix of Left 4 Dead 2 that turns every round into a playable action movie. Rage Edition keeps the co-op chaos you love and layers on bold classes, dramatic abilities, and a stack of quality-of-life touches that make the whole server feel alive.
 
-## Core Features
-- Sourcemod 1.11 compatible
-- Plugin-based architecture: drop in new perks or classes via `DLRCore`
-- Modular perk system with negative effects and combo chaining
-- Keybinding support (Soldier night vision bound to `N`)
-- Custom class creation and configuration
-- Class-based skins
-- Optional HUD with alerts, kill counter and supply warnings
-- Expanded help system with class descriptions and a night vision tutorial
-- Adjustable adrenaline, pills, revive and heal timings
-- Rewritten invisibility and fixed gun reload glitches
-- Debug modes, admin menu and useful tools
+## What you'll experience
+- **Playable heroes instead of plain survivors.** Pick a role, unlock its signature move with `!skill`, and swap at any time through the in-game menu.
+- **Mix-and-match perks.** Stack advantages, accept trade-offs, and discover combos that keep each run fresh.
+- **Instant clarity.** A toggleable HUD calls out kills, warnings, and supplies, while the guide menu explains every talent in clear language.
+- **Fast admin access.** Type `!adm` for spawn tools, debug switches, and quick clean-up options without leaving the fight.
+- **Hold-to-open game menu.** Press and hold ALT to pop up a full-screen selector with 3rd-person view, kit pickup, class change, music control, and more. Release the key and it disappears.
+- **Now playing overlay.** The active track title and playtime stay pinned to every menu page so the entire lobby knows what’s on the air.
 
-## Class Highlights
+## Play your way
 ### Soldier
-- Faster movement and reduced damage
-- Ninja-level melee rate
-- Aim and press `!skill` to call in an airstrike
-- **Toggleable night vision**
+- Moves faster, shrugs off more hits, and slashes like a blender.
+- Aims and taps `!skill` to rain down an airstrike.
+- Flips night vision on or off whenever the fight slips into darkness.
 
 ### Athlete
-- Faster movement and a parachute
-- Mobility perks: bunnyhop, double-jump, high-jump and long-jump
-- Jump karate kicks that knock enemies down
+- Built for motion: sprint boosts, double jumps, and mid-air karate kicks.
+- Deploys a parachute to float over chaos or escape a wipe.
 
 ### Commando
-- Configurable weapon-specific damage modifiers
-- Build rage and press `!skill` to trigger Berserk; immune to tank knockdowns
-- Stomps downed infected and reloads faster
+- Tunes damage per weapon, reloads on instinct, and shrugs off tank knockdowns.
+- Builds rage meter to unleash a Berserk rush that melts specials.
 
 ### Medic
-- Expanded spawn options
-- Faster healing and revival; movement boost while healing
-- Throws healing orbs that glow and announce to others
-- Players notified when healed; healed players gain a special glow
-- Default health for classless players configurable
+- Patches teammates in record time and blasts glowing heal orbs across the room.
+- Healed players get a reassuring glow so you always know who’s safe.
 
 ### Engineer
-- Spawns ready-to-use upgrade packs
-- `!skill` opens a turret menu with two turret types and eight ammo options
-- Deploys protective shields and barricades doors/windows
-- Turrets notify nearby players, can be blown up by infected and are non-blocking
-- "Single turret mode" for old-school play
-- Deployment countdowns for engineer, medic and saboteur
+- Drops upgrade packs, barricades chokepoints, and deploys turrets from an in-game shop.
+- Shields, door blocks, and “single turret mode” keep builds tidy.
 
 ### Saboteur
-- Faster crouch movement with visibility status
-- Dead Ringer decoy: middle-click or type `!skill` (`sm_fd`/`sm_cloak`) to vanish and drop a fake corpse
-- Extended survivor sight: `!extendedsight` reveals special infected for 20 s every 2 min
-- Night vision and 20 mine types; press **Shift** to plant mines that glow and warn nearby players
-- Reduced survivor damage, increased infected damage
+- Sneaks with a Dead Ringer decoy, mines the map, and spots infected through walls on a timer.
+- Night vision and mine warnings help the whole team stay alert.
 
-## Additional Features & Commands
-- **Prototype Grenades** – Equip any grenade and press **Primary Fire** to throw. Hold **Primary Fire** and tap **Shove** (or type `sm_grenade`) to cycle through 20 experimental types like Black Hole vortices, Tesla lightning, Medic healing clouds, or an Airstrike marker.
-- **Class Skill Command** – Bind a key or type `!skill` to trigger your class's special ability.
-- **Dead Ringer Cloak** – Saboteur-only decoy and invisibility; `sm_fd` toggles the effect and `sm_cloak` triggers it immediately.
-- **Extended Survivor Sight** – Saboteur-only wallhack for 20 s on a 2 min cooldown; activate with `sm_extendedsight`.
-- **Unvomit** – Clear Boomer bile with `sm_unvomit` as a Medic cleanse.
-- **Map Music** – `!music` menu lets players enable round-start tracks. Server var `start_music_enabled` controls the default.
-- **Multiturret** – Engineer presses the class skill key (default middle mouse or `sm_skill`) to open a turret menu. Pick a gun and ammo, left-click to deploy, and press **Use** to pick it back up. Admins can remove a turret via `sm_removemachine`.
-- **Ninja Kick** – Athlete leap‑kicks infected by jumping into them, knocking targets to the ground.
-- **Berserk Mode** – Commando builds rage as they deal damage; press `!skill` (or `sm_berserker`) when prompted for a short speed and damage surge.
-- **Airstrike** – Soldier aims and hits `!skill` to mark a target for a missile barrage.
+## Toys, tricks, and server spice
+- **Prototype grenades** – Equip one and experiment with gravity wells, lightning storms, medic clouds, and more just by cycling the throw style.
+- **Music player** – Type `!music` to choose the soundtrack, skip songs, or go silent. Preferences stick with you between maps.
+- **Away toggle** – Need a breather? Mark yourself AFK directly from the menu and hop back in when ready.
+- **Multiple equipment mode** – Pick how forgiving pickups are, from classic single-use kits to double-tap weapon swaps.
+- **Voting hub** – Launch game mode and map votes without fumbling chat commands.
+- **Command parity** – Every feature also has an `sm_` console command so you can bind keys or build macros exactly how you like.
 
-All special skills provide a corresponding `sm_` console command so abilities can be activated consistently regardless of keybinds.
+## Soundtrack corner
+Drop a list of 44.1 kHz MP3s into the supplied music text files, point your fast-download host at them, and the plugin does the rest. First-time players can even hear a special welcome track if you enable the option.
 
+## Admin corner
+Need to tidy the battlefield? `!adm` opens a dedicated panel with spawn helpers, restart controls, god mode, and slow-motion toggles. Everything is grouped for quick decisions mid-round.
 
-### Adding Music
-Store 44.1 kHz MP3s on a fast‑download server and list them in `data/music_mapstart.txt` (and optionally `music_mapstart_newly.txt` for first‑time players). Players can open `!music` to adjust volume or disable all custom tracks; their choices are saved in cookies until they opt back in.
+## Ready to tinker?
+Rage Edition is built from modular SourceMod plugins, so you can add new talents, swap out effects, or write your own class packs without touching the core. Check the `sourcemod/scripting` folder for clean, well-documented examples.
 
-## Game Menu & Guide
-A full-screen menu replaces tiny SourceMod popups. Navigate with **W/S** and **A/D**. Admins open the game menu with `sm_dlr` or the guide with `sm_guide`; players see the same overlay when using options like the music player.
-
-## Roadmap
-- Cleaner UI with unified hint system and game instructor integration
-- Random game modes (melee-only rounds, jockey race, horror mode, etc.)
-- Class indicators above players and expanded infected skills
-- Reworked missile plugin and turret configuration
-- Docker image with integrated RCON web admin
-- Skill editor for generating new perks/classes
-- Additional co-op mechanics (struggles, transformations, etc.)
-
-## Developing Plugins
-Include `DLRCore.sp` and implement the required callbacks:
-
-```sourcepawn
-forward OnSpecialSkillUsed(int client, const char[] skillName);
-native void OnSpecialSkillSuccess(int client, const char[] skillName);
-native void OnSpecialSkillFail(int client, const char[] skillName, const char[] reason);
-native int RegisterDLRSkill(char[] skillName);
-```
-
-Helper natives:
-
-```sourcepawn
-forward FindSkillIdByName(const char[] skillName, int &skillId);
-native int GetPlayerClaˇssName(int client);
-```
-
-Add `DLRCore.sp` to your include folder and register your skill during `OnPluginStart` or `DLR_OnPluginState`. See the multiturret plugin for a complete example.
-
-See https://forums.alliedmods.net/showthread.php?t=273312 for more info.
-
+Grab the files, drop them on your server, and let the rage weekend begin.
