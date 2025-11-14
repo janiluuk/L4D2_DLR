@@ -216,7 +216,7 @@
 	- Required updated files:
 	- Config: l4d_grenades.cfg
 	- Gamedata: l4d_grenades.txt
-	- Translations: grenades.phrases.txt.
+        - Translations: dlr_grenades.phrases.txt.
 
 1.4 (10-Oct-2019)
 	- Added Russian translations. Thanks to "KRUTIK" for providing.
@@ -709,7 +709,7 @@ public void DLR_OnPluginState(char[] plugin, int pluginstate)
 		g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
 
 	}
-	else if( "dlr_talents" && pluginstate == 0)
+	else if(StrEqual(plugin, "dlr_talents") && pluginstate == 0)
 	{
 		SetConVarBool(g_hCvarAllow, false);
 		DLR_Available = false;
@@ -858,11 +858,11 @@ public void OnPluginStart()
 	// OTHER
 	// ====================================================================================================
 	// Translations
-	BuildPath(Path_SM, sPath, sizeof(sPath), "translations/grenades.phrases.txt");
+    BuildPath(Path_SM, sPath, sizeof(sPath), "translations/dlr_grenades.phrases.txt");
 	if( !FileExists(sPath) )
-		SetFailState("Required translation file is missing: 'translations/grenades.phrases.txt'");
+            SetFailState("Required translation file is missing: 'translations/dlr_grenades.phrases.txt'");
 
-	LoadTranslations("grenades.phrases");
+	LoadTranslations("dlr_grenades.phrases");
 
 	// Saved client options
 	g_hCookie = RegClientCookie("l4d_grenades_modes", "Prototype Grenades - Modes", CookieAccess_Protected);

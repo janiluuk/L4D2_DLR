@@ -96,7 +96,7 @@
 #define TYPE_FREEZE 4  
 #define TYPE_NAUSEATING 5 
 
-#define TRANSLATION_FILENAME 	"l4d_machine_multi.phrases" 
+#define TRANSLATION_FILENAME    "dlr_multiturret.phrases" 
 #define PLUGIN_SKILL_NAME "Multiturret"
 
 #define PI_NUM 3.14159 // PI
@@ -374,8 +374,12 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 
 public void OnSkillSelected(int iClient, int iClass)
 {
-	char szSkillName[32];
-	GetPlayerSkillName(iClient, szSkillName, sizeof(szSkillName));
+    char szSkillName[32];
+    GetPlayerSkillName(iClient, szSkillName, sizeof(szSkillName));
+    if (StrEqual(szSkillName, PLUGIN_SKILL_NAME))
+    {
+        CustomPrintToChat(iClient, "%s %t", sPluginTag, "Skill Hint");
+    }
 }
 
 public int OnSpecialSkillUsed(int iClient, int skill, int type)

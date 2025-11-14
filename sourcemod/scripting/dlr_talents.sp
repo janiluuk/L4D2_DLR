@@ -34,6 +34,7 @@ public Plugin:myinfo =
 };
 
 #include <adminmenu>
+#include <sdktools>
 #include <l4d2hud>
 #include <talents>
 #include <jutils>
@@ -52,7 +53,7 @@ public Plugin:myinfo =
 #define REQUIRE_PLUGIN
 
 #if !defined _LMCL4D2SetTransmit_included
-	native int LMC_L4D2_SetTransmit(int iEntity);
+	native int LMC_L4D2_SetTransmit(int iEntity, int client);
 #endif
 
 /**
@@ -62,9 +63,10 @@ public Plugin:myinfo =
 public OnPluginStart( )
 {
 	// Concommands
-	RegConsoleCmd("sm_class", CmdClassMenu, "Shows the class selection menu");
-	RegConsoleCmd("sm_classinfo", CmdClassInfo, "Shows clClearMessagesass descriptions");
-	RegConsoleCmd("sm_classes", CmdClasses, "Shows class descriptions");
+        RegConsoleCmd("sm_class", CmdClassMenu, "Shows the class selection menu");
+        RegConsoleCmd("sm_classinfo", CmdClassInfo, "Shows clClearMessagesass descriptions");
+        RegConsoleCmd("sm_classes", CmdClasses, "Shows class descriptions");
+        RegConsoleCmd("sm_skill", CmdUseSkill, "Use your class special skill");
 	RegAdminCmd("sm_dlrm", CmdDlrMenu, ADMFLAG_ROOT, "Debug & Manage");
 	RegAdminCmd("sm_hide", HideCommand, ADMFLAG_ROOT, "Hide player");
 	RegAdminCmd("sm_dlr_plugins", CmdPlugins, ADMFLAG_ROOT, "List plugins");	
@@ -181,7 +183,7 @@ public OnPluginStart( )
 
 	ATHLETE_JUMP_VEL = CreateConVar("talents_athlete_jump", "450.0", "How high a soldier should be able to jump. Make this higher to make them jump higher, or 0.0 for normal height");
 	ATHLETE_SPEED = CreateConVar("talents_athlete_speed", "1.20", "How fast athlete should run. A value of 1.0 = normal speed");
-	parachuteEnabled = CreateConVar("talents_athlete_enable_parachute","0.0","Enable parachute for athlete. Hold E in air to use it. 0 = OFF, 1 = ON.", FCVAR_NOTIFY, true, 0.0, true, 1.0);		
+	ATHLETE_PARACHUTE_ENABLED = CreateConVar("talents_athlete_enable_parachute","0.0","Enable parachute for athlete. Hold E in air to use it. 0 = OFF, 1 = ON.", FCVAR_NOTIFY, true, 0.0, true, 1.0);		
 	
 	MEDIC_HEAL_DIST = CreateConVar("talents_medic_heal_dist", "256.0", "How close other survivors have to be to heal. Larger values = larger radius");
 	MEDIC_HEALTH_VALUE = CreateConVar("talents_medic_health", "10", "How much health to restore");
@@ -223,7 +225,7 @@ public OnPluginStart( )
 	MINIMUM_AIRSTRIKE_INTERVAL = CreateConVar("talents_airstrike_interval", "180.0", "Time before soldier can order airstrikes again.");
 
 	// Revive & health modifiers
-	healthModEnabled = CreateConVar("talents_health_modifiers_enabled","0.0","Enables/Disables health modifiers. 0 = OFF, 1 = ON.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+	HEALTH_MODIFIERS_ENABLED = CreateConVar("talents_health_modifiers_enabled","0.0","Enables/Disables health modifiers. 0 = OFF, 1 = ON.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	REVIVE_DURATION = CreateConVar("talents_revive_duration", "4.0", "Default reviving duration in seconds");
 	HEAL_DURATION = CreateConVar("talents_heal_duration", "4.0", "Default healing duration in seconds");
 	REVIVE_HEALTH =  CreateConVar("talents_revive_health", "100.0", "Default health given 0n revive");
@@ -321,25 +323,17 @@ public void SetupClasses(client, class)
 	useCustomModel = true;
 	#endif
 
-	if (useCustomModel) {
-		int customModelIndex = view_as<int>(class);
-		char sModel[64];
-		Format(sModel, sizeof(sModel)	, ClassCustomModels[customModelIndex]);
-		LMC_L4D2_SetTransmit(client, LMC_SetClientOverlayModel(client, sModel));
-		PrintDebug(client, "Choosing custom model: %s", sModel);
-	}
-
 	switch (view_as<ClassTypes>(class))
 	{
 
 		case soldier:	
 		{
 			char text[64];
-			if (g_bAirstrike == true) {
-				text = "Press MIDDLE BUTTON for Airstrike!";
-			}
+                        if (g_bAirstrike == true) {
+                                text = "Press MIDDLE BUTTON or type !skill for Airstrike!";
+                        }
 
-			PrintHintText(client,"You have armor, fast attack rate and movement %s", text );
+                        PrintHintText(client,"You have armor, fast attack rate and movement %s", text );
 			ClientData[client].SpecialDropInterval = GetConVarInt(MINIMUM_AIRSTRIKE_INTERVAL);
 			ClientData[client].SpecialLimit = GetConVarInt(SOLDIER_MAX_AIRSTRIKES);
 			MaxPossibleHP = GetConVarInt(SOLDIER_HEALTH);
@@ -347,7 +341,7 @@ public void SetupClasses(client, class)
 		
 		case medic:
 		{
-			PrintHintText(client,"Hold CROUCH to heal others. Press SHIFT to drop medkits & supplies.\nPress MIDDLE button to throw healing grenade!");
+                        PrintHintText(client,"Hold CROUCH to heal others. Press SHIFT to drop medkits & supplies.\nPress MIDDLE button or type !skill to throw healing grenade!");
 			CreateTimer(GetConVarFloat(MEDIC_HEALTH_INTERVAL), TimerDetectHealthChanges, client, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 			ClientData[client].SpecialLimit = GetConVarInt(MEDIC_MAX_ITEMS);
 			MaxPossibleHP = GetConVarInt(MEDIC_HEALTH);
@@ -357,7 +351,7 @@ public void SetupClasses(client, class)
 		{
 			decl String:text[64];
 			text = "";
-			if (parachuteEnabled.BoolValue) {
+			if (GetConVarBool(ATHLETE_PARACHUTE_ENABLED) == true) {
 				text = "While in air, hold E to use parachute!";
 			}
 			PrintHintText(client,"You move faster, Hold JUMP to bunny hop! %s", text);
@@ -375,20 +369,20 @@ public void SetupClasses(client, class)
 				text = ", You're immune to Tank knockdowns!";
 			} 
 
-			PrintHintText(client,"You have faster reload & increased damage%s!\nPress MIDDLE button to activate Berzerk mode!", text);
+                        PrintHintText(client,"You have faster reload & increased damage%s!\nPress MIDDLE button or type !skill to activate Berzerk mode!", text);
 			MaxPossibleHP = GetConVarInt(COMMANDO_HEALTH);
 		}
 		
 		case engineer:
 		{
-			PrintHintText(client,"Press SHIFT to drop ammo supplies and auto turrets!");
+                        PrintHintText(client,"Press MIDDLE button or type !skill to deploy turrets. Press SHIFT to drop ammo supplies!");
 			MaxPossibleHP = GetConVarInt(ENGINEER_HEALTH);
 			ClientData[client].SpecialLimit = GetConVarInt(ENGINEER_MAX_BUILDS);
 		}
 		
 		case saboteur:
 		{
-			PrintHintText(client,"Press SHIFT to drop mines! Hold CROUCH for 3 sec to go invisible. \nPress MIDDLE button to summon Decoy. It can save you from being pinned");
+                        PrintHintText(client,"Press SHIFT to drop mines! Hold CROUCH 3 sec to go invisible.\nPress MIDDLE or !skill to summon Decoy. Use !extendedsight for wallhack");
 			MaxPossibleHP = GetConVarInt(SABOTEUR_HEALTH);
 			ClientData[client].SpecialLimit = GetConVarInt(SABOTEUR_MAX_BOMBS);
 //			ToggleNightVision(client);
@@ -853,6 +847,12 @@ public void useCustomCommand(char[] pluginName, int client, int entity, int type
 	Call_Finish();
 }
 
+public Action CmdUseSkill(int client, int args)
+{
+        useSpecialSkill(client, 0);
+        return Plugin_Handled;
+}
+
 public void useSpecialSkill(int client, int type)
 {
 	int skill = g_iPlayerSkill[client];
@@ -1299,7 +1299,7 @@ stock SetClientTempHealth(client, iValue)
 
 public void Event_ServerCvar( Event hEvent, const char[] sNamel, bool bDontBroadcast ) 
 {
-	if (GetConVarBool(healthModEnabled) == false) return;
+	if (GetConVarBool(HEALTH_MODIFIERS_ENABLED) == false) return;
 	
 	InitHealthModifiers();
 }
@@ -1604,7 +1604,7 @@ public Action:Event_WeaponFire(Handle:event, const String:name[], bool:dontBroad
 		if (RoundStarted == true) {
 			ClassHint = true;
 		}
-		PrintHintText(client,"You really should pick a class, 1,5,7 are good for beginners.");
+                PrintHintText(client,"You really should pick a class. Soldier, Medic, or Engineer are good for beginners.");
 		CreatePlayerClassMenu(client);
 	}
 
@@ -2398,7 +2398,7 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
 
 		}
 
-		if(parachuteEnabled.BoolValue == false) return Plugin_Continue;
+		if(GetConVarBool(ATHLETE_PARACHUTE_ENABLED) == false) return Plugin_Continue;
 
 		if(g_bParachute[client])
 		{

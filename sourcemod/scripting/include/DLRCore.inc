@@ -4,8 +4,8 @@
 #endif
 #define _DLRCore_included
 #define DLRCore_version "1.0.0"
-#define DLR_PLUGIN_NAME = "dlr_talents"
-#define DLR_PLUGIN_FILE = "dlr_talents.smx"
+#define DLR_PLUGIN_NAME "dlr_talents"
+#define DLR_PLUGIN_FILE "dlr_talents.smx"
 
 /**
  * Get player classname
@@ -65,7 +65,7 @@ native void FindSkillNameById(int skillId, char[] skillName, int size);
  * @param previousClass  Previous class of user
  * @noreturn
  */
-forward OnPlayerClassChange(client, className, previousClass);  
+forward OnPlayerClassChange(int client, int className, int previousClass);  
 
 /**
  * Called when player uses special skill

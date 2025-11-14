@@ -69,6 +69,8 @@ bool hasEffects[2048] = {false, ...};
 //static int initialAlpha[2048] = 255;
 //static RenderMode initialRender[2048] = RENDER_NORMAL;
 
+const int CLASS_SABOTEUR = 4;
+
 ConVar DeadRinger_EnableComm;
 ConVar DeadRinger_RechargeTime;
 ConVar DeadRinger_FakeWeaponTime;
@@ -161,10 +163,10 @@ public void OnPluginStart()
 	DeadRinger_CloakTime = CreateConVar("sm_l4d_dr_cloak_timelimit", "15", "Set the time limit the Dead Ringer cloaks the user for.", FCVAR_ARCHIVE, true, 0.0, true, 100.0);
 	DeadRinger_CorpseMode = CreateConVar("sm_l4d_dr_corpse_type", "0.0", "Toggle which corpse type to use for survivors. 0 = static, 1 = ragdoll, 2 = none.", FCVAR_ARCHIVE, true, 0.0, true, 2.0);
 	DeadRinger_Transmit = CreateConVar("sm_l4d_dr_hide_from_team", "1.0", "Hide cloaked users from their teammates?", FCVAR_ARCHIVE, true, 0.0, true, 1.0);
-	for (int client = 1; client <= MaxClients; client++) {
-		isTriggerable[client] = true;
-		isActive[client] = false;
-	}
+        for (int client = 1; client <= MaxClients; client++) {
+                isTriggerable[client] = false;
+                isActive[client] = false;
+        }
 	RegAdminCmd("sm_fd", DeadRinger_Command, ADMFLAG_SLAY, "Toggle the Dead Ringer.");
 	RegAdminCmd("sm_fd_ply", DeadRinger_Force_Command, ADMFLAG_SLAY, "Toggle the Dead Ringer on a specified player.");
 	RegAdminCmd("sm_cloak", HitMyself_Command, ADMFLAG_SLAY, "Manually activate the Cloak.");
@@ -304,10 +306,15 @@ public void OnPluginEnd()
 //					DLR
 // ====================================================================================================
 
+/*public void OnPlayerClassChange(int client, int newClass, int previousClass)
+{
+	isTriggerable[client] = (newClass == CLASS_SABOTEUR) ? 1 : 0;
+}
+*/
 public void OnSkillSelected(int iClient, int iClass)
 {
-	char szSkillName[32];
-	GetPlayerSkillName(iClient, szSkillName, sizeof(szSkillName));
+        char szSkillName[32];
+        GetPlayerSkillName(iClient, szSkillName, sizeof(szSkillName));
 }
 
 public int OnSpecialSkillUsed(int iClient, int skill, int type)

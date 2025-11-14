@@ -1,3 +1,9 @@
+
+
+#include <sourcemod>
+#include <sdktools>
+#include <sdkhooks>
+
 public Action:Command_Debug(client, args) {
 	
 	if (args < 1)
@@ -28,11 +34,11 @@ public Action:CmdClassInfo(client, args)
 }
 public Action:CmdModel(client, args) {
 
-	char arg1[128];
-	GetCmdArg(1, arg1, sizeof(arg1));
+	char sModel[128];
+	GetCmdArg(1, sModel, sizeof(sModel));
 
-	LMC_L4D2_SetTransmit(client, LMC_SetClientOverlayModel(client, arg1));
-	ReplyToCommand(client, "Changing model to %s", arg1);
+	LMC_L4D2_SetTransmit(client, LMC_SetClientOverlayModel(client, sModel));
+	ReplyToCommand(client, "Changing model to %s", sModel);
 	
 }
 public Action:CmdClassMenu(client, args)

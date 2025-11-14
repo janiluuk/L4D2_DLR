@@ -88,6 +88,10 @@
 	{
 		"en"		"Turrets are not allowed to spawn"
 	}
+	"Skill Hint"
+	{
+		"en"		"Press the class skill key (default middle mouse or type !skill) to open the turret menu."
+	}
 	"Reload Machine Gun"
 	{
 		"en"		"Your turret is out of ammo, please refill"

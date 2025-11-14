@@ -1,0 +1,5 @@
+To contribute to left_4_ai inside L4D2_DLR:
+- Keep plugin code in addons/sourcemod/scripting and include in /include.
+- Translations must be English-only unless explicitly needed.
+- No HUD changes are included in this PR per request.
+- Update AI chat prompts with a concise list of current DLR features so the assistant responds accurately.

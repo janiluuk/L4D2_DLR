@@ -1,3 +1,6 @@
+#include <sourcemod>
+#include <sdktools>
+#include <sdkhooks>
 
 bool GetPerkName(int client, const char[] name, int level, char[] result, int maxlen)
 {
@@ -136,15 +139,20 @@ public any Native_RegPerk(Handle plugin, int argc)
 char SlotIdToSlotClassname(int slotId, char[] result, int maxlen)
 {
 	char buffer[64] = "";
-	if(slotId < 0 || slotId >= g_SlotIndexes.Length)
-		return buffer;
+	if(slotId < 0 || slotId >= g_SlotIndexes.Length) {
+		GetNativeString(2, buffer, sizeof(buffer));
+
+		return;
+	}
 	
 	StringMap slot = g_SlotIndexes.Get(slotId);
-	if(!slot.GetString("#slotName", buffer, sizeof(buffer)))
-		return buffer;
-	
+	if(!slot.GetString("#slotName", buffer, sizeof(buffer))) {
+		return;
+	}
+
+	GetNativeString(2, buffer, sizeof(buffer));
+
 	strcopy(result, maxlen, buffer);
-	return buffer;
 }
 
 int SlotClassnameToSlotId(const char[] classname)
@@ -245,7 +253,7 @@ public Native_GetPlayerPerk(Handle:plugin, numParams)
 	return ClientData[client].GetPerk(name);
 }
 
-public any Native_GetAllPerks(Handle plugin, any argc)
+public Native_GetAllPerks(Handle plugin, any argc)
 {
 	return CloneHandle(g_AllPerks.Snapshot(), plugin);
 }

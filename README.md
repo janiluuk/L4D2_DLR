@@ -1,264 +1,56 @@
-# L4D2 DLR Talents
-This is anniversary update for the infamous DLR mode for Left 4 Dead 2. Original is from 2013.
-Brutal and fun alternative for modern co-op shooters and major upgrade for original game.
+# L4D2: Rage Edition
 
-Recommended play mode is Versus, but works also in other modes.
+A celebratory remix of Left 4 Dead 2 that turns every round into a playable action movie. Rage Edition keeps the co-op chaos you love and layers on bold classes, dramatic abilities, and a stack of quality-of-life touches that make the whole server feel alive.
 
-## Changes:
+## What you'll experience
+- **Playable heroes instead of plain survivors.** Pick a role, unlock its signature move with `!skill`, and swap at any time through the in-game menu.
+- **Mix-and-match perks.** Stack advantages, accept trade-offs, and discover combos that keep each run fresh.
+- **Instant clarity.** A toggleable HUD calls out kills, warnings, and supplies, while the guide menu explains every talent in clear language.
+- **Fast admin access.** Type `!adm` for spawn tools, debug switches, and quick clean-up options without leaving the fight.
+- **Hold-to-open game menu.** Press and hold ALT to pop up a full-screen selector with 3rd-person view, kit pickup, class change, music control, and more. Release the key and it disappears.
+- **Now playing overlay.** The active track title and playtime stay pinned to every menu page so the entire lobby knows what’s on the air.
 
-## Generic
+## Play your way
+### Soldier
+- Moves faster, shrugs off more hits, and slashes like a blender.
+- Aims and taps `!skill` to rain down an airstrike.
+- Flips night vision on or off whenever the fight slips into darkness.
 
-- Sourcemod 11 compatible
-- Rewrite for internal variable structure, variable naming and lot of faulty logic
-- Plugin support, adding new features should be a matter of implementing hooks to a plugin you want to add.
-- Underlying code has been separated into maintainable parts.
+### Athlete
+- Built for motion: sprint boosts, double jumps, and mid-air karate kicks.
+- Deploys a parachute to float over chaos or escape a wipe.
 
-## Gameplay
+### Commando
+- Tunes damage per weapon, reloads on instinct, and shrugs off tank knockdowns.
+- Builds rage meter to unleash a Berserk rush that melts specials.
 
-- Modular perk system that eventually replaces current hardcoded functionality.
-- Negative effect perks
-- Each plugin can be flexibly configured as one or many perks that users can acquire through player class
-- Combo support enables chained perk execution
-- Keybinding support
-- New playerclasses can be easily generated and configured
-- Class based custom skins!
-- New HUD interface, accomodates essential info, alerts, killcounter etc. Disabled by default.
-- Includes modifiers for adrenaline/pills/revive/heal durations.
-- Classes get notification if out of supplies.
-- More helpful class descriptions and help system.
-- Gun reload glitches fixed
-- Invisibility rewrite, it never really worked properly before.
-- Debug modes, dedicated admin menu and useful tools
+### Medic
+- Patches teammates in record time and blasts glowing heal orbs across the room.
+- Healed players get a reassuring glow so you always know who’s safe.
 
-## Class changes
+### Engineer
+- Drops upgrade packs, barricades chokepoints, and deploys turrets from an in-game shop.
+- Shields, door blocks, and “single turret mode” keep builds tidy.
 
-- Soldier has faster moving speed and takes less damage.
-- Soldier melee rate is ninja level.
-- Soldier can order airstrikes. (Requires included example plugin)
-- Athlete has faster moving speed and a parachute. configurable.
-- Athlete can do jump karate kicks to knock othes down.
-- Commando reload rate actually works now.
-- Commando has berzerk mode available, stay out of that guys way during it.
-- Commando damage modifiers are configurable per weapon, default one is used for rest.
-- Commando is immune to tank knockdowns
-- Commando can stomp downed infected
-- Medic has more options to spawn. Has faster healing and revival times.
-- Medic moves faster when in healing mode (crouched)
-- Medic can throw healing orbs
-- Announcement to other players when healing spot is active.
-- Players get notified when theyre being healed.
-- Players healed by medic have special glow
-- Default health for players without class configurable. Menu does not spam you if you don't choose a class.
-- Engineer spawns ready-to-use upgrade packs instead of deployable boxes.
-- Engineer now spawns 2 different types of turrets. 8 different ammo types for various situations. 
-- Engineer can spawn protective shield 
-- Engineer can now barricade open doors & windows. 
-- Turrets are smarter and bit more devastating. By default they can be blown up by infected.
-- Turrets have now more helpful notifications.
-- Turrets are by default non-blocking.
-- "Single turret mode" enables oldschool mode.
-- Engineer, medic and saboteur get countdown for next deployment when trying to deploy too early
-- Saboteur moves faster when crouched and shows visibility status.
-- Saboteur has visual effect on turning invisible and specific glow.
-- Saboteur has nightvision.
-- Redefined visual look and feedback with mines
-- Saboteur has 20 different types of mines with cool effects. You can assign 7 of them at one time. 
-- New types of mines include Antigravity, blackhole, freeze, vaporizer and many more. (Needs included grenades plugin example)
-- Mines do less damage to survivors. Standing really close to the mine can still incap.
-- Mines do more damage to infected, 1500hp. Some edge over tank
-- Mines glow now so players know to avoid the spot or lure someone to it.
-- Notifications on placing mines.
-- Warnings for players that go near armed mine
-- Countdown notification before mine becoming armed.
+### Saboteur
+- Sneaks with a Dead Ringer decoy, mines the map, and spots infected through walls on a timer.
+- Night vision and mine warnings help the whole team stay alert.
 
-## Roadmap
-- Cleaner UI, menu option to turn hint texts off. Common HUD component which manages, prioritizes and combines the hint texts properly.
-- Integrate game instructor UI to be utilized for counters, and other live indicators. 
-- Random Game modes: Melee only rounds, Jockey race. Horror movie mode with pitch black lights, common infected disabled and can only do damage by not seen by player.
-- Show player class above their head / in HUD (Using "Hats" plugin + eddect)
-- Saboteur can see infected outlines when in "predator mode". Instakill if manages to sneak up behind.
-- Smoker should have much more visible and thick cloud when gets killed.
-- Make turrets cfg option to allow having only 1 non destroyed turret at the time.
-- Rewrite for missile plugin to fit better with this one and improve their function.
-- Docker image with rcon web admin tool integrated and plug'n play server generation
-- Skill editor to generate new perks / classes.
-- Incap players can struggle with attacker on shared progressbar. if indicator goes back to zero, player is freed.
-- When incapacitated without supplies and you have kit available, ask survivor if want to consume it.
-- Revamp infected skills to match the added ones for survivors;
-- Infected can bite survivors, after defined about of time player turns into a witch for 30 seconds. If the witch gets killed, player gets killed, otherwise transform back to playable character.
-- Charger can drop survivor and continue running
-- Hunter can use boost for ultra long jumps. 
-- Jockey can make player shoot others with FF damage while riding. 
-- Smoker can shove opponent to any direction when pinned, e.g throw out of window.
-- Hunter can masquerade as survivor for 30 second time (Using LMC)
-- More suggestions welcome!
+## Toys, tricks, and server spice
+- **Prototype grenades** – Equip one and experiment with gravity wells, lightning storms, medic clouds, and more just by cycling the throw style.
+- **Music player** – Type `!music` to choose the soundtrack, skip songs, or go silent. Preferences stick with you between maps.
+- **Away toggle** – Need a breather? Mark yourself AFK directly from the menu and hop back in when ready.
+- **Multiple equipment mode** – Pick how forgiving pickups are, from classic single-use kits to double-tap weapon swaps.
+- **Voting hub** – Launch game mode and map votes without fumbling chat commands.
+- **Command parity** – Every feature also has an `sm_` console command so you can bind keys or build macros exactly how you like.
 
-See https://forums.alliedmods.net/showthread.php?t=273312 for more info
+## Soundtrack corner
+Drop a list of 44.1 kHz MP3s into the supplied music text files, point your fast-download host at them, and the plugin does the rest. First-time players can even hear a special welcome track if you enable the option.
 
-## Features available for testing
+## Admin corner
+Need to tidy the battlefield? `!adm` opens a dedicated panel with spawn helpers, restart controls, god mode, and slow-motion toggles. Everything is grouped for quick decisions mid-round.
 
-### New saboteur class. 
+## Ready to tinker?
+Rage Edition is built from modular SourceMod plugins, so you can add new talents, swap out effects, or write your own class packs without touching the core. Check the `sourcemod/scripting` folder for clean, well-documented examples.
 
-- Hold crouch 4 sec, and you'll get 20 sec total invisibility with decoy outline.
-- Middle click to activate cloak mode 30 sec. If you get pinned, you leave a doppelganger ragdoll with fake weapon for them to toy with and have 10 seconds invisibility to make escape without ability to shoot.
-- During cloak you can see outlines of all special infected.
-- 7 minetypes to plant. Selection of best variation assigned as default.
-- Nightvision
-
-### Misc
-
-- Each class have now own playermodel. Current ones are guidelines, final models TBD
--:3rd person with saveable preferences. Either always, melee only and disabled.
-- Soldier now throws realistic marker grenade for airstrike
-- Custom music player, includes free Doom 2 heavymetal remake album in playlist.
-
-### Music player controls
-
-Use the in-game menu (open with `sm_dlr`) and navigate to **Game Options** to control the music player.
-
-- **4. Music player** – play or pause the current track. The track name is echoed to chat after each toggle.
-- **5. Music Volume** – set the volume from 0 to 10 without resuming paused music.
-- **6. Next track** – skip to the next song and print its title.
-
-Opening the menu or changing any setting always prints the current track name so players know what is playing. If background music is enabled, map-specific ambient sounds from `sourcemod/configs/ambient_sounds.cfg` will automatically play whenever the playlist is idle.
-
-## Adding a plugin
-
-Adding new plugin requires including DLRCore.sp file, and implementing following methods:
-```
-/**
- * Called when player changed class
- *
- * @param client         The client index of the player playing tetris.
- * @param className      Classname that user just selected
- * @param previousClass  Previous class of user
- * @noreturn
- */
-forward OnPlayerClassChange(client, className, previousClass);  
-
-/**
- * Called when player uses special skill. 
- * Plugin should react to this to initiate the skill, then call either or OnSpecialSkillFail / OnSpecialSkillSuccess
- * @param client         The client index of the player playing tetris.
- * @param skillName      Skill that user just used
- * @noreturn
- */
-forward OnSpecialSkillUsed(client, skillName);  
-
-
-/**
- * Called when player has successfully used special skill. 
- * This is required for plugin to implement
- *
- * @param client         The client index of the player playing tetris.
- * @param className      Skill that user just used
- * @noreturn
- */
-native void OnSpecialSkillSuccess(int client, char[] skillName);  
-
-/**
- * Called when player has failed using special skill. This prevents from affecting the inventory.
- *
- * @param client         The client index of the player playing tetris.
- * @param className      Skill that user just used
- * @param reason         Reason for failure
- * @noreturn
- */
-native void OnSpecialSkillFail(int client, char[] skillName, char[] reason);  
-
-/**
- * Register skill from plugin
- *
- * @param client         The client index of the player playing tetris.
- * @param className      Skill that user just used
- * @param reason         Reason for failure
- * @noreturn
- */
-native int RegisterDLRSkill(char[] skillName);  
-
-``` 
-
-Native helper methods that are available:
-
-```
-
-/**
- * Called when player uses special skill. 
- * Plugin should react to this to initiate the skill, then call either or OnSpecialSkillFail / OnSpecialSkillSuccess
- * @param skillName         The client index of the player playing tetris.
- * @param skillId     Assign ID to this var
- * @noreturn
- */
-forward FindSkillIdByName(skillName, skillId);  
-
-/**
- * Get player classname
- *
- * @param client  Client index.
- * @return        Classname
- */
-native int:GetPlayerClassName(client);
-
-``` 
-
-Add DLRCore.sp in your include folder and make sure you have dlr_talents.smx available.
-Include this in the plugin file header that you want to implement
-
-
-```
-/****************************************************/
-#tryinclude <DLRCore>
-#if !defined _DLRCore_included
-	// Optional native from DLR Talents
-	native void OnSpecialSkillSuccess(int client, char[] skillName);
-	native void OnSpecialSkillFail(int client, char[] skillName, char[] reason);
-	native void GetPlayerSkillName(int client, char[] skillName, int size);
-	native int  RegisterDLRSkill(char[] skillName, 0);  
-#endif
-static bool DLR_Available = false;
-#define PLUGIN_SKILL_NAME "Plugin Name"
-/****************************************************/
-``` 
-
-Include these functions;
-``` 
-public void DLR_OnPluginState(int pluginstate)
-{
-	DLR_Available = IntToBool(pluginstate);
-	g_iClassID = DLR_Available ? RegisterDLRSkill(PLUGIN_SKILL_NAME, 0) : -1;
-    ....
-}
-
-public void OnPluginStart()
-{
-....
-	if (DLR_Available) {
-		g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME);
-}
-
-public void OnSpecialSkillUsed(int iClient, int skill)
-{
-	if (skill == FindSkillIdByName(PLUGIN_SKILL_NAME) {
-
-		CMD_MainMenu(iClient, 0);
-	}
-}
-public void OnSpecialSkillSuccess(int iClient, int skill)
-{
-	if (skill == FindSkillIdByName(PLUGIN_SKILL_NAME) {
-
-		CMD_MainMenu(iClient, 0);
-	}
-}
-public void OnSpecialSkillFail(int iClient, int skill, char[] reason)
-{
-	if (skill == FindSkillIdByName(PLUGIN_SKILL_NAME) {
-		CMD_MainMenu(iClient, 0);
-	}
-}
-
-
-```
-
-See Multiturret implementation as example
-
+Grab the files, drop them on your server, and let the rage weekend begin.

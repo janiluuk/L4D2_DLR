@@ -1,6 +1,6 @@
 /*
 *	Left 4 DHooks Direct
-*	Copyright (C) 2025 Silvers
+*	Copyright (C) 2023 Silvers
 *
 *	This program is free software: you can redistribute it and/or modify
 *	it under the terms of the GNU General Public License as published by
@@ -20,8 +20,6 @@
  #endinput
 #endif
 #define _l4d_anim_included
-
-#pragma newdecls required
 
 #include <sdktools>
 #include <sdkhooks>
