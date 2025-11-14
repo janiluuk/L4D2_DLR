@@ -60,7 +60,7 @@ jobs:
 
       - name: Download SourceMod ${{ matrix.sm_version }}
         shell: bash
-        run: |https://sm.alliedmods.net/smdrop/1.11/sourcemod-1.11.0-git6970-linux.tar.gz
+        run: |
           if [ "${{ runner.os }}" = "Windows" ]; then
             wget -nv https://sm.alliedmods.net/smdrop/${{ matrix.sm_version }}/sourcemod-${{ matrix.sm_version }}-windows.zip" -O sm.zip
             unzip sm.zip -d sourcemod
@@ -85,9 +85,8 @@ jobs:
             spcompbin="${spcompbin}.exe"
           fi
           for sp in sourcemod/scripting/*.sp; do
-            "$spcompbin" -v0 "$sp" -o "package/addons/sourcemod/plugins/$(basename "${sp%.sp}.smx")"
+            "$spcompbin" -i ${{ github.workspace }}/sourcemod/addons/sourcemod/scripting/include -v0 "$sp" -o "package/addons/sourcemod/plugins/$(basename "${sp%.sp}.smx")"
           done
-
       - name: Uploading package
         uses: actions/upload-artifact@v4
         with:
