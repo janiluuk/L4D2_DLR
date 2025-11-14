@@ -619,7 +619,6 @@ public int MenuHandler_MenuMusic(Menu menu, MenuAction action, int param1, int p
         case MenuAction_End:
         {
             delete menu;
-            break;
         }
         case MenuAction_Select:
         {
@@ -635,7 +634,6 @@ public int MenuHandler_MenuMusic(Menu menu, MenuAction action, int param1, int p
                 case 5:
                 {
                     StopCurrentSound(client);
-                    break;
                 }
                 case 6:
                 {
@@ -652,7 +650,6 @@ public int MenuHandler_MenuMusic(Menu menu, MenuAction action, int param1, int p
                         EmitSoundCustom(client, sPath);
                     }
 
-                    break;
                 }
                 case -1:
                 {
@@ -662,7 +659,6 @@ public int MenuHandler_MenuMusic(Menu menu, MenuAction action, int param1, int p
             }
 
             ShowMusicMenu(client);
-            break;
         }
     }
 
@@ -704,7 +700,6 @@ public int MenuHandler_MenuSettings(Menu menu, MenuAction action, int param1, in
         case MenuAction_End:
         {
             delete menu;
-            break;
         }
         case MenuAction_Cancel:
         {
@@ -713,7 +708,6 @@ public int MenuHandler_MenuSettings(Menu menu, MenuAction action, int param1, in
                 ShowMusicMenu(param1);
             }
 
-            break;
         }
         case MenuAction_Select:
         {
@@ -733,24 +727,20 @@ public int MenuHandler_MenuSettings(Menu menu, MenuAction action, int param1, in
                 case 8:
                 {
                     FakeClientCommand(client, "sm_music -1");
-                    break;
                 }
                 case 9:
                 {
                     g_dlrCookie[client] ^= 4;
                     SaveCookie(client);
-                    break;
                 }
                 case 10:
                 {
                     g_dlrCookie[client] ^= 2;
                     SaveCookie(client);
-                    break;
                 }
             }
 
             ShowMenuSettings(client);
-            break;
         }
     }
 
@@ -1046,7 +1036,6 @@ void GetTrackDisplayName(const char[] path, char[] output, int maxlen)
         if (output[i] == '.')
         {
             output[i] = '\0';
-            break;
         }
     }
 }
