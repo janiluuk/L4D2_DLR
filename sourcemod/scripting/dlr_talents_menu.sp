@@ -152,28 +152,21 @@ public void ExtraMenu_OnSelect(int client, int menu_id, int option, int value)
         return;
     }
 
-    switch (option)
+    if (option == MENU_OPTION_GET_KIT)
     {
-        case MENU_OPTION_GET_KIT:
-        {
-            HandleKitSelection(client);
-            break;
-        }
-        case MENU_OPTION_SET_AWAY:
-        {
-            ClientCommand(client, "sm_afk");
-            break;
-        }
-        case MENU_OPTION_CHANGE_CLASS:
-        {
-            ClientCommand(client, "sm_class");
-            break;
-        }
-        case MENU_OPTION_HUD:
-        {
-            HandleHudSelection(client, value);
-            break;
-        }
+        HandleKitSelection(client);
+    }
+    else if (option == MENU_OPTION_SET_AWAY)
+    {
+        ClientCommand(client, "sm_afk");
+    }
+    else if (option == MENU_OPTION_CHANGE_CLASS)
+    {
+        ClientCommand(client, "sm_class");
+    }
+    else if (option == MENU_OPTION_HUD)
+    {
+        HandleHudSelection(client, value);
     }
 }
 
