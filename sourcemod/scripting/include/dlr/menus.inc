@@ -4,7 +4,6 @@ bool g_bNB;
 #include <sourcemod>
 #include <sdktools>
 #include <sdkhooks>
-#include <talents>
 
 ///////////////////////////////////////////////////////////////////////////////////
 // Class menu

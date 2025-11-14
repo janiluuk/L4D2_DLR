@@ -65,7 +65,7 @@ native void FindSkillNameById(int skillId, char[] skillName, int size);
  * @param previousClass  Previous class of user
  * @noreturn
  */
-forward OnPlayerClassChange(client, className, previousClass);  
+forward OnPlayerClassChange(int client, int className, int previousClass);  
 
 /**
  * Called when player uses special skill
