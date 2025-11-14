@@ -38,13 +38,13 @@ enum struct skillAction {
 
 
 enum struct skillSet {
-	int skillSetId
-	char skillSetName[32]
-	char skillSetDescription[128]
-	char skillISetdentifier[32]
-	int maxPlayers
-	int	skillSetType 
-	char menuIdentifier[16]
+	int skillSetId,
+	char skillSetName[32],
+	char skillSetDescription[128],
+	char skillISetdentifier[32],
+	int maxPlayers,
+	int	skillSetType,
+	char menuIdentifier[16,]
 	int actions[16]
 }
 
