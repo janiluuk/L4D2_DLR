@@ -46,7 +46,7 @@ jobs:
             wget -nv "https://www.sourcemod.net/smdrop/1.11/sourcemod-1.11.0-git6453-windows.zip" -O sm.zip
             unzip sm.zip -d sm
           else
-            wget -nv "https://www.sourcemod.net/smdrop/1.11/sourcemod-1.11.0-git6878-linux.tar.gz" -O sm.tar.gz
+            wget -nv "https://sm.alliedmods.net/smdrop/1.12/sourcemod-1.12.0-git7219-linux.tar.gz" -O sm.tar.gz
             mkdir -p sm
             tar -xzf sm.tar.gz -C sm
           fi
