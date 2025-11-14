@@ -709,7 +709,7 @@ public void DLR_OnPluginState(char[] plugin, int pluginstate)
 		g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
 
 	}
-	else if( "dlr_talents" && pluginstate == 0)
+	else if(StrEqual(plugin, "dlr_talents") && pluginstate == 0)
 	{
 		SetConVarBool(g_hCvarAllow, false);
 		DLR_Available = false;
