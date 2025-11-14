@@ -15,8 +15,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
-            os_short: linux
           - os: ubuntu-22.04
             os_short: oldlinux
           - os: windows-latest
@@ -44,7 +42,7 @@ jobs:
         shell: bash
         run: |
           if [ "${{ runner.os }}" = "Windows" ]; then
-            wget -nv "https://www.sourcemod.net/smdrop/1.11/sourcemod-1.11.0-git6453-windows.zip" -O sm.zip
+            wget -nv "https://sm.alliedmods.net/smdrop/1.12/sourcemod-1.12.0-git7219-windows.zip" -O sm.zip
             unzip sm.zip -d sm
           else
             wget -nv "https://www.sourcemod.net/smdrop/1.11/sourcemod-1.11.0-git6878-linux.tar.gz" -O sm.tar.gz
