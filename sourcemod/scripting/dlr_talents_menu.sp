@@ -1,4 +1,3 @@
-
 #define PLUGIN_VERSION "0.3"
 #include <sourcemod>
 #include <extra_menu>
@@ -6,8 +5,10 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-int g_iMenuID;
+bool g_bExtraMenuLoaded;
 int g_iGuideMenuID;
+int g_iClientMenuID[MAXPLAYERS + 1];
+int g_iKitUsesLeft[MAXPLAYERS + 1];
 
 public Plugin myinfo =
 {
@@ -22,99 +23,16 @@ public void OnPluginStart()
 {
     RegAdminCmd("sm_dlr", CmdDLRMenu, ADMFLAG_ROOT);
     RegAdminCmd("sm_guide", CmdDLRGuideMenu, ADMFLAG_ROOT);
+
+    ResetAllClientData();
 }
 
 public void OnLibraryAdded(const char[] name)
 {
     if (strcmp(name, "extra_menu") == 0)
     {
-        bool buttons_nums = false;
-
-        int menu_id;
-        menu_id = ExtraMenu_Create();
-
-        ExtraMenu_AddEntry(menu_id, "GAME MENU:", MENU_ENTRY);
-        if (!buttons_nums)
-            ExtraMenu_AddEntry(menu_id, "Use W/S to move row and A/D to select", MENU_ENTRY);
-        ExtraMenu_AddEntry(menu_id, " ", MENU_ENTRY);
-        ExtraMenu_AddEntry(menu_id, "1. Get Kit (1 left)", MENU_SELECT_LIST);
-        ExtraMenu_AddOptions(menu_id, "Medic kit|Rambo kit|Counter-terrorist kit|Ninja kit");
-
-        ExtraMenu_AddEntry(menu_id, "2. Set yourself away", MENU_SELECT_ONLY);
-        ExtraMenu_AddEntry(menu_id, "3. Select team", MENU_SELECT_ONLY);
-        ExtraMenu_AddEntry(menu_id, "4. Change class", MENU_SELECT_LIST);
-
-        ExtraMenu_AddEntry(menu_id, "5. See your ranking", MENU_SELECT_ONLY);
-        ExtraMenu_AddEntry(menu_id, "6. Vote for custom map", MENU_SELECT_ADD, false, 250, 10, 100, 300);
-        ExtraMenu_AddEntry(menu_id, "7. Vote for gamemode", MENU_SELECT_LIST);
-        ExtraMenu_AddOptions(menu_id, "Off|Escort run|Deathmatch|Race Jockey");
-        ExtraMenu_NewPage(menu_id);
-
-        ExtraMenu_AddEntry(menu_id, "GAME OPTIONS:", MENU_ENTRY);
-        if (!buttons_nums)
-            ExtraMenu_AddEntry(menu_id, "Use W/S to move row and A/D to select", MENU_ENTRY);
-        ExtraMenu_AddEntry(menu_id, " ", MENU_ENTRY);
-        ExtraMenu_AddEntry(menu_id, "1. 3rd person mode: _OPT_", MENU_SELECT_LIST);
-        ExtraMenu_AddOptions(menu_id, "Off|Melee Only|Always");
-        ExtraMenu_AddEntry(menu_id, "2. Multiple Equipment Mode: _OPT_", MENU_SELECT_LIST);
-        ExtraMenu_AddOptions(menu_id, "Off|Single Tap|Double tap");
-        ExtraMenu_AddEntry(menu_id, "3. HUD: _OPT_", MENU_SELECT_ONOFF);
-        ExtraMenu_AddEntry(menu_id, "4. Music player: _OPT_", MENU_SELECT_ONOFF);
-        ExtraMenu_AddEntry(menu_id, "5. Music Volume: _OPT_", MENU_SELECT_LIST);
-        ExtraMenu_AddOptions(menu_id, "□□□□□□□□□□|■□□□□□□□□□|■■□□□□□□□□|■■■□□□□□□□|■■■■□□□□□□|■■■■■□□□□□|■■■■■■□□□□|■■■■■■■□□□|■■■■■■■■□□|■■■■■■■■■□|■■■■■■■■■■");
-
-        ExtraMenu_AddEntry(menu_id, "6. Change Character: _OPT_", MENU_SELECT_ONOFF);
-        ExtraMenu_AddEntry(menu_id, " ", MENU_ENTRY);
-
-        ExtraMenu_NewPage(menu_id);
-
-        ExtraMenu_AddEntry(menu_id, "ADMIN MENU:", MENU_ENTRY);
-
-        ExtraMenu_AddEntry(menu_id, "1. Spawn Items: _OPT_", MENU_SELECT_LIST);
-        ExtraMenu_AddOptions(menu_id, "New cabinet|New weapon|Special Infected|Special tank");
-        ExtraMenu_AddEntry(menu_id, "2. Reload _OPT_", MENU_SELECT_LIST);
-        ExtraMenu_AddOptions(menu_id, "Map|DLR Plugins|All plugins|Restart server");
-        ExtraMenu_AddEntry(menu_id, "3. Manage skills", MENU_SELECT_ONLY, true);
-        ExtraMenu_AddEntry(menu_id, "4. Manage perks", MENU_SELECT_ONLY, true);
-        ExtraMenu_AddEntry(menu_id, "5. Apply effect on player", MENU_SELECT_ONLY, true);
-
-        ExtraMenu_AddEntry(menu_id, " ", MENU_ENTRY);
-        ExtraMenu_AddEntry(menu_id, "DEBUG COMMANDS:", MENU_ENTRY);
-        ExtraMenu_AddEntry(menu_id, "1. Debug mode: _OPT_", MENU_SELECT_LIST);
-        ExtraMenu_AddOptions(menu_id, "Off|Log to file|Log to chat|Tracelog to chat");
-        ExtraMenu_AddEntry(menu_id, "2. Halt game: _OPT_", MENU_SELECT_LIST);
-        ExtraMenu_AddOptions(menu_id, "Off|Only survivors|All");
-        ExtraMenu_AddEntry(menu_id, "3. Infected spawn: _OPT_", MENU_SELECT_ONOFF, false, 1);
-        ExtraMenu_AddEntry(menu_id, "4. God mode: _OPT_", MENU_SELECT_ONOFF, false, 1);
-        ExtraMenu_AddEntry(menu_id, "5. Remove weapons from map", MENU_SELECT_ONLY);
-        ExtraMenu_AddEntry(menu_id, "6. Game speed: _OPT_", MENU_SELECT_LIST);
-        ExtraMenu_AddOptions(menu_id, "□□□□□□□□□□|■□□□□□□□□□|■■□□□□□□□□|■■■□□□□□□□|■■■■□□□□□□|■■■■■□□□□□|■■■■■■□□□□|■■■■■■■□□□|■■■■■■■■□□|■■■■■■■■■□|■■■■■■■■■■");
-        ExtraMenu_AddEntry(menu_id, " ", MENU_ENTRY);
-
-        g_iMenuID = menu_id;
-
-        int guide_menu_id;
-        guide_menu_id = ExtraMenu_Create();
-
-        ExtraMenu_AddEntry(guide_menu_id, "DLR GUIDE:", MENU_ENTRY);
-        ExtraMenu_AddEntry(guide_menu_id, "Use W/S to move row and A/D to select", MENU_ENTRY);
-        ExtraMenu_AddEntry(guide_menu_id, "!skill triggers your class ability", MENU_ENTRY);
-        ExtraMenu_AddEntry(guide_menu_id, "Soldier: aim and !skill for an airstrike", MENU_ENTRY);
-        ExtraMenu_AddEntry(guide_menu_id, "Commando: build rage then !skill to berserk", MENU_ENTRY);
-        ExtraMenu_AddEntry(guide_menu_id, "Engineer: !skill opens a turret menu", MENU_ENTRY);
-        ExtraMenu_AddEntry(guide_menu_id, " ", MENU_ENTRY);
-        ExtraMenu_AddEntry(guide_menu_id, "1. What is it", MENU_ENTRY, false, 250, 10, 100, 300);
-        ExtraMenu_AddEntry(guide_menu_id, "2. Features", MENU_SELECT_LIST);
-        ExtraMenu_AddOptions(guide_menu_id, "Common|Infected|Survivors");
-        ExtraMenu_AddEntry(guide_menu_id, "3. How to", MENU_SELECT_LIST);
-        ExtraMenu_AddOptions(guide_menu_id, "Missiles|Turrets|Special skills");
-        ExtraMenu_AddEntry(guide_menu_id, "4. Gameplay Tips", MENU_SELECT_ONLY);
-        ExtraMenu_AddEntry(guide_menu_id, "5. Survivor classes", MENU_SELECT_ONLY);
-        ExtraMenu_AddEntry(guide_menu_id, "6. Custom game modes", MENU_SELECT_ONLY);
-        ExtraMenu_AddEntry(guide_menu_id, "7. Add DLR servers to your serverlist", MENU_SELECT_ONLY);
-        ExtraMenu_NewPage(guide_menu_id);
-
-        g_iGuideMenuID = guide_menu_id;
+        g_bExtraMenuLoaded = true;
+        g_iGuideMenuID = BuildGuideMenu();
     }
 }
 
@@ -122,51 +40,81 @@ public void OnLibraryRemoved(const char[] name)
 {
     if (strcmp(name, "extra_menu") == 0)
     {
-        OnPluginEnd();
+        DeleteGuideMenu();
+        DeleteAllClientMenus();
+        g_bExtraMenuLoaded = false;
     }
 }
 
 public void OnPluginEnd()
 {
-    ExtraMenu_Delete(g_iMenuID);
-    ExtraMenu_Delete(g_iGuideMenuID);
+    DeleteGuideMenu();
+    DeleteAllClientMenus();
 }
 
 Action CmdDLRMenu(int client, int args)
 {
-    PrintHintText(client, "Use W/S to move and A/D to select options.");
-    ExtraMenu_Display(client, g_iMenuID, MENU_TIME_FOREVER);
+    if (!IsValidClient(client) || !g_bExtraMenuLoaded)
+    {
+        return Plugin_Handled;
+    }
+
+    int menu_id = BuildGameMenu(client);
+    if (menu_id)
+    {
+        PrintHintText(client, "Use W/S to move and A/D to select options.");
+        ExtraMenu_Display(client, menu_id, MENU_TIME_FOREVER);
+    }
 
     return Plugin_Handled;
 }
 
 Action CmdDLRGuideMenu(int client, int args)
 {
+    if (!IsValidClient(client) || !g_bExtraMenuLoaded || g_iGuideMenuID == 0)
+    {
+        return Plugin_Handled;
+    }
+
     PrintHintText(client, "Use W/S to move and A/D to select options.");
     ExtraMenu_Display(client, g_iGuideMenuID, MENU_TIME_FOREVER);
 
     return Plugin_Handled;
 }
 
-public void DLRMenu_OnSelect(int client, int menu_id, int option, int value)
+public void ExtraMenu_OnSelect(int client, int menu_id, int option, int value)
 {
-    if (menu_id == g_iMenuID)
+    if (!IsValidClient(client))
     {
-        PrintToChatAll("SELECTED %N Option: %d Value: %d", client, option, value);
+        return;
+    }
 
-        switch (option)
+    if (menu_id == g_iGuideMenuID)
+    {
+        return;
+    }
+
+    if (menu_id != g_iClientMenuID[client])
+    {
+        return;
+    }
+
+    switch (option)
+    {
+        case MENU_OPTION_GET_KIT:
         {
-            case 0: ClientCommand(client, "sm_godmode @me");
-            case 1: ClientCommand(client, "sm_noclip @me");
-            case 2: ClientCommand(client, "sm_beacon @me");
-            case 3: PrintToChat(client, "Speed changed to %d", value);
-            case 4: PrintToChat(client, "Difficulty to %d", value);
-            case 5: PrintToChat(client, "Tester to %d", value);
-            case 6: FakeClientCommand(client, "sm_slay @me");
-            case 7: PrintToChat(client, "Default value changed to %d", value);
-            case 8: PrintToChat(client, "Close after use %d", value);
-            case 9: PrintToChat(client, "Meter value %d", value);
-            case 10, 11, 12: PrintToChat(client, "Second page option %d", option - 9);
+            HandleKitSelection(client);
+            break;
+        }
+        case MENU_OPTION_SET_AWAY:
+        {
+            ClientCommand(client, "sm_afk");
+            break;
+        }
+        case MENU_OPTION_CHANGE_CLASS:
+        {
+            ClientCommand(client, "sm_class");
+            break;
         }
     }
 }
@@ -182,4 +130,202 @@ public void DLRGuideMenu_OnSelect(int client, int menu_id, int option, int value
             // foobar
         }
     }
+}
+
+enum MenuOptions
+{
+    MENU_OPTION_3RD_PERSON,
+    MENU_OPTION_GET_KIT,
+    MENU_OPTION_CHANGE_CLASS,
+    MENU_OPTION_SET_AWAY,
+    MENU_OPTION_SELECT_TEAM,
+    MENU_OPTION_CHANGE_CHARACTER,
+    MENU_OPTION_SEE_RANKING,
+    MENU_OPTION_VOTE_GAMEMODE,
+    MENU_OPTION_VOTE_CUSTOM_MAP,
+    MENU_OPTION_MULTIPLE_EQUIPMENT,
+    MENU_OPTION_HUD,
+    MENU_OPTION_MUSIC_PLAYER,
+    MENU_OPTION_MUSIC_VOLUME
+};
+
+void ResetAllClientData()
+{
+    for (int i = 1; i <= MaxClients; i++)
+    {
+        g_iClientMenuID[i] = 0;
+        g_iKitUsesLeft[i] = 1;
+    }
+}
+
+public void OnClientPutInServer(int client)
+{
+    if (client > 0 && client <= MaxClients)
+    {
+        g_iKitUsesLeft[client] = 1;
+    }
+}
+
+public void OnClientDisconnect(int client)
+{
+    if (client > 0 && client <= MaxClients)
+    {
+        if (g_iClientMenuID[client] != 0 && ExtraMenuAvailable())
+        {
+            ExtraMenu_Delete(g_iClientMenuID[client]);
+            g_iClientMenuID[client] = 0;
+        }
+
+        g_iKitUsesLeft[client] = 1;
+    }
+}
+
+int BuildGuideMenu()
+{
+    int guide_menu_id = ExtraMenu_Create();
+
+    ExtraMenu_AddEntry(guide_menu_id, "DLR GUIDE:", MENU_ENTRY);
+    ExtraMenu_AddEntry(guide_menu_id, "Use W/S to move row and A/D to select", MENU_ENTRY);
+    ExtraMenu_AddEntry(guide_menu_id, "!skill triggers your class ability", MENU_ENTRY);
+    ExtraMenu_AddEntry(guide_menu_id, "Soldier: aim and !skill for an airstrike", MENU_ENTRY);
+    ExtraMenu_AddEntry(guide_menu_id, "Commando: build rage then !skill to berserk", MENU_ENTRY);
+    ExtraMenu_AddEntry(guide_menu_id, "Engineer: !skill opens a turret menu", MENU_ENTRY);
+    ExtraMenu_AddEntry(guide_menu_id, " ", MENU_ENTRY);
+    ExtraMenu_AddEntry(guide_menu_id, "1. What is it", MENU_ENTRY, false, 250, 10, 100, 300);
+    ExtraMenu_AddEntry(guide_menu_id, "2. Features", MENU_SELECT_LIST);
+    ExtraMenu_AddOptions(guide_menu_id, "Common|Infected|Survivors");
+    ExtraMenu_AddEntry(guide_menu_id, "3. How to", MENU_SELECT_LIST);
+    ExtraMenu_AddOptions(guide_menu_id, "Missiles|Turrets|Special skills");
+    ExtraMenu_AddEntry(guide_menu_id, "4. Gameplay Tips", MENU_SELECT_ONLY);
+    ExtraMenu_AddEntry(guide_menu_id, "5. Survivor classes", MENU_SELECT_ONLY);
+    ExtraMenu_AddEntry(guide_menu_id, "6. Custom game modes", MENU_SELECT_ONLY);
+    ExtraMenu_AddEntry(guide_menu_id, "7. Add DLR servers to your serverlist", MENU_SELECT_ONLY);
+    ExtraMenu_NewPage(guide_menu_id);
+
+    return guide_menu_id;
+}
+
+int BuildGameMenu(int client)
+{
+    if (!g_bExtraMenuLoaded)
+    {
+        return 0;
+    }
+
+    if (g_iClientMenuID[client] != 0)
+    {
+        ExtraMenu_Delete(g_iClientMenuID[client]);
+        g_iClientMenuID[client] = 0;
+    }
+
+    int menu_id = ExtraMenu_Create();
+
+    ExtraMenu_AddEntry(menu_id, "GAME MENU:", MENU_ENTRY);
+    ExtraMenu_AddEntry(menu_id, "Use W/S to move row and A/D to select", MENU_ENTRY);
+    ExtraMenu_AddEntry(menu_id, " ", MENU_ENTRY);
+
+    ExtraMenu_AddEntry(menu_id, "1. 3rd person mode: _OPT_", MENU_SELECT_LIST);
+    ExtraMenu_AddOptions(menu_id, "Off|Melee Only|Always");
+
+    char sBuffer[64];
+    Format(sBuffer, sizeof(sBuffer), "2. Get Kit (%d left)", g_iKitUsesLeft[client]);
+    ExtraMenu_AddEntry(menu_id, sBuffer, MENU_SELECT_LIST);
+    ExtraMenu_AddOptions(menu_id, "Medic kit|Rambo kit|Counter-terrorist kit|Ninja kit");
+
+    ExtraMenu_AddEntry(menu_id, "3. Change class", MENU_SELECT_ONLY);
+    ExtraMenu_AddEntry(menu_id, "4. Set yourself away", MENU_SELECT_ONLY);
+    ExtraMenu_AddEntry(menu_id, "5. Select team", MENU_SELECT_ONLY);
+    ExtraMenu_AddEntry(menu_id, "6. Change character", MENU_SELECT_ONOFF);
+    ExtraMenu_AddEntry(menu_id, "7. See your ranking", MENU_SELECT_ONLY);
+
+    ExtraMenu_AddEntry(menu_id, " ", MENU_ENTRY);
+    ExtraMenu_AddEntry(menu_id, "MATCH VOTES:", MENU_ENTRY);
+    ExtraMenu_AddEntry(menu_id, "Use W/S to move row and A/D to select", MENU_ENTRY);
+    ExtraMenu_AddEntry(menu_id, "8. Vote for gamemode", MENU_SELECT_LIST);
+    ExtraMenu_AddOptions(menu_id, "Off|Escort run|Deathmatch|Race Jockey");
+    ExtraMenu_AddEntry(menu_id, "9. Vote for custom map", MENU_SELECT_ADD, false, 250, 10, 100, 300);
+
+    ExtraMenu_NewPage(menu_id);
+
+    ExtraMenu_AddEntry(menu_id, "GAME OPTIONS:", MENU_ENTRY);
+    ExtraMenu_AddEntry(menu_id, "Use W/S to move row and A/D to select", MENU_ENTRY);
+    ExtraMenu_AddEntry(menu_id, " ", MENU_ENTRY);
+    ExtraMenu_AddEntry(menu_id, "1. Multiple Equipment Mode: _OPT_", MENU_SELECT_LIST);
+    ExtraMenu_AddOptions(menu_id, "Off|Single Tap|Double tap");
+    ExtraMenu_AddEntry(menu_id, "2. HUD: _OPT_", MENU_SELECT_ONOFF);
+    ExtraMenu_AddEntry(menu_id, "3. Music player: _OPT_", MENU_SELECT_ONOFF);
+    ExtraMenu_AddEntry(menu_id, "4. Music Volume: _OPT_", MENU_SELECT_LIST);
+    ExtraMenu_AddOptions(menu_id, "□□□□□□□□□□|■□□□□□□□□□|■■□□□□□□□□|■■■□□□□□□□|■■■■□□□□□□|■■■■■□□□□□|■■■■■■□□□□|■■■■■■■□□□|■■■■■■■□□|■■■■■■■■■□|■■■■■■■■■■");
+    ExtraMenu_AddEntry(menu_id, " ", MENU_ENTRY);
+
+    g_iClientMenuID[client] = menu_id;
+
+    return menu_id;
+}
+
+bool ExtraMenuAvailable()
+{
+    return LibraryExists("extra_menu");
+}
+
+void DeleteGuideMenu()
+{
+    if (g_iGuideMenuID != 0 && ExtraMenuAvailable())
+    {
+        ExtraMenu_Delete(g_iGuideMenuID);
+        g_iGuideMenuID = 0;
+    }
+    else if (g_iGuideMenuID != 0)
+    {
+        g_iGuideMenuID = 0;
+    }
+}
+
+void DeleteAllClientMenus()
+{
+    for (int i = 1; i <= MaxClients; i++)
+    {
+        if (g_iClientMenuID[i] != 0 && ExtraMenuAvailable())
+        {
+            ExtraMenu_Delete(g_iClientMenuID[i]);
+            g_iClientMenuID[i] = 0;
+        }
+        else if (g_iClientMenuID[i] != 0)
+        {
+            g_iClientMenuID[i] = 0;
+        }
+    }
+}
+
+void HandleKitSelection(int client)
+{
+    if (g_iKitUsesLeft[client] <= 0)
+    {
+        PrintToChat(client, "[DLR] You have already collected your kit.");
+        RefreshClientMenu(client);
+        return;
+    }
+
+    g_iKitUsesLeft[client]--;
+    ClientCommand(client, "sm_kit");
+    RefreshClientMenu(client);
+}
+
+void RefreshClientMenu(int client)
+{
+    if (!g_bExtraMenuLoaded)
+    {
+        return;
+    }
+
+    int menu_id = BuildGameMenu(client);
+    if (menu_id != 0)
+    {
+        ExtraMenu_Display(client, menu_id, MENU_TIME_FOREVER);
+    }
+}
+
+bool IsValidClient(int client)
+{
+    return (client > 0 && client <= MaxClients && IsClientInGame(client));
 }
