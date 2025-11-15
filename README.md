@@ -9,14 +9,15 @@ A celebratory remix of Left 4 Dead 2 that turns every round into a playable acti
 - **Fast admin access.** Type `!adm` for spawn tools, debug switches, and quick clean-up options without leaving the fight.
 - **Hold-to-open game menu.** Press and hold ALT to pop up a full-screen selector with 3rd-person view, kit pickup, class change, music control, and more. Release the key and it disappears.
 - **Now playing overlay.** The active track title and playtime stay pinned to every menu page so the entire lobby knows what’s on the air.
+- **Testing currently dynamically generated music based on your current situation** **Improved social skills for bots, your chat will be routed to 1-3 LLM's biased on the character persona, and live dialog is sent back. tension amped up between the 3 other bots.
 
 ## Play your way
-### Soldier
+### Soldierboy
 - Moves faster, shrugs off more hits, and slashes like a blender.
 - Aims and taps `!skill` to rain down an airstrike.
 - Flips night vision on or off whenever the fight slips into darkness.
 
-### Athlete
+### Ninja
 - Built for motion: sprint boosts, double jumps, and mid-air karate kicks.
 - Deploys a parachute to float over chaos or escape a wipe.
 
