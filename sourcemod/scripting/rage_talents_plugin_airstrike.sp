@@ -20,7 +20,7 @@
 /*======================================================================================
 	Plugin Info:
 
-*	Name	:	[DLR] F-18 Airstrike plugin
+*	Name	:	[Rage] F-18 Airstrike plugin
 *	Author	:	SilverShot
 *	Descrp	:	Creates F-18 flybys which shoot missiles to where they were triggered from.
 *	Link	:	https://forums.alliedmods.net/showthread.php?t=187567
@@ -146,7 +146,7 @@
 #define PARTICLE_SPARKS		"fireworks_sparkshower_01e"
 #define PARTICLE_SMOKE		"rpg_smoke"
 /****************************************************/
-#tryinclude <DLRCore>
+#tryinclude <RageCore>
 #if !defined _DLRCore_included
 	// Optional native from DLR Talents
 	native void OnSpecialSkillSuccess(int client, char[] skillName);
@@ -191,7 +191,7 @@ int Native_ShowAirstrike(Handle plugin, int numParams)
 // ====================================================================================================
 public Plugin myinfo =
 {
-	name = "[DLR] F-18 Airstrike plugin version",
+	name = "[Rage] F-18 Airstrike plugin version",
 	author = "SilverShot",
 	description = "Creates F-18 flybys which shoot missiles to where they were triggered from.",
 	version = PLUGIN_VERSION,
@@ -307,21 +307,21 @@ public void OnLibraryAdded(const char[] name)
 
 public void DLR_OnPluginState(char[] plugin, int pluginstate)
 {
-	static int dlrstate;
+	static int ragestate;
 
-    if( StrEqual(plugin, "rage_talents") && pluginstate == 1 && dlrstate == 0 )
+    if( StrEqual(plugin, "rage_talents") && pluginstate == 1 && ragestate == 0 )
 	{
 		SetConVarBool(g_hCvarAllow, true);
-		dlrstate = 1;
+		ragestate = 1;
 		if (g_iClassID == -1) {
 			g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
 		}
 
 	}
-    else if(StrEqual(plugin, "rage_talents") && pluginstate == 0 && dlrstate == 1 )
+    else if(StrEqual(plugin, "rage_talents") && pluginstate == 0 && ragestate == 1 )
 	{
 		SetConVarBool(g_hCvarAllow, false);
-		dlrstate = 0;
+		ragestate = 0;
 		if (g_iClassID > -1) {
 			g_iClassID = -1;
 		}

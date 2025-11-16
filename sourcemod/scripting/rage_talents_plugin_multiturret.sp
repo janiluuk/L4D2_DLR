@@ -5,7 +5,7 @@
 #include <sdktools>
 #include <sdktools_functions>
 #include <sdkhooks>
-#define PLUGIN_NAME "[DLR Plugin] Portable turret & gatling guns."
+#define PLUGIN_NAME "[Rage Plugin] Portable turret & gatling guns."
 #define PLUGIN_VERSION "4.5"
 
 #define TEAM_SPECTATOR               1 		
@@ -96,7 +96,7 @@
 #define TYPE_FREEZE 4  
 #define TYPE_NAUSEATING 5 
 
-#define TRANSLATION_FILENAME    "dlr_multiturret.phrases" 
+#define TRANSLATION_FILENAME    "rage_multiturret.phrases"
 #define PLUGIN_SKILL_NAME "Multiturret"
 
 #define PI_NUM 3.14159 // PI
@@ -120,7 +120,7 @@ public Plugin myinfo =
 #endif
 
 /****************************************************/
-#tryinclude <DLRCore>
+#tryinclude <RageCore>
 #if !defined _DLRCore_included
 	// Optional native from DLR Talents
 	native void OnSpecialSkillSuccess(int client, char[] skillName);

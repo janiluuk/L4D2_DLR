@@ -9,7 +9,7 @@
 
 public Plugin myinfo =
 {
-	name = "[DLR] Jump perk",
+	name = "[Rage] Jump perk",
 	author = "zonde306, Yani",
 
 	description = "",

@@ -49,8 +49,8 @@ public Plugin myinfo =
 // ====================================================================================================
 // Filenames
 // ====================================================================================================
-#define CONFIG_FILENAME               "dlr_scripted_hud"
-#define DATA_FILENAME                 "dlr_scripted_hud"
+#define CONFIG_FILENAME               "rage_scripted_hud"
+#define DATA_FILENAME                 "rage_scripted_hud"
 
 // ====================================================================================================
 // Defines

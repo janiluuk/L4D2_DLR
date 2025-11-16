@@ -1,4 +1,4 @@
-#define PLUGIN_NAME "[DLR] Dead Ringer Plugin"
+#define PLUGIN_NAME "[Rage] Dead Ringer Plugin"
 #define PLUGIN_AUTHOR "Yani & Shadowysn"
 #define PLUGIN_DESC "Activate a dead ringer distraction and cloak the user."
 #define PLUGIN_VERSION "1.0"
@@ -110,7 +110,7 @@ Handle hOnRideEnded = null;
 
 ConVar version_cvar;
 /****************************************************/
-#tryinclude <DLRCore>
+#tryinclude <RageCore>
 #if !defined _DLRCore_included
 	// Optional native from DLR Talents
 	native void OnSpecialSkillSuccess(int client, char[] skillName);

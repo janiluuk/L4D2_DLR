@@ -5,10 +5,10 @@
 #include <sdktools>
 #include <sdkhooks>
 #include <left4dhooks>
-#include <dlr/const>
-#include <dlr/debug>
-//#include <dlr/classes>
-#include <dlr/hud>
+#include <rage/const>
+#include <rage/debug>
+//#include <rage/classes>
+#include <rage/hud>
 
 // top menu
 new Handle:hTopMenu = INVALID_HANDLE;
@@ -251,9 +251,9 @@ new Handle:COMMANDO_ENABLE_STUMBLE_BLOCK;
 new Handle:COMMANDO_ENABLE_STOMPING;
 new Handle:COMMANDO_STOMPING_SLOWDOWN;
 new Handle:SPECIAL_SKILL_LIMIT;
-#include <dlr/timers>
-#include <dlr/effects>
-#include <dlr/menus>
-#include <dlr/perks>
-#include <dlr/commands>
+#include <rage/timers>
+#include <rage/effects>
+#include <rage/menus>
+#include <rage/perks>
+#include <rage/commands>
 

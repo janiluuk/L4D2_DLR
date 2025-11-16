@@ -64,12 +64,12 @@ jobs:
           fi
           includes="-i $GITHUB_WORKSPACE/sourcemod/scripting/include -i $GITHUB_WORKSPACE/sm/addons/sourcemod/scripting/include"
           mkdir -p package/addons/sourcemod/plugins
-          for sp in sourcemod/scripting/dlr_*.sp; do
+          for sp in sourcemod/scripting/rage_*.sp; do
             "$spcomp" $includes -v0 "$sp" -o package/addons/sourcemod/plugins/$(basename "${sp%.sp}.smx")
           done
 
       - name: Upload package
         uses: actions/upload-artifact@v4
         with:
-          name: l4d2_dlr-sm1.11.0-git6453-${{ matrix.os_short }}-${{ env.GITHUB_SHA_SHORT }}
+          name: l4d2_rage-sm1.11.0-git6453-${{ matrix.os_short }}-${{ env.GITHUB_SHA_SHORT }}
           path: package

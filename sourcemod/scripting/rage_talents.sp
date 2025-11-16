@@ -970,22 +970,22 @@ public Event_RoundStart(Handle:event, String:name[], bool:dontBroadcast)
 
 public void OnRoundState(int roundstate)
 {
-	static int dlrstate;
+        static int rageState;
 
-	if( roundstate == 1 && dlrstate == 0 )
-	{
-		dlrstate = 1;
-		Call_StartForward(g_hForwardRoundState);
-		Call_PushCell(1);
-		Call_Finish();
-	}
-	else if( roundstate == 0 && dlrstate == 1 )
-	{
-		dlrstate = 0;
-		Call_StartForward(g_hForwardRoundState);
-		Call_PushCell(0);
-		Call_Finish();
-	}
+        if( roundstate == 1 && rageState == 0 )
+        {
+                rageState = 1;
+                Call_StartForward(g_hForwardRoundState);
+                Call_PushCell(1);
+                Call_Finish();
+        }
+        else if( roundstate == 0 && rageState == 1 )
+        {
+                rageState = 0;
+                Call_StartForward(g_hForwardRoundState);
+                Call_PushCell(0);
+                Call_Finish();
+        }
 }
 
 public Event_PlayerSpawn(Handle:hEvent, String:sName[], bool:bDontBroadcast)

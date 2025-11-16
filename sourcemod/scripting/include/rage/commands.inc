@@ -8,7 +8,7 @@ public Action:Command_Debug(client, args) {
 	
 	if (args < 1)
 	{
-		ReplyToCommand(client, "\x03[DLR]\x01 Usage: \x04sm_debug\x01 [0 = Off|1 = On]");
+		ReplyToCommand(client, "\x03[Rage]\x01 Usage: \x04sm_debug\x01 [0 = Off|1 = On]");
 		return Plugin_Handled;
 	}
 		

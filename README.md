@@ -4,7 +4,7 @@ A brutal anniversary overhaul of the infamous DLR mode for Left 4 Dead 2. DLR Ta
 
 ## Core Features
 - Sourcemod 1.11 compatible
-- Plugin-based architecture: drop in new perks or classes via `DLRCore`
+- Plugin-based architecture: drop in new perks or classes via `RageCore`
 - Modular perk system with negative effects and combo chaining
 - Keybinding support (Soldier night vision bound to `N`)
 - Custom class creation and configuration
@@ -84,7 +84,7 @@ A full-screen menu replaces tiny SourceMod popups. Navigate with **W/S** and **A
 - Additional co-op mechanics (struggles, transformations, etc.)
 
 ## Developing Plugins
-Include `DLRCore.sp` and implement the required callbacks:
+Include `RageCore.sp` and implement the required callbacks:
 
 ```sourcepawn
 forward OnSpecialSkillUsed(int client, const char[] skillName);
@@ -100,7 +100,7 @@ forward FindSkillIdByName(const char[] skillName, int &skillId);
 native int GetPlayerClassName(int client);
 ```
 
-Add `DLRCore.sp` to your include folder and register your skill during `OnPluginStart` or `DLR_OnPluginState`. See the multiturret plugin for a complete example.
+Add `RageCore.sp` to your include folder and register your skill during `OnPluginStart` or `DLR_OnPluginState`. See the multiturret plugin for a complete example.
 
 See https://forums.alliedmods.net/showthread.php?t=273312 for more info.
 

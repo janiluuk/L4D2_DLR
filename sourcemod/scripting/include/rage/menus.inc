@@ -467,7 +467,7 @@ public Admin_TopMainMenu(Handle:topmenu, TopMenuAction:action, TopMenuObject:obj
 	{
 		case TopMenuAction_DisplayTitle, TopMenuAction_DisplayOption:
 		{
-			Format(buffer, maxlength, "DLR Settings");
+			Format(buffer, maxlength, "Rage Settings");
 		}
 	}
 }
@@ -674,7 +674,7 @@ stock ShowRageMenu(client) {
     new Handle:menu = CreateMenu(Admin_MnuHdlr_RageOpts);
 	
 	decl String:title[100];
-	Format(title, sizeof(title), "DLR Settings");
+	Format(title, sizeof(title), "Rage Settings");
 	
 	SetMenuTitle(menu, title);
 	

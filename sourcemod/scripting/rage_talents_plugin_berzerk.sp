@@ -387,7 +387,7 @@ new Handle:g_hForward_BerserkUse = INVALID_HANDLE;
 //Plugin Info
 public Plugin:myinfo = 
 {
-	name = "[DLR] Berserker Mode Plugin version",
+	name = "[Rage] Berserker Mode Plugin version",
 	author = "honorcode23, yani",
 	description = "Enters on Berserker Mode after x amount of killed infected",
 	version = GETVERSION,
@@ -732,7 +732,7 @@ public OnMapStart()
 
 //DLR
 #define REQUIRE_PLUGIN
-#tryinclude <DLRCore>
+#tryinclude <RageCore>
 
 #if !defined _DLRCore_included
 	// Optional native from DLR Talents

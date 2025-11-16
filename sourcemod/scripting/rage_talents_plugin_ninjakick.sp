@@ -23,7 +23,7 @@ new bool:AttackDisable[MAXPLAYERS+1];
 new Float:AttackDisableTime[MAXPLAYERS+1];
 
 public Plugin:myinfo = {
-	name = "[DLR] ninja kick",
+	name = "[Rage] ninja kick",
 	author = "Pan XiaoHai",
 	description = "<- Description ->",
 	version = "1.1",

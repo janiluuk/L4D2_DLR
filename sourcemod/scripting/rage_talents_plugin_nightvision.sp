@@ -9,7 +9,7 @@
 #define PLUGIN_DESCRIPTION "Toggle nightvision goggles"
 
 /****************************************************/
-#tryinclude <DLRCore>
+#tryinclude <RageCore>
 #if !defined _DLRCore_included
     // Optional native from DLR Talents
     native void OnSpecialSkillSuccess(int client, char[] skillName);
@@ -22,7 +22,7 @@
 
 public Plugin myinfo =
 {
-    name = "[DLR] Nightvision",
+    name = "[Rage] Nightvision",
     author = "Pan Xiaohai & Mr. Zero, Yani",
     description = PLUGIN_DESCRIPTION,
     version = PLUGIN_VERSION,

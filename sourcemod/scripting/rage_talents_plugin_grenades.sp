@@ -216,7 +216,7 @@
 	- Required updated files:
 	- Config: l4d_grenades.cfg
 	- Gamedata: l4d_grenades.txt
-        - Translations: dlr_grenades.phrases.txt.
+        - Translations: rage_grenades.phrases.txt.
 
 1.4 (10-Oct-2019)
 	- Added Russian translations. Thanks to "KRUTIK" for providing.
@@ -286,7 +286,7 @@ bool	bLMC_Available;
 
 //DLR
 #define REQUIRE_PLUGIN
-#tryinclude <DLRCore>
+#tryinclude <RageCore>
 
 #if !defined _DLRCore_included
 	// Optional native from DLR Talents
@@ -666,7 +666,7 @@ enum
 // ====================================================================================================
 public Plugin myinfo =
 {
-	name = "[DLR] Prototype Grenades plugin",
+	name = "[Rage] Prototype Grenades plugin",
 	author = "SilverShot",
 	description = "Creates a selection of different grenade types.",
 	version = PLUGIN_VERSION,
@@ -858,11 +858,11 @@ public void OnPluginStart()
 	// OTHER
 	// ====================================================================================================
 	// Translations
-    BuildPath(Path_SM, sPath, sizeof(sPath), "translations/dlr_grenades.phrases.txt");
+    BuildPath(Path_SM, sPath, sizeof(sPath), "translations/rage_grenades.phrases.txt");
 	if( !FileExists(sPath) )
-            SetFailState("Required translation file is missing: 'translations/dlr_grenades.phrases.txt'");
+            SetFailState("Required translation file is missing: 'translations/rage_grenades.phrases.txt'");
 
-	LoadTranslations("dlr_grenades.phrases");
+	LoadTranslations("rage_grenades.phrases");
 
 	// Saved client options
 	g_hCookie = RegClientCookie("l4d_grenades_modes", "Prototype Grenades - Modes", CookieAccess_Protected);

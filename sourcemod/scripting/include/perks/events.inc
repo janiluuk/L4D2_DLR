@@ -503,7 +503,7 @@ public Action OnClientSayCommand(int client, const char[] command, const char[] 
 		} else if(Perks[profanityID].activeFlagClients[client] & 2) { 
 			// Replace full message content if flag enabled
 			if(!fullMessagePhraseList) {
-				PrintToServer("[DLR] Error: Could not find full message phrases!!!");
+				PrintToServer("[Rage] Error: Could not find full message phrases!!!");
 				return Plugin_Continue;
 			}
 			fullMessagePhraseList.GetString(GetRandomInt(0, fullMessagePhraseList.Length - 1), message, MAX_PHRASE_LENGTH);
@@ -778,7 +778,7 @@ public Action OnVocalizeCommand(int client, const char[] vocalize, int initiator
 		if(speed < 0.0) SetEntPropFloat(client, Prop_Send, "m_flLaggedMovementValue", 0.0);
 		else if(speed > 0.05) 
 			SetEntPropFloat(client, Prop_Send, "m_flLaggedMovementValue", speed);
-		PrintToConsoleAdmins("[DLR] NoRushingUs: Dropping speed for %N (now %.1f%)", client, speed * 100.0);
+		PrintToConsoleAdmins("[Rage] NoRushingUs: Dropping speed for %N (now %.1f%)", client, speed * 100.0);
 	}
 	if(Perks[vocalGagID].IsActive(client)) {
 		return Plugin_Handled;
@@ -838,7 +838,7 @@ public Action SoundHook(int clients[MAXPLAYERS], int& numClients, char sample[PL
 		lastCrescendoUser = lastButtonUser;
 		if(IsPlayerFarDistance(lastButtonUser, AUTOPUNISH_FLOW_MIN_DISTANCE)) {
 			NotifyAllAdmins("Autopunishing player %N for activation of event far from team", lastButtonUser);
-			ShowActivityEx(0, "[DLR] ", "activated autopunish for crescendo activator %N (auto)", lastButtonUser);
+			ShowActivityEx(0, "[Rage] ", "activated autopunish for crescendo activator %N (auto)", lastButtonUser);
 			LogAction(0, lastButtonUser, "\"%L\" automatic autopunish for crescendo activator \"%L\"", 0, lastButtonUser);
 			ActivateAutoPunish(lastButtonUser);
 		}
@@ -942,7 +942,7 @@ public Action OnAntiRush(int client, int &type, float distance) {
 			SpecialType special = view_as<SpecialType>(GetRandomInt(1,6));
 			fLastAntiRushEvent[client] = GetGameTime();
 			SpawnSpecialForTarget(special, client, view_as<int>(Special_SpawnDirectOnFailure | Special_OnTarget));
-			PrintToConsoleAll("[DLR] Spawning anti-rush special on %N (dist=%f) (special=%s)", client, distance, SPECIAL_NAMES[view_as<int>(special)-1]);
+			PrintToConsoleAll("[Rage] Spawning anti-rush special on %N (dist=%f) (special=%s)", client, distance, SPECIAL_NAMES[view_as<int>(special)-1]);
 		}
 	}
 	return Plugin_Continue;
@@ -996,7 +996,7 @@ public void Event_BotPlayerSwap(Event event, const char[] name, bool dontBroadca
 			}
 		}
 		if(debug_hadPerk) 
-			PrintToServer("[DLR] Re-applied trolls for was-idle player %N", client);
+			PrintToServer("[Rage] Re-applied trolls for was-idle player %N", client);
 	}
 }
 
