@@ -7,19 +7,19 @@
 
 public Plugin myinfo =
 {
-    name = "[DLR] Tutorial Guide",
+    name = "[Rage] Tutorial Guide",
     author = "Yani",
-    description = "Interactive tutorial that explains DLR classes, skills and commands.",
+    description = "Interactive tutorial that explains Rage classes, skills and commands.",
     version = PLUGIN_VERSION,
-    url = "https://steamcommunity.com/groups/DLRGaming"
+    url = "https://steamcommunity.com/groups/RageGaming"
 };
 
 public void OnPluginStart()
 {
-    RegConsoleCmd("sm_dlrtutorial", CmdGuideMenu, "Open the DLR tutorial guide");
+    RegConsoleCmd("sm_ragetutorial", CmdGuideMenu, "Open the Rage tutorial guide");
 
-    CreateNative("DLRGuide_ShowMainMenu", Native_ShowGuideMenu);
-    RegPluginLibrary("dlr_talents_guide");
+    CreateNative("RageGuide_ShowMainMenu", Native_ShowGuideMenu);
+    RegPluginLibrary("rage_talents_guide");
 }
 
 public int Native_ShowGuideMenu(Handle plugin, int numParams)
@@ -36,7 +36,7 @@ public Action CmdGuideMenu(int client, int args)
 {
     if (!IsValidPlayer(client))
     {
-        PrintToServer("[DLR] This command can only be used in-game.");
+        PrintToServer("[Rage] This command can only be used in-game.");
         return Plugin_Handled;
     }
 
@@ -51,14 +51,14 @@ bool IsValidPlayer(int client)
 
 void PrintGuideLine(int client, const char[] message)
 {
-    PrintToChat(client, "\x04[DLR]\x01 %s", message);
+    PrintToChat(client, "\x04[Rage]\x01 %s", message);
 }
 
 void DisplayGuideMainMenu(int client)
 {
     Menu menu = CreateMenu(MenuHandler_GuideMain);
-    SetMenuTitle(menu, "DLR Tutorial Guide");
-    AddMenuItem(menu, "overview", "What is DLR Rage Edition?");
+    SetMenuTitle(menu, "Rage Tutorial Guide");
+    AddMenuItem(menu, "overview", "What is Rage Edition?");
     AddMenuItem(menu, "classes", "Survivor class guides");
     AddMenuItem(menu, "skills", "Special skills & commands");
     AddMenuItem(menu, "gamemodes", "Game modes overview");
@@ -77,7 +77,7 @@ public int MenuHandler_GuideMain(Menu menu, MenuAction action, int param1, int p
             GetMenuItem(menu, param2, info, sizeof(info));
             if (StrEqual(info, "overview"))
             {
-                PrintGuideLine(param1, "DLR Rage Edition is a modular class overhaul for Left 4 Dead 2 with perk-driven gameplay.");
+                PrintGuideLine(param1, "Rage Edition is a modular class overhaul for Left 4 Dead 2 with perk-driven gameplay.");
                 PrintGuideLine(param1, "Every survivor picks a class with unique passives plus a !skill ability, so coordinate before leaving the saferoom.");
                 DisplayGuideMainMenu(param1);
             }
@@ -564,7 +564,7 @@ void DisplayGameModeMenu(int client)
     SetMenuTitle(menu, "Game Modes");
     AddMenuItem(menu, "versus", "Versus variants");
     AddMenuItem(menu, "objective", "Objective modes");
-    AddMenuItem(menu, "dlr", "DLR customs");
+    AddMenuItem(menu, "rage", "Rage customs");
     AddMenuItem(menu, "switch", "How to switch modes");
     SetMenuExitBackButton(menu, true);
     DisplayMenu(menu, client, MENU_TIME_FOREVER);
@@ -586,13 +586,13 @@ public int MenuHandler_GameModes(Menu menu, MenuAction action, int param1, int p
             {
                 PrintGuideLine(param1, "Scavenge, Team Scavenge, Survival, Co-op and Realism are all playable through the game menu.");
             }
-            else if (StrEqual(info, "dlr"))
+            else if (StrEqual(info, "rage"))
             {
-                PrintGuideLine(param1, "Escort Run, Deathmatch and Race Jockey are custom DLR chaos modes—experiment when you want a break from Versus.");
+                PrintGuideLine(param1, "Escort Run, Deathmatch and Race Jockey are custom Rage chaos modes—experiment when you want a break from Versus.");
             }
             else if (StrEqual(info, "switch"))
             {
-                PrintGuideLine(param1, "Admins open !dlr then pick \"Vote for gamemode\" to swap modes and can return to Versus at any time.");
+                PrintGuideLine(param1, "Admins open !rage then pick \"Vote for gamemode\" to swap modes and can return to Versus at any time.");
             }
             DisplayGameModeMenu(param1);
         }
@@ -645,7 +645,7 @@ public int MenuHandler_Tips(Menu menu, MenuAction action, int param1, int param2
             }
             else if (StrEqual(info, "shortcuts"))
             {
-                PrintGuideLine(param1, "Bind !skill, !music, !unvomit, !extendedsight and !dlrtutorial for instant access mid-fight.");
+                PrintGuideLine(param1, "Bind !skill, !music, !unvomit, !extendedsight and !ragetutorial for instant access mid-fight.");
             }
             DisplayTipsMenu(param1);
         }

@@ -72,7 +72,7 @@ All special skills provide a corresponding `sm_` console command so abilities ca
 Store 44.1 kHz MP3s on a fast‑download server and list them in `data/music_mapstart.txt` (and optionally `music_mapstart_newly.txt` for first‑time players). Players can open `!music` to adjust volume or disable all custom tracks; their choices are saved in cookies until they opt back in.
 
 ## Game Menu & Guide
-A full-screen menu replaces tiny SourceMod popups. Navigate with **W/S** and **A/D**. Admins open the game menu with `sm_dlr` or the guide with `sm_guide`; players see the same overlay when using options like the music player.
+A full-screen menu replaces tiny SourceMod popups. Navigate with **W/S** and **A/D**. Admins open the game menu with `sm_rage` and can launch the guide with `sm_guide` or `sm_ragetutorial`; players see the same overlay when using options like the music player.
 
 ## Roadmap
 - Cleaner UI with unified hint system and game instructor integration

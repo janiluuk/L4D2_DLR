@@ -2,7 +2,7 @@
 #define PLUGIN_VERSION "0.3"
 #include <sourcemod>
 #include <extra_menu>
-#include <dlr_talents_guide>
+#include <rage_talents_guide>
 
 #define GAMEMODE_OPTION_COUNT 11
 
@@ -23,26 +23,26 @@ static const char g_sGameModeNames[GAMEMODE_OPTION_COUNT][] =
 
 static const char g_sGameModeCvarNames[GAMEMODE_OPTION_COUNT][] =
 {
-    "dlr_gamemode_versus",
-    "dlr_gamemode_competitive",
-    "dlr_gamemode_escort",
-    "dlr_gamemode_deathmatch",
-    "dlr_gamemode_racejockey",
-    "dlr_gamemode_teamversus",
-    "dlr_gamemode_scavenge",
-    "dlr_gamemode_teamscavenge",
-    "dlr_gamemode_survival",
-    "dlr_gamemode_coop",
-    "dlr_gamemode_realism"
+    "rage_gamemode_versus",
+    "rage_gamemode_competitive",
+    "rage_gamemode_escort",
+    "rage_gamemode_deathmatch",
+    "rage_gamemode_racejockey",
+    "rage_gamemode_teamversus",
+    "rage_gamemode_scavenge",
+    "rage_gamemode_teamscavenge",
+    "rage_gamemode_survival",
+    "rage_gamemode_coop",
+    "rage_gamemode_realism"
 };
 
 static const char g_sGameModeDefaults[GAMEMODE_OPTION_COUNT][] =
 {
     "versus",
-    "dlr_competitive",
-    "dlr_escortrun",
-    "dlr_deathmatch",
-    "dlr_racejockey",
+    "rage_competitive",
+    "rage_escortrun",
+    "rage_deathmatch",
+    "rage_racejockey",
     "teamversus",
     "scavenge",
     "teamscavenge",
@@ -87,16 +87,17 @@ bool TryShowGuideMenu(int client);
 // ====================================================================================================
 public Plugin myinfo =
 {
-	name		= "[DLR] Game Menu",
-	author		= "Yani",
-	description = "Contains guide / game control menus for DLR",
-	version		= PLUGIN_VERSION,
-	url			= ""
+    name = "[Rage] Game Menu",
+    author = "Yani",
+    description = "Contains guide / game control menus for Rage",
+    version = PLUGIN_VERSION,
+    url = ""
+};
 
 public void OnPluginStart()
 {
-    RegAdminCmd("sm_dlr", CmdDLRMenu, ADMFLAG_ROOT);
-    RegConsoleCmd("sm_guide", CmdDLRGuideMenu, "Open the DLR tutorial guide");
+    RegAdminCmd("sm_rage", CmdRageMenu, ADMFLAG_ROOT);
+    RegConsoleCmd("sm_guide", CmdRageGuideMenu, "Open the Rage tutorial guide");
 
     g_hCvarMPGameMode = FindConVar("mp_gamemode");
 
@@ -180,7 +181,7 @@ public void OnLibraryAdded(const char[] name)
         ExtraMenu_AddOptions(menu_id, "New cabinet|New weapon|Special Infected|Special tank");
         ExtraMenu_AddEntry(menu_id, "2. Reload _OPT_", MENU_SELECT_LIST);
         TrackSelectableEntry(MENU_SELECT_LIST);
-        ExtraMenu_AddOptions(menu_id, "Map|DLR Plugins|All plugins|Restart server");
+        ExtraMenu_AddOptions(menu_id, "Map|Rage Plugins|All plugins|Restart server");
         ExtraMenu_AddEntry(menu_id, "3. Manage skills", MENU_SELECT_ONLY, true);
         TrackSelectableEntry(MENU_SELECT_ONLY);
         ExtraMenu_AddEntry(menu_id, "4. Manage perks", MENU_SELECT_ONLY, true);
@@ -207,14 +208,14 @@ public void OnLibraryAdded(const char[] name)
         ExtraMenu_AddOptions(menu_id, "□□□□□□□□□□|■□□□□□□□□□|■■□□□□□□□□|■■■□□□□□□□|■■■■□□□□□□|■■■■■□□□□□|■■■■■■□□□□|■■■■■■■□□□|■■■■■■■■□□|■■■■■■■■■□|■■■■■■■■■■");
 
         g_iGuideOptionIndex = g_iSelectableEntryCount;
-        ExtraMenu_AddEntry(menu_id, "Open DLR tutorial guide", MENU_SELECT_ONLY, true);
+        ExtraMenu_AddEntry(menu_id, "Open Rage tutorial guide", MENU_SELECT_ONLY, true);
         TrackSelectableEntry(MENU_SELECT_ONLY);
         ExtraMenu_AddEntry(menu_id, " ", MENU_ENTRY);
 
         g_iMenuID = menu_id;
     }
 
-    if (strcmp(name, "dlr_talents_guide") == 0)
+    if (strcmp(name, "rage_talents_guide") == 0)
     {
         RefreshGuideLibraryStatus();
     }
@@ -227,7 +228,7 @@ public void OnLibraryRemoved(const char[] name)
         OnPluginEnd();
     }
 
-    if (strcmp(name, "dlr_talents_guide") == 0)
+    if (strcmp(name, "rage_talents_guide") == 0)
     {
         RefreshGuideLibraryStatus();
     }
@@ -242,11 +243,11 @@ public void OnPluginEnd()
     }
 }
 
-Action CmdDLRMenu(int client, int args)
+Action CmdRageMenu(int client, int args)
 {
     if (client <= 0 || !IsClientInGame(client))
     {
-        PrintToServer("[DLR] This command can only be used in-game.");
+        PrintToServer("[Rage] This command can only be used in-game.");
         return Plugin_Handled;
     }
 
@@ -256,23 +257,23 @@ Action CmdDLRMenu(int client, int args)
     return Plugin_Handled;
 }
 
-Action CmdDLRGuideMenu(int client, int args)
+Action CmdRageGuideMenu(int client, int args)
 {
     if (client <= 0 || !IsClientInGame(client))
     {
-        PrintToServer("[DLR] This command can only be used in-game.");
+        PrintToServer("[Rage] This command can only be used in-game.");
         return Plugin_Handled;
     }
 
     if (!TryShowGuideMenu(client))
     {
-        PrintToChat(client, "[DLR] Tutorial plugin is not available right now.");
+        PrintToChat(client, "[Rage] Tutorial plugin is not available right now.");
     }
 
     return Plugin_Handled;
 }
 
-public void DLRMenu_OnSelect(int client, int menu_id, int option, int value)
+public void RageMenu_OnSelect(int client, int menu_id, int option, int value)
 {
     if (menu_id == g_iMenuID)
     {
@@ -282,7 +283,7 @@ public void DLRMenu_OnSelect(int client, int menu_id, int option, int value)
         {
             if (!TryShowGuideMenu(client))
             {
-                PrintToChat(client, "[DLR] Tutorial plugin is not available right now.");
+                PrintToChat(client, "[Rage] Tutorial plugin is not available right now.");
             }
             return;
         }
@@ -306,7 +307,7 @@ public void DLRMenu_OnSelect(int client, int menu_id, int option, int value)
 
 public void ExtraMenu_OnSelect(int client, int menu_id, int option, int value)
 {
-    DLRMenu_OnSelect(client, menu_id, option, value);
+    RageMenu_OnSelect(client, menu_id, option, value);
 }
 
 void TrackSelectableEntry(EXTRA_MENU_TYPE type)
@@ -319,7 +320,7 @@ void TrackSelectableEntry(EXTRA_MENU_TYPE type)
 
 void RefreshGuideLibraryStatus()
 {
-    g_bGuideNativeAvailable = (GetFeatureStatus(FeatureType_Native, "DLRGuide_ShowMainMenu") == FeatureStatus_Available);
+    g_bGuideNativeAvailable = (GetFeatureStatus(FeatureType_Native, "RageGuide_ShowMainMenu") == FeatureStatus_Available);
 }
 
 bool TryShowGuideMenu(int client)
@@ -329,7 +330,7 @@ bool TryShowGuideMenu(int client)
         return false;
     }
 
-    DLRGuide_ShowMainMenu(client);
+    RageGuide_ShowMainMenu(client);
     return true;
 }
 
@@ -355,20 +356,20 @@ void ChangeGameModeByIndex(int client, int modeIndex)
 {
     if (modeIndex < 0 || modeIndex >= GAMEMODE_OPTION_COUNT)
     {
-        PrintToChat(client, "[DLR] Unknown game mode option.");
+        PrintToChat(client, "[Rage] Unknown game mode option.");
         return;
     }
 
     if (g_hCvarMPGameMode == null)
     {
-        PrintToChat(client, "[DLR] Unable to change game mode right now.");
+        PrintToChat(client, "[Rage] Unable to change game mode right now.");
         return;
     }
 
     ConVar cvar = g_hGameModeCvars[modeIndex];
     if (cvar == null)
     {
-        PrintToChat(client, "[DLR] Game mode option is not configured.");
+        PrintToChat(client, "[Rage] Game mode option is not configured.");
         return;
     }
 
@@ -378,7 +379,7 @@ void ChangeGameModeByIndex(int client, int modeIndex)
 
     if (targetMode[0] == '\0')
     {
-        PrintToChat(client, "[DLR] Game mode value is empty.");
+        PrintToChat(client, "[Rage] Game mode value is empty.");
         return;
     }
 
@@ -387,12 +388,12 @@ void ChangeGameModeByIndex(int client, int modeIndex)
 
     if (StrEqual(currentMode, targetMode, false))
     {
-        PrintToChat(client, "[DLR] %s is already active.", g_sGameModeNames[modeIndex]);
+        PrintToChat(client, "[Rage] %s is already active.", g_sGameModeNames[modeIndex]);
         return;
     }
 
     g_hCvarMPGameMode.SetString(targetMode);
     LogAction(client, -1, "\"%L\" changed game mode to \"%s\"", client, targetMode);
-    ShowActivity2(client, "[DLR] ", "changed game mode to %s.", g_sGameModeNames[modeIndex]);
-    PrintToChatAll("[DLR] %N switched the game mode to %s (\"%s\").", client, g_sGameModeNames[modeIndex], targetMode);
+    ShowActivity2(client, "[Rage] ", "changed game mode to %s.", g_sGameModeNames[modeIndex]);
+    PrintToChatAll("[Rage] %N switched the game mode to %s (\"%s\").", client, g_sGameModeNames[modeIndex], targetMode);
 }
