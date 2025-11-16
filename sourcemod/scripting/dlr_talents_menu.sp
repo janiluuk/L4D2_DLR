@@ -1,12 +1,86 @@
+
 #define PLUGIN_VERSION "0.3"
 #include <sourcemod>
 #include <extra_menu>
+#include <dlr_talents_guide>
+
+#define GAMEMODE_OPTION_COUNT 11
+
+static const char g_sGameModeNames[GAMEMODE_OPTION_COUNT][] =
+{
+    "Versus",
+    "Competitive",
+    "Escort run",
+    "Deathmatch",
+    "Race Jockey",
+    "Team Versus",
+    "Scavenge",
+    "Team Scavenge",
+    "Survival",
+    "Co-op",
+    "Realism"
+};
+
+static const char g_sGameModeCvarNames[GAMEMODE_OPTION_COUNT][] =
+{
+    "dlr_gamemode_versus",
+    "dlr_gamemode_competitive",
+    "dlr_gamemode_escort",
+    "dlr_gamemode_deathmatch",
+    "dlr_gamemode_racejockey",
+    "dlr_gamemode_teamversus",
+    "dlr_gamemode_scavenge",
+    "dlr_gamemode_teamscavenge",
+    "dlr_gamemode_survival",
+    "dlr_gamemode_coop",
+    "dlr_gamemode_realism"
+};
+
+static const char g_sGameModeDefaults[GAMEMODE_OPTION_COUNT][] =
+{
+    "versus",
+    "dlr_competitive",
+    "dlr_escortrun",
+    "dlr_deathmatch",
+    "dlr_racejockey",
+    "teamversus",
+    "scavenge",
+    "teamscavenge",
+    "survival",
+    "coop",
+    "realism"
+};
+
+static const char g_sGameModeDescriptions[GAMEMODE_OPTION_COUNT][] =
+{
+    "mp_gamemode value for standard Versus.",
+    "mp_gamemode value for competitive Versus.",
+    "mp_gamemode value for escort run mode.",
+    "mp_gamemode value for deathmatch mode.",
+    "mp_gamemode value for race jockey mode.",
+    "mp_gamemode value for team-based Versus.",
+    "mp_gamemode value for standard Scavenge.",
+    "mp_gamemode value for team-based Scavenge.",
+    "mp_gamemode value for Survival.",
+    "mp_gamemode value for Co-op.",
+    "mp_gamemode value for Realism."
+};
 
 #pragma semicolon 1
 #pragma newdecls required
 
-int	g_iMenuID;
-int	g_iGuideMenuID;
+int g_iMenuID;
+int g_iGuideOptionIndex = -1;
+int g_iSelectableEntryCount = 0;
+bool g_bGuideNativeAvailable = false;
+
+ConVar g_hCvarMPGameMode;
+ConVar g_hGameModeCvars[GAMEMODE_OPTION_COUNT];
+
+void AddGameModeOptions(int menu_id);
+void TrackSelectableEntry(EXTRA_MENU_TYPE type);
+void RefreshGuideLibraryStatus();
+bool TryShowGuideMenu(int client);
 
 // ====================================================================================================
 //					PLUGIN INFO
@@ -19,215 +93,306 @@ public Plugin myinfo =
 	version		= PLUGIN_VERSION,
 	url			= ""
 
+public void OnPluginStart()
+{
+    RegAdminCmd("sm_dlr", CmdDLRMenu, ADMFLAG_ROOT);
+    RegConsoleCmd("sm_guide", CmdDLRGuideMenu, "Open the DLR tutorial guide");
+
+    g_hCvarMPGameMode = FindConVar("mp_gamemode");
+
+    for (int i = 0; i < GAMEMODE_OPTION_COUNT; i++)
+    {
+        g_hGameModeCvars[i] = CreateConVar(g_sGameModeCvarNames[i], g_sGameModeDefaults[i], g_sGameModeDescriptions[i], FCVAR_NONE);
+    }
+
+    RefreshGuideLibraryStatus();
 }
 
-// ====================================================================================================
-//					MAIN FUNCTIONS
-// ====================================================================================================
-public void
-	OnPluginStart()
+public void OnAllPluginsLoaded()
 {
-	RegAdminCmd("sm_dlr", CmdDLRMenu, ADMFLAG_ROOT);
-	RegAdminCmd("sm_guide", CmdDLRGuideMenu, ADMFLAG_ROOT);
+    RefreshGuideLibraryStatus();
 }
 
 public void OnLibraryAdded(const char[] name)
 {
-	if (strcmp(name, "extra_menu") == 0)
-	{
-		// Menu movement type: False = W/A/S/D. True = 1/3/4/5
-		bool buttons_nums = false;
-		// bool buttons_nums = false;
+    if (strcmp(name, "extra_menu") == 0)
+    {
+        bool buttons_nums = false;
 
-		// Create a new main menu
-		int	 menu_id;
+        g_iSelectableEntryCount = 0;
+        g_iGuideOptionIndex = -1;
 
-		// if( buttons_nums )
-		// menu_id = ExtraMenu_Create(false, "", true); // No back button, no translation, 1/2/3/4 type selection menu
-		menu_id = ExtraMenu_Create();	 // W/A/S/D type selection menu
+        int menu_id;
+        menu_id = ExtraMenu_Create();
 
-		// Add the entries
-		ExtraMenu_AddEntry(menu_id, "GAME MENU:", MENU_ENTRY);
-		if (!buttons_nums)
-			ExtraMenu_AddEntry(menu_id, "Use W/S to move row and A/D to select", MENU_ENTRY);
-		ExtraMenu_AddEntry(menu_id, " ", MENU_ENTRY);	
-		 // Space to add blank entry
-		ExtraMenu_AddEntry(menu_id, "1. Get Kit (1 left)", MENU_SELECT_LIST);
-		ExtraMenu_AddOptions(menu_id, "Medic kit|Rambo kit|Counter-terrorist kit|Ninja kit");
+        ExtraMenu_AddEntry(menu_id, "GAME MENU:", MENU_ENTRY);
+        if (!buttons_nums)
+            ExtraMenu_AddEntry(menu_id, "Use W/S to move row and A/D to select", MENU_ENTRY);
+        ExtraMenu_AddEntry(menu_id, " ", MENU_ENTRY);
+        ExtraMenu_AddEntry(menu_id, "1. Get Kit (1 left)", MENU_SELECT_LIST);
+        TrackSelectableEntry(MENU_SELECT_LIST);
+        ExtraMenu_AddOptions(menu_id, "Medic kit|Rambo kit|Counter-terrorist kit|Ninja kit");
 
-		ExtraMenu_AddEntry(menu_id, "2. Set yourself away", MENU_SELECT_ONLY);
-		ExtraMenu_AddEntry(menu_id, "3. Select team", MENU_SELECT_ONLY);
-		ExtraMenu_AddEntry(menu_id, "4. Change class", MENU_SELECT_LIST);
+        ExtraMenu_AddEntry(menu_id, "2. Set yourself away", MENU_SELECT_ONLY);
+        TrackSelectableEntry(MENU_SELECT_ONLY);
+        ExtraMenu_AddEntry(menu_id, "3. Select team", MENU_SELECT_ONLY);
+        TrackSelectableEntry(MENU_SELECT_ONLY);
+        ExtraMenu_AddEntry(menu_id, "4. Change class", MENU_SELECT_LIST);
+        TrackSelectableEntry(MENU_SELECT_LIST);
 
-		ExtraMenu_AddEntry(menu_id, "5. See your ranking", MENU_SELECT_ONLY);
-		ExtraMenu_AddEntry(menu_id, "6. Vote for custom map", MENU_SELECT_ADD, false, 250, 10, 100, 300);
-		ExtraMenu_AddEntry(menu_id, "7. Vote for gamemode", MENU_SELECT_LIST);
-		ExtraMenu_AddOptions(menu_id, "Off|Escort run|Deathmatch|Race Jockey");
-		ExtraMenu_NewPage(menu_id);	   // New Page
+        ExtraMenu_AddEntry(menu_id, "5. See your ranking", MENU_SELECT_ONLY);
+        TrackSelectableEntry(MENU_SELECT_ONLY);
+        ExtraMenu_AddEntry(menu_id, "6. Vote for custom map", MENU_SELECT_ADD, false, 250, 10, 100, 300);
+        TrackSelectableEntry(MENU_SELECT_ADD);
+        ExtraMenu_AddEntry(menu_id, "7. Vote for gamemode", MENU_SELECT_LIST);
+        TrackSelectableEntry(MENU_SELECT_LIST);
+        AddGameModeOptions(menu_id);
+        ExtraMenu_NewPage(menu_id);
 
-		ExtraMenu_AddEntry(menu_id, "GAME OPTIONS:", MENU_ENTRY);
-		if (!buttons_nums)
-			ExtraMenu_AddEntry(menu_id, "Use W/S to move row and A/D to select", MENU_ENTRY);
-		ExtraMenu_AddEntry(menu_id, " ", MENU_ENTRY);	 // Space to add blank entry
-		ExtraMenu_AddEntry(menu_id, "1. 3rd person mode: _OPT_", MENU_SELECT_LIST);
-		ExtraMenu_AddOptions(menu_id, "Off|Melee Only|Always");
-		ExtraMenu_AddEntry(menu_id, "2. Multiple Equipment Mode: _OPT_", MENU_SELECT_LIST);
-		ExtraMenu_AddOptions(menu_id, "Off|Single Tap|Double tap");
-		ExtraMenu_AddEntry(menu_id, "3. HUD: _OPT_", MENU_SELECT_ONOFF);
-		ExtraMenu_AddEntry(menu_id, "4. Music player: _OPT_", MENU_SELECT_ONOFF);
-		ExtraMenu_AddEntry(menu_id, "5. Music Volume: _OPT_", MENU_SELECT_LIST);
-		ExtraMenu_AddOptions(menu_id, "□□□□□□□□□□|■□□□□□□□□□|■■□□□□□□□□|■■■□□□□□□□|■■■■□□□□□□|■■■■■□□□□□|■■■■■■□□□□|■■■■■■■□□□|■■■■■■■■□□|■■■■■■■■■□|■■■■■■■■■■");	  // Various selectable options
+        ExtraMenu_AddEntry(menu_id, "GAME OPTIONS:", MENU_ENTRY);
+        if (!buttons_nums)
+            ExtraMenu_AddEntry(menu_id, "Use W/S to move row and A/D to select", MENU_ENTRY);
+        ExtraMenu_AddEntry(menu_id, " ", MENU_ENTRY);
+        ExtraMenu_AddEntry(menu_id, "1. 3rd person mode: _OPT_", MENU_SELECT_LIST);
+        TrackSelectableEntry(MENU_SELECT_LIST);
+        ExtraMenu_AddOptions(menu_id, "Off|Melee Only|Always");
+        ExtraMenu_AddEntry(menu_id, "2. Multiple Equipment Mode: _OPT_", MENU_SELECT_LIST);
+        TrackSelectableEntry(MENU_SELECT_LIST);
+        ExtraMenu_AddOptions(menu_id, "Off|Single Tap|Double tap");
+        ExtraMenu_AddEntry(menu_id, "3. HUD: _OPT_", MENU_SELECT_ONOFF);
+        TrackSelectableEntry(MENU_SELECT_ONOFF);
+        ExtraMenu_AddEntry(menu_id, "4. Music player: _OPT_", MENU_SELECT_ONOFF);
+        TrackSelectableEntry(MENU_SELECT_ONOFF);
+        ExtraMenu_AddEntry(menu_id, "5. Music Volume: _OPT_", MENU_SELECT_LIST);
+        TrackSelectableEntry(MENU_SELECT_LIST);
+        ExtraMenu_AddOptions(menu_id, "□□□□□□□□□□|■□□□□□□□□□|■■□□□□□□□□|■■■□□□□□□□|■■■■□□□□□□|■■■■■□□□□□|■■■■■■□□□□|■■■■■■■□□□|■■■■■■■■□□|■■■■■■■■■□|■■■■■■■■■■");
 
-		ExtraMenu_AddEntry(menu_id, "6. Change Character: _OPT_", MENU_SELECT_ONOFF);
-		ExtraMenu_AddEntry(menu_id, " ", MENU_ENTRY);
+        ExtraMenu_AddEntry(menu_id, "6. Change Character: _OPT_", MENU_SELECT_ONOFF);
+        TrackSelectableEntry(MENU_SELECT_ONOFF);
+        ExtraMenu_AddEntry(menu_id, " ", MENU_ENTRY);
 
-		ExtraMenu_NewPage(menu_id);	   // New Page
+        ExtraMenu_NewPage(menu_id);
 
-		ExtraMenu_AddEntry(menu_id, "ADMIN MENU:", MENU_ENTRY);
-	
-		ExtraMenu_AddEntry(menu_id, "2. Spawn Items: _OPT_", MENU_SELECT_LIST);
-		ExtraMenu_AddOptions(menu_id, "New cabinet|New weapon|Special Infected|Special tank");
-		ExtraMenu_AddEntry(menu_id, "3. Reload _OPT_", MENU_SELECT_LIST);
-		ExtraMenu_AddOptions(menu_id, "Map|DLR Plugins|All plugins|Restart server");
-		ExtraMenu_AddEntry(menu_id, "4. Manage skills", MENU_SELECT_ONLY, true);
-		ExtraMenu_AddEntry(menu_id, "5. Manage perks", MENU_SELECT_ONLY, true);			ExtraMenu_AddEntry(menu_id, "5. Manage perks", MENU_SELECT_ONLY, true);
-		ExtraMenu_AddEntry(menu_id, "6. Apply effect on player", MENU_SELECT_ONLY, true);			ExtraMenu_AddEntry(menu_id, "5. Manage perks", MENU_SELECT_ONLY, true);
+        ExtraMenu_AddEntry(menu_id, "ADMIN MENU:", MENU_ENTRY);
 
-		ExtraMenu_AddEntry(menu_id, " ", MENU_ENTRY);
-		ExtraMenu_AddEntry(menu_id, "DEBUG COMMANDS:", MENU_ENTRY);
-		ExtraMenu_AddEntry(menu_id, "1. Debug mode: _OPT_", MENU_SELECT_LIST);
+        ExtraMenu_AddEntry(menu_id, "1. Spawn Items: _OPT_", MENU_SELECT_LIST);
+        TrackSelectableEntry(MENU_SELECT_LIST);
+        ExtraMenu_AddOptions(menu_id, "New cabinet|New weapon|Special Infected|Special tank");
+        ExtraMenu_AddEntry(menu_id, "2. Reload _OPT_", MENU_SELECT_LIST);
+        TrackSelectableEntry(MENU_SELECT_LIST);
+        ExtraMenu_AddOptions(menu_id, "Map|DLR Plugins|All plugins|Restart server");
+        ExtraMenu_AddEntry(menu_id, "3. Manage skills", MENU_SELECT_ONLY, true);
+        TrackSelectableEntry(MENU_SELECT_ONLY);
+        ExtraMenu_AddEntry(menu_id, "4. Manage perks", MENU_SELECT_ONLY, true);
+        TrackSelectableEntry(MENU_SELECT_ONLY);
+        ExtraMenu_AddEntry(menu_id, "5. Apply effect on player", MENU_SELECT_ONLY, true);
+        TrackSelectableEntry(MENU_SELECT_ONLY);
 
-		ExtraMenu_AddOptions(menu_id, "Off|Log to file|Log to chat|Tracelog to chat");
-		ExtraMenu_AddEntry(menu_id, "2. Halt game: _OPT_", MENU_SELECT_LIST);
-		ExtraMenu_AddOptions(menu_id, "Off|Only survivors|All");
-		ExtraMenu_AddEntry(menu_id, "3. Infected spawn: _OPT_", MENU_SELECT_ONOFF, false, 1);
-		ExtraMenu_AddEntry(menu_id, "4. God mode: _OPT_", MENU_SELECT_ONOFF, false, 1);
+        ExtraMenu_AddEntry(menu_id, " ", MENU_ENTRY);
+        ExtraMenu_AddEntry(menu_id, "DEBUG COMMANDS:", MENU_ENTRY);
+        ExtraMenu_AddEntry(menu_id, "1. Debug mode: _OPT_", MENU_SELECT_LIST);
+        TrackSelectableEntry(MENU_SELECT_LIST);
+        ExtraMenu_AddOptions(menu_id, "Off|Log to file|Log to chat|Tracelog to chat");
+        ExtraMenu_AddEntry(menu_id, "2. Halt game: _OPT_", MENU_SELECT_LIST);
+        TrackSelectableEntry(MENU_SELECT_LIST);
+        ExtraMenu_AddOptions(menu_id, "Off|Only survivors|All");
+        ExtraMenu_AddEntry(menu_id, "3. Infected spawn: _OPT_", MENU_SELECT_ONOFF, false, 1);
+        TrackSelectableEntry(MENU_SELECT_ONOFF);
+        ExtraMenu_AddEntry(menu_id, "4. God mode: _OPT_", MENU_SELECT_ONOFF, false, 1);
+        TrackSelectableEntry(MENU_SELECT_ONOFF);
+        ExtraMenu_AddEntry(menu_id, "5. Remove weapons from map", MENU_SELECT_ONLY);
+        TrackSelectableEntry(MENU_SELECT_ONLY);
+        ExtraMenu_AddEntry(menu_id, "6. Game speed: _OPT_", MENU_SELECT_LIST);
+        TrackSelectableEntry(MENU_SELECT_LIST);
+        ExtraMenu_AddOptions(menu_id, "□□□□□□□□□□|■□□□□□□□□□|■■□□□□□□□□|■■■□□□□□□□|■■■■□□□□□□|■■■■■□□□□□|■■■■■■□□□□|■■■■■■■□□□|■■■■■■■■□□|■■■■■■■■■□|■■■■■■■■■■");
 
-		ExtraMenu_AddEntry(menu_id, "5. Remove weapons from map", MENU_SELECT_ONLY);
-		ExtraMenu_AddEntry(menu_id, "6. Game speed: _OPT_", MENU_SELECT_LIST);
-		ExtraMenu_AddOptions(menu_id, "□□□□□□□□□□|■□□□□□□□□□|■■□□□□□□□□|■■■□□□□□□□|■■■■□□□□□□|■■■■■□□□□□|■■■■■■□□□□|■■■■■■■□□□|■■■■■■■■□□|■■■■■■■■■□|■■■■■■■■■■");	  // Various selectable options
-		ExtraMenu_AddEntry(menu_id, " ", MENU_ENTRY);																												  // Space to add blank entry
+        g_iGuideOptionIndex = g_iSelectableEntryCount;
+        ExtraMenu_AddEntry(menu_id, "Open DLR tutorial guide", MENU_SELECT_ONLY, true);
+        TrackSelectableEntry(MENU_SELECT_ONLY);
+        ExtraMenu_AddEntry(menu_id, " ", MENU_ENTRY);
 
-        ExtraMenu_AddEntry(guide_menu_id, "DLR GUIDE:", MENU_ENTRY);
-        ExtraMenu_AddEntry(guide_menu_id, "Use W/S to move row and A/D to select", MENU_ENTRY);
-        ExtraMenu_AddEntry(guide_menu_id, "!skill triggers your class ability", MENU_ENTRY);
-        ExtraMenu_AddEntry(guide_menu_id, "Soldier: aim and !skill for an airstrike", MENU_ENTRY);
-        ExtraMenu_AddEntry(guide_menu_id, "Commando: build rage then !skill to berserk", MENU_ENTRY);
-        ExtraMenu_AddEntry(guide_menu_id, "Engineer: !skill opens a turret menu", MENU_ENTRY);
-        ExtraMenu_AddEntry(guide_menu_id, " ", MENU_ENTRY);
-        ExtraMenu_AddEntry(guide_menu_id, "1. What is it", MENU_ENTRY, false, 250, 10, 100, 300);
-        ExtraMenu_AddEntry(guide_menu_id, "2. Features", MENU_SELECT_LIST);
-        ExtraMenu_AddOptions(guide_menu_id, "Common|Infected|Survivors");
-        ExtraMenu_AddEntry(guide_menu_id, "3. How to", MENU_SELECT_LIST);
-        ExtraMenu_AddOptions(guide_menu_id, "Missiles|Turrets|Special skills");
-        ExtraMenu_AddEntry(guide_menu_id, "4. Gameplay Tips", MENU_SELECT_ONLY);
-        ExtraMenu_AddEntry(guide_menu_id, "5. Survivor classes", MENU_SELECT_ONLY);
-        ExtraMenu_AddEntry(guide_menu_id, "6. Custom game modes", MENU_SELECT_ONLY);
-        ExtraMenu_AddEntry(guide_menu_id, "7. Add DLR servers to your serverlist", MENU_SELECT_ONLY);
-        ExtraMenu_NewPage(guide_menu_id);
+        g_iMenuID = menu_id;
+    }
 
-		//////////////////////////////////////////////////////////////////////////////////////
-		// Create a new guide menu
-		//////////////////////////////////////////////////////////////////////////////////////
-
-		int guide_menu_id;
-
-		guide_menu_id = ExtraMenu_Create();	   // W/A/S/D type selection menu
-
-		// Guide entries
-		ExtraMenu_AddEntry(guide_menu_id, "DLR GUIDE:", MENU_ENTRY);
-		ExtraMenu_AddEntry(guide_menu_id, "Use W/S to move row and A/D to select", MENU_ENTRY);
-		ExtraMenu_AddEntry(guide_menu_id, " ", MENU_ENTRY);	 // Space to add blank entry
-		ExtraMenu_AddEntry(guide_menu_id, "1. What is it", MENU_ENTRY, false, 250, 10, 100, 300);
-		ExtraMenu_AddEntry(guide_menu_id, "2. Features", MENU_SELECT_LIST);
-		ExtraMenu_AddOptions(guide_menu_id, "Common|Infected|Survivors");
-		ExtraMenu_AddEntry(guide_menu_id, "3. How to", MENU_SELECT_LIST);
-		ExtraMenu_AddOptions(guide_menu_id, "Missiles|Turrets|Special skills");
-		ExtraMenu_AddEntry(guide_menu_id, "4. Gameplay Tips", MENU_SELECT_ONLY);
-		ExtraMenu_AddEntry(guide_menu_id, "5. Survivor classes", MENU_SELECT_ONLY);
-		ExtraMenu_AddEntry(guide_menu_id, "6. Custom game modes", MENU_SELECT_ONLY);
-		ExtraMenu_AddEntry(guide_menu_id, "7. Add DLR servers to your serverlist", MENU_SELECT_ONLY);
-		ExtraMenu_NewPage(guide_menu_id);	   // New Page
-
-		// Store your menu ID to use later
-		g_iGuideMenuID = guide_menu_id;
-	}
+    if (strcmp(name, "dlr_talents_guide") == 0)
+    {
+        RefreshGuideLibraryStatus();
+    }
 }
 
 public void OnLibraryRemoved(const char[] name)
 {
-	if (strcmp(name, "extra_menu") == 0)
-	{
-		OnPluginEnd();
-	}
+    if (strcmp(name, "extra_menu") == 0)
+    {
+        OnPluginEnd();
+    }
+
+    if (strcmp(name, "dlr_talents_guide") == 0)
+    {
+        RefreshGuideLibraryStatus();
+    }
 }
 
-// Always clean up the menu when finished
 public void OnPluginEnd()
 {
-	ExtraMenu_Delete(g_iMenuID);
-	ExtraMenu_Delete(g_iGuideMenuID);
+    if (g_iMenuID != 0)
+    {
+        ExtraMenu_Delete(g_iMenuID);
+        g_iMenuID = 0;
+    }
 }
 
-// Display menu
 Action CmdDLRMenu(int client, int args)
 {
-	ExtraMenu_Display(client, g_iMenuID, MENU_TIME_FOREVER);
+    if (client <= 0 || !IsClientInGame(client))
+    {
+        PrintToServer("[DLR] This command can only be used in-game.");
+        return Plugin_Handled;
+    }
 
-	return Plugin_Handled;
+    PrintHintText(client, "Use W/S to move and A/D to select options.");
+    ExtraMenu_Display(client, g_iMenuID, MENU_TIME_FOREVER);
+
+    return Plugin_Handled;
 }
 
-// Display menu
 Action CmdDLRGuideMenu(int client, int args)
 {
-	ExtraMenu_Display(client, g_iGuideMenuID, MENU_TIME_FOREVER);
+    if (client <= 0 || !IsClientInGame(client))
+    {
+        PrintToServer("[DLR] This command can only be used in-game.");
+        return Plugin_Handled;
+    }
 
-	return Plugin_Handled;
+    if (!TryShowGuideMenu(client))
+    {
+        PrintToChat(client, "[DLR] Tutorial plugin is not available right now.");
+    }
+
+    return Plugin_Handled;
 }
 
-// Game Menu selection handling
 public void DLRMenu_OnSelect(int client, int menu_id, int option, int value)
 {
-	if (menu_id == g_iMenuID)
-	{
-	
-		PrintToChatAll("SELECTED %N Option: %d Value: %d", client, option, value);
+    if (menu_id == g_iMenuID)
+    {
+        PrintToChatAll("SELECTED %N Option: %d Value: %d", client, option, value);
 
-                switch( option )
-                {
-                        case 0: ClientCommand(client, "sm_godmode @me");
-                        case 1: FakeClientCommand(client, "sm_afk");
-                        case 2: FakeClientCommand(client, "sm_team");
-                        case 3: FakeClientCommand(client, "sm_class");
-                        case 4: PrintToChat(client, "Difficulty to %d", value);
-                        case 5: PrintToChat(client, "Tester to %d", value);
-                        case 6: FakeClientCommand(client, "sm_slay @me");
-                        case 7: PrintToChat(client, "Default value changed to %d", value);
-                        case 8: PrintToChat(client, "Close after use %d", value);
-                        case 9: PrintToChat(client, "Meter value %d", value);
-                        case 10, 11, 12: PrintToChat(client, "Second page option %d", option - 9);
-                }
-
-	}
-}
-
-// Guide Menu selection handling
-public void DLRGuideMenu_OnSelect(int client, int menu_id, int option, int value)
-{
-	if (menu_id == g_iGuideMenuID)
-	{
-		PrintToChatAll("SELECTED %N Option: %d Value: %d", client, option, value);
-
-                switch (option)
-                {
-                        // foobar
-                }
+        if (option == g_iGuideOptionIndex && g_iGuideOptionIndex != -1)
+        {
+            if (!TryShowGuideMenu(client))
+            {
+                PrintToChat(client, "[DLR] Tutorial plugin is not available right now.");
+            }
+            return;
         }
+
+        switch (option)
+        {
+            case 0: ClientCommand(client, "sm_godmode @me");
+            case 1: ClientCommand(client, "sm_noclip @me");
+            case 2: ClientCommand(client, "sm_beacon @me");
+            case 3: PrintToChat(client, "Speed changed to %d", value);
+            case 4: PrintToChat(client, "Difficulty to %d", value);
+            case 5: PrintToChat(client, "Tester to %d", value);
+            case 6: ChangeGameModeByIndex(client, value);
+            case 7: PrintToChat(client, "Default value changed to %d", value);
+            case 8: PrintToChat(client, "Close after use %d", value);
+            case 9: PrintToChat(client, "Meter value %d", value);
+            case 10, 11, 12: PrintToChat(client, "Second page option %d", option - 9);
+        }
+    }
 }
 
-// Forward handler for ExtraMenu selections
 public void ExtraMenu_OnSelect(int client, int menu_id, int option, int value)
 {
-        DLRMenu_OnSelect(client, menu_id, option, value);
-        DLRGuideMenu_OnSelect(client, menu_id, option, value);
+    DLRMenu_OnSelect(client, menu_id, option, value);
+}
+
+void TrackSelectableEntry(EXTRA_MENU_TYPE type)
+{
+    if (type != MENU_ENTRY)
+    {
+        g_iSelectableEntryCount++;
+    }
+}
+
+void RefreshGuideLibraryStatus()
+{
+    g_bGuideNativeAvailable = (GetFeatureStatus(FeatureType_Native, "DLRGuide_ShowMainMenu") == FeatureStatus_Available);
+}
+
+bool TryShowGuideMenu(int client)
+{
+    if (!g_bGuideNativeAvailable || client <= 0 || !IsClientInGame(client))
+    {
+        return false;
+    }
+
+    DLRGuide_ShowMainMenu(client);
+    return true;
+}
+
+void AddGameModeOptions(int menu_id)
+{
+    char options[512];
+    options[0] = '\0';
+
+    for (int i = 0; i < GAMEMODE_OPTION_COUNT; i++)
+    {
+        if (options[0] != '\0')
+        {
+            StrCat(options, sizeof(options), "|");
+        }
+
+        StrCat(options, sizeof(options), g_sGameModeNames[i]);
+    }
+
+    ExtraMenu_AddOptions(menu_id, options);
+}
+
+void ChangeGameModeByIndex(int client, int modeIndex)
+{
+    if (modeIndex < 0 || modeIndex >= GAMEMODE_OPTION_COUNT)
+    {
+        PrintToChat(client, "[DLR] Unknown game mode option.");
+        return;
+    }
+
+    if (g_hCvarMPGameMode == null)
+    {
+        PrintToChat(client, "[DLR] Unable to change game mode right now.");
+        return;
+    }
+
+    ConVar cvar = g_hGameModeCvars[modeIndex];
+    if (cvar == null)
+    {
+        PrintToChat(client, "[DLR] Game mode option is not configured.");
+        return;
+    }
+
+    char targetMode[64];
+    cvar.GetString(targetMode, sizeof(targetMode));
+    TrimString(targetMode);
+
+    if (targetMode[0] == '\0')
+    {
+        PrintToChat(client, "[DLR] Game mode value is empty.");
+        return;
+    }
+
+    char currentMode[64];
+    g_hCvarMPGameMode.GetString(currentMode, sizeof(currentMode));
+
+    if (StrEqual(currentMode, targetMode, false))
+    {
+        PrintToChat(client, "[DLR] %s is already active.", g_sGameModeNames[modeIndex]);
+        return;
+    }
+
+    g_hCvarMPGameMode.SetString(targetMode);
+    LogAction(client, -1, "\"%L\" changed game mode to \"%s\"", client, targetMode);
+    ShowActivity2(client, "[DLR] ", "changed game mode to %s.", g_sGameModeNames[modeIndex]);
+    PrintToChatAll("[DLR] %N switched the game mode to %s (\"%s\").", client, g_sGameModeNames[modeIndex], targetMode);
 }
