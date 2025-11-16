@@ -309,7 +309,7 @@ public void DLR_OnPluginState(char[] plugin, int pluginstate)
 {
 	static int ragestate;
 
-    if( StrEqual(plugin, "rage_talents") && pluginstate == 1 && ragestate == 0 )
+    if( StrEqual(plugin, "rage_talents") && pluginstate == 1 && dlrstate == 0 )
 	{
 		SetConVarBool(g_hCvarAllow, true);
 		ragestate = 1;
@@ -318,7 +318,7 @@ public void DLR_OnPluginState(char[] plugin, int pluginstate)
 		}
 
 	}
-    else if(StrEqual(plugin, "rage_talents") && pluginstate == 0 && ragestate == 1 )
+    else if(StrEqual(plugin, "rage_talents") && pluginstate == 0 && dlrstate == 1 )
 	{
 		SetConVarBool(g_hCvarAllow, false);
 		ragestate = 0;
