@@ -7,6 +7,35 @@ stock Action TimerStart(Handle timer)
 	return Plugin_Continue;
 }
 
+bool ShouldTriggerSkillAction(SkillActionBinding actionBinding, int buttons, int lastButtons, const float viewAngles[3])
+{
+	switch (actionBinding)
+	{
+		case SkillAction_BuildButton:
+		{
+			bool pressed = (buttons & IN_SPEED) != 0;
+			bool wasPressed = (lastButtons & IN_SPEED) != 0;
+			return pressed && !wasPressed && viewAngles[0] > 45.0;
+		}
+		case SkillAction_SecondaryAction:
+		{
+			bool pressed = (buttons & IN_USE) && (buttons & IN_ATTACK);
+			bool wasPressed = (lastButtons & IN_USE) && (lastButtons & IN_ATTACK);
+			return pressed && !wasPressed;
+		}
+		case SkillAction_ActionButton:
+		{
+			bool pressed = (buttons & IN_ZOOM) != 0;
+			bool wasPressed = (lastButtons & IN_ZOOM) != 0;
+			return pressed && !wasPressed;
+		}
+		default:
+		{
+			return (buttons & IN_ZOOM) != 0;
+		}
+	}
+}
+
 public Action:TimerThink(Handle:hTimer, any:userid)
 {
 	int client = GetClientOfUserId(userid);
@@ -21,13 +50,15 @@ public Action:TimerThink(Handle:hTimer, any:userid)
 	decl Float:pos[3];
 	GetClientAbsOrigin(client, pos);
 	int iDropTime = RoundToFloor(fCanDropTime);
+	float viewAngles[3];
+	GetClientEyeAngles(client, viewAngles);
 
 	switch (ClientData[client].ChosenClass)
 	{
 		case athlete:
 		{	
 			SetEntDataFloat(client, g_flLaggedMovementValue, GetConVarFloat(ATHLETE_SPEED), true);
-			if (buttons & IN_ZOOM) {
+			if (ShouldTriggerSkillAction(ClientData[client].actionBinding, buttons, ClientData[client].LastButtons, viewAngles)) {
 
 				char pendingMessage[128] = "Wait %i seconds to use anti-gravity grenade again";
 				
@@ -57,7 +88,7 @@ public Action:TimerThink(Handle:hTimer, any:userid)
 					}
 				}
 			}
-			if (buttons & IN_ZOOM) {
+			if (ShouldTriggerSkillAction(ClientData[client].actionBinding, buttons, ClientData[client].LastButtons, viewAngles)) {
 					char pendingMessage[128] = "Wait for %i seconds to activate cloak again";
 					if (canUseSpecialSkill(client, pendingMessage, true)) {
 						new Handle:hPack = CreateDataPack();
@@ -130,7 +161,7 @@ public Action:TimerThink(Handle:hTimer, any:userid)
 		}
 		case commando:
 		{
-			if (buttons & IN_ZOOM) {
+			if (ShouldTriggerSkillAction(ClientData[client].actionBinding, buttons, ClientData[client].LastButtons, viewAngles)) {
 
 					char pendingMessage[128] = "Wait for %i seconds to activate berzerk mode again";
 					if (canUseSpecialSkill(client, pendingMessage)) {
@@ -160,7 +191,7 @@ public Action:TimerThink(Handle:hTimer, any:userid)
 
 			}
 
-			if (buttons & IN_ZOOM) {
+			if (ShouldTriggerSkillAction(ClientData[client].actionBinding, buttons, ClientData[client].LastButtons, viewAngles)) {
 
 				char pendingMessage[128] = "Wait %i seconds to use healing orb again";
 				
@@ -206,7 +237,7 @@ public Action:TimerThink(Handle:hTimer, any:userid)
 					}
 				}					
 			}
-			else if (buttons & IN_ZOOM) {
+			else if (ShouldTriggerSkillAction(ClientData[client].actionBinding, buttons, ClientData[client].LastButtons, viewAngles)) {
 
 				char pendingMessage[128] = "Wait %i seconds to activate shield again";
 				
@@ -223,7 +254,7 @@ public Action:TimerThink(Handle:hTimer, any:userid)
 		{
 			SetEntDataFloat(client, g_flLaggedMovementValue, GetConVarFloat(SOLDIER_SPEED), true);
 
-			if (buttons & IN_ZOOM)
+			if (ShouldTriggerSkillAction(ClientData[client].actionBinding, buttons, ClientData[client].LastButtons, viewAngles))
 			{
 				char pendingMessage[128] = "Wait %d seconds to order new airstrike.";
 				

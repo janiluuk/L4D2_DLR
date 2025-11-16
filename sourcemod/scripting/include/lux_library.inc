@@ -23,7 +23,7 @@
 #include <sourcemod>
 #include <sdktools>
 
-#define LUX_LIBRARY_VERSION "0.5.7"
+#define LUX_LIBRARY_VERSION "0.5.8"
 
 #define GIMMEDATA "lux_library"
 
@@ -378,6 +378,9 @@ stock float Terror_GetAdrenalineTime(int iClient)
 	{
 		timerAddress = FindSendPropInfo("CTerrorPlayer", "m_bAdrenalineActive") - 12;
 	}
+	
+	if(GetEntProp(iClient, Prop_Send, "m_bAdrenalineActive", 1) < 1)
+		return -1.0;
 	
 	//timerAddress + 8 = TimeStamp
 	float flGameTime = GetGameTime();
@@ -1423,10 +1426,10 @@ stock void EmitMixedAmbientSound(int client, const char[] sample,
 	
 	if(flDistMulti > 1.0)
 	{
-		newPitch = FloatToInt(newPitch / (flDistMulti > 2.0 ? 2.0 : flDistMulti));
+		newPitch = RoundToNearest(newPitch / (flDistMulti > 2.0 ? 2.0 : flDistMulti));
 	}
 	
-	DistLevelBoost = FloatToInt((flDistPercent * exponent) * levelBoost);
+	DistLevelBoost = RoundToNearest((flDistPercent * exponent) * levelBoost);
 	if(DistLevelBoost > levelBoost)
 		DistLevelBoost = levelBoost;
 	
@@ -1507,14 +1510,37 @@ stock void EmitMixedAmbientSound_FallBack(int client, const char[] sample,
 	newPitch = pitch;
 	if(flDistMulti > 1.0)
 	{
-		newPitch = FloatToInt(newPitch / (flDistMulti > 2.0 ? 2.0 : flDistMulti));
+		newPitch = RoundToNearest(newPitch / (flDistMulti > 2.0 ? 2.0 : flDistMulti));
 	}
 	
-	DistLevelBoost = FloatToInt((flDistPercent * exponent) * levelBoost);
+	DistLevelBoost = RoundToNearest((flDistPercent * exponent) * levelBoost);
 	if(DistLevelBoost > levelBoost)
 		DistLevelBoost = levelBoost;
 	
 	EmitSoundToClient(client, sample, entity, sndChannel, level + DistLevelBoost, _, _, newPitch, _, origin);
+}
+
+stock ShakeClientScreenAll(float origin[3], float shakeRange, float shakeAmplitude=5.0, float shakeFrequency=40.0, float shakeDuration=1.0)
+{
+	for(int i = 1; i <= MaxClients; ++i)
+	{
+		if(!IsClientInGame(i) || IsFakeClient(i))
+			continue;
+		
+		ShakeClientScreen(i, origin, shakeRange, shakeAmplitude, shakeFrequency, shakeDuration);
+	}
+}
+
+stock void ShakeClientScreen(int client, float origin[3], float shakeRange, float shakeAmplitude=5.0, float shakeFrequency=40.0, float shakeDuration=1.0)
+{
+	float vecEyePos[3];
+	GetClientEyePosition(client, vecEyePos);
+	float flDist = GetVectorDistance(vecEyePos, origin);
+	float flDistPercent = (flDist / shakeRange);
+	if(flDistPercent <= 0.001)
+		return;
+	
+	Client_Shake(client, _, (shakeAmplitude / flDistPercent), shakeFrequency, shakeDuration);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

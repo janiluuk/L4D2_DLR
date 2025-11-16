@@ -1,0 +1,291 @@
+"Phrases"
+{
+	/* Main menu */
+	"Main menu"
+	{
+		"#format"		"{1:i},{2:i},{3:i},{4:i},{5:i},{6:.0f},{7:i},{8:i},{9:.0f},{10:i},{11:.0f},{12:i}"
+		"en"			"========= Main Menu =========\nLevel: {1} | XP: {2}/{3} | Money: {4} | Skill points: {5} | Max HP: {8}\nStamina: {6}/{7} | Mana: {9}/{10} | Willpower: {11}/{12}"
+	}
+	
+	"Use spell"
+	{
+		"#format"		"{1:i}"
+		"en"			"Use spell ({1})"
+	}
+	
+	"View attributes"
+	{
+		"#format"		"{1:i}"
+		"en"			"View attributes ({1})"
+	}
+	
+	"Buy spell"
+	{
+		"#format"		"{1:i}"
+		"en"			"Buy spell ({1})"
+	}
+	
+	/* Attribute menu */
+	"Attribute panel"
+	{
+		"en"			"========= Attributes ========="
+	}
+	
+	"Attribute points and level"
+	{
+		"#format"		"{1:i},{2:i}"
+		"en"			"Attribute points: {1} | Level: {2}"
+	}
+	
+	"Stamina status"
+	{
+		"#format"		"{1:.0f},{2:i}"
+		"en"			"Stamina ({1}/{2})"
+	}
+	
+	"Stamina description"
+	{
+		"#format"		"{1:.2f},{2:.2f}"
+		"en"			"Stamina is used to block damage and sprint.\nTrigger chance: {1}% | Damage reduction: {2}%"
+	}
+	
+	"Health status"
+	{
+		"#format"		"{1:i}"
+		"en"			"Health ({1})"
+	}
+	
+	"Health description"
+	{
+		"en"			"Increases your maximum health."
+	}
+	
+	"Mana status"
+	{
+		"#format"		"{1:.0f},{2:i}"
+		"en"			"Mana ({1}/{2})"
+	}
+	
+	"Mana description"
+	{
+		"en"			"Mana is used to cast spells.\nStanding still as a special infected or when black-and-white can slowly restore HP."
+	}
+	
+	"Willpower status"
+	{
+		"#format"		"{1:.0f},{2:i}"
+		"en"			"Willpower ({1}/{2})"
+	}
+	
+	"Willpower description"
+	{
+		"#format"		"{1:.2f},{2:.2f}"
+		"en"			"Willpower increases your attack damage.\nTrigger chance: {1}% | Damage bonus: {2}%"
+	}
+	
+	/* Spells */
+	"You do not have any spells"
+	{
+		"en"			"You do not have any spells."
+	}
+	
+	"Spell menu"
+	{
+		"#format"		"{1:.0f},{2:i},{3:i}"
+		"en"			"========= Spell Menu =========\nMana: {1}/{2} | Level: {3}"
+	}
+	
+	"No spells available for sale"
+	{
+		"en"			"There are currently no spells available for sale."
+	}
+	
+	"Spell purchase menu"
+	{
+		"#format"		"{1:.0f},{2:i},{3:i},{4:i}"
+		"en"			"========= Spell Shop =========\nMana: {1}/{2} | Level: {3} | Money: {4}"
+	}
+	
+	"Spell purchase entry"
+	{
+		"#format"		"{1:s},{2:i},{3:i}"
+		"en"			"{1} [Cost {2} | Mana {3}]"
+	}
+	
+	"Purchase failed due to unknown error"
+	{
+		"en"			"Purchase failed due to an unknown error."
+	}
+	
+	"Spell failed due to unknown error"
+	{
+		"en"			"Spell failed due to an unknown error."
+	}
+	
+	"Spell failed, not enough mana"
+	{
+		"#format"		"{1:.0f},{2:i}"
+		"en"			"Spell failed, not enough mana {green}({1}/{2}){default}."
+	}
+	
+	"Spell used"
+	{
+		"#format"		"{1:s},{2:i}"
+		"en"			"You used {lightgreen}{1}{default}, XP +{green}{2}{default}."
+	}
+	
+	"Bought spell"
+	{
+		"#format"		"{1:s},{2:i},{3:i}"
+		"en"			"You bought {lightgreen}{1}{default} for {green}{2}{default}, remaining money: {green}{3}{default}."
+	}
+	
+	"Purchase failed, blocked by an unknown force"
+	{
+		"en"			"Purchase failed, blocked by an unknown force."
+	}
+	
+	"Spell failed, blocked by an unknown force"
+	{
+		"en"			"Spell failed, blocked by an unknown force."
+	}
+	
+	"Purchase failed, not enough money"
+	{
+		"#format"		"{1:i},{2:i}"
+		"en"			"Purchase failed, not enough money {green}({1}/{2}){default}."
+	}
+	
+	"Confirm spell purchase"
+	{
+		"en"			"========= Spell Info ========="
+	}
+	
+	"Purchase price"
+	{
+		"#format"		"{1:i},{2:i}"
+		"en"			"Required: {1} | You have: {2}"
+	}
+	
+	"Spell cost"
+	{
+		"#format"		"{1:i},{2:i}"
+		"en"			"Mana cost: {1} | Current: {2}"
+	}
+	
+	"Cannot afford the cost"
+	{
+		"en"			"You would not be able to use this spell even if you bought it. Consider saving your money."
+	}
+	
+	/* Combat */
+	"Entered combat state"
+	{
+		"en"			"You have entered {red}combat{default}."
+	}
+	
+	"You leveled up"
+	{
+		"#format"		"{1:i},{2:i},{3:i}"
+		"en"			"You leveled up! Level: {lightgreen}{1}{default} | XP: {green}{2}/{3}{default}."
+	}
+	
+	"Left combat state"
+	{
+		"en"			"You have left {blue}combat{default}."
+	}
+	
+	/* Skills */
+	"View skills"
+	{
+		"#format"		"{1:i},{2:i}"
+		"en"			"View skills ({1}/{2})"
+	}
+	
+	"Skill selection menu"
+	{
+		"#format"		"{1:i},{2:i},{3:i}"
+		"en"			"========= Skill Selection =========\nLevel: {1} | Money: {2} | Skill points: {3}"
+	}
+	
+	"No skill selected"
+	{
+		"en"			"Empty (click to choose a skill)"
+	}
+	
+	"No selection hint"
+	{
+		"en"			"This slot is empty. Pick a skill to fill it."
+	}
+	
+	"Slot not unlocked"
+	{
+		"en"			"Locked (click to spend money to unlock)"
+	}
+	
+	"Not unlocked hint"
+	{
+		"#format"		"{1:i},{2:i}"
+		"en"			"Unlock this slot with level {1} or {2} money."
+	}
+	
+	"Purchase failed, already reached the limit"
+	{
+		"#format"		"{1:i}"
+		"en"			"Purchase failed, you have reached the skill slot limit ({lightgreen}{1}{default})."
+	}
+	
+	"Successfully purchased skill slot"
+	{
+		"#format"		"{1:i},{2:i},{3:i},{4:i}"
+		"en"			"Slot purchase complete. Slots: ({lightgreen}{1}{default}/{green}{2}{default}). Spent {lightgreen}{3}{default}, remaining {green}{4}{default}."
+	}
+	
+	"Selection failed due to unknown error"
+	{
+		"en"			"Selection failed due to an unknown error."
+	}
+	
+	"Selection failed, blocked by an unknown force"
+	{
+		"en"			"Selection failed, blocked by an unknown force."
+	}
+	
+	"Skill selected"
+	{
+		"#format"		"{1:s}"
+		"en"			"Selected skill: {blue}{1}"
+	}
+	
+	"Skill effect"
+	{
+		"#format"		"{1:s}"
+		"en"			"Effect: {lightgreen}{1}"
+	}
+	
+	"Confirm skill selection"
+	{
+		"en"			"========= Skill Info ========="
+	}
+	
+	"You do not have any skills"
+	{
+		"en"			"You currently have no usable skills."
+	}
+	
+	"You are using it too fast"
+	{
+		"en"			"You are using that too quickly. Please wait a moment."
+	}
+	
+	"Replace skill"
+	{
+		"#format"		"{1:s}"
+		"en"			"Replace current skill {1}"
+	}
+	
+	"Choose new skill"
+	{
+		"en"			"Choose a new skill"
+	}
+}

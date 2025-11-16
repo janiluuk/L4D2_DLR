@@ -1,4 +1,3 @@
-// What formatting string to use when printing to the chatbox
 #define PRINT_PREFIX    "\x04[RAGE]\x01"
 
 #include <sourcemod>

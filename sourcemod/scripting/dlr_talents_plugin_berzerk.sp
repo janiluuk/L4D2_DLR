@@ -46,6 +46,11 @@
 #define DEBUG 0
 int g_iClassID = -1;
 
+/**
+ * Purpose: Berserk skill bound via configs/dlr_class_actions.cfg.
+ * Bound Classes: default Commando (configurable through the class binding config).
+ */
+
 //Includes
 #include <sourcemod>
 #include <sdktools>
@@ -741,10 +746,11 @@ public OnMapStart()
 	native void GetPlayerSkillName(int client, char[] skillName, int size);
 	native int FindSkillIdByName(char[] skillName);
 	native int RegisterDLRSkill(char[] skillName, int type);
+	native bool DLR_IsSkillAllowed(int client, const char[] skillName);
 	#define DLR_PLUGIN_NAME = "dlr_talents"
 #endif
 
-bool	DLR_Available;
+static bool	DLR_Available = false;
 
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
 {
@@ -761,6 +767,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	MarkNativeAsOptional("GetPlayerSkillName");	
 	MarkNativeAsOptional("RegisterDLRSkill");
 	MarkNativeAsOptional("DLR_OnPluginState");	
+	MarkNativeAsOptional("DLR_IsSkillAllowed");
 
 	return APLRes_Success;
 }
@@ -782,6 +789,11 @@ public int OnSpecialSkillUsed(int iClient, int skill, int type)
 	}
 	if (StrEqual(szSkillName,PLUGIN_SKILL_NAME))
 	{
+		if (DLR_Available && !DLR_IsSkillAllowed(iClient, PLUGIN_SKILL_NAME))
+		{
+			OnSpecialSkillFail(iClient, PLUGIN_SKILL_NAME, "class_mismatch");
+			return 0;
+		}
 
 		BeginBerserkerMode(iClient);
 		OnSpecialSkillSuccess(iClient, PLUGIN_SKILL_NAME);

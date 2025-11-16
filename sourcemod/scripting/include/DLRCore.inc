@@ -134,6 +134,8 @@ native void OnGetPerkDescription(int client, const char[] name, int level, char[
 
 native void OnGetPerkName(int client, const char[] name, int level, char[] result, int maxlen);
 
+native bool DLR_IsSkillAllowed(int client, const char[] skillName);
+
 /**
  * Register plugin 
  *
@@ -168,6 +170,7 @@ public __pl_DLRCore_SetNTVOptional()
     MarkNativeAsOptional("FindSkillNameByName");
     MarkNativeAsOptional("OnPluginStateChange");
     MarkNativeAsOptional("DLR_GetClientSkill");    
+    MarkNativeAsOptional("DLR_IsSkillAllowed");
 }
 #endif
 

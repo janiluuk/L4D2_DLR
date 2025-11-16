@@ -16,7 +16,7 @@
 */
 
 #define PLUGIN_NAME "Talents Plugin 2023 anniversary edition"
-#define PLUGIN_VERSION "1.82b"
+#define PLUGIN_VERSION "1.9"
 #define PLUGIN_IDENTIFIER "dlr_talents"
 #pragma semicolon 1
 #define DEBUG 0
@@ -33,28 +33,23 @@ public Plugin:myinfo =
 	url = "https://forums.alliedmods.net/showthread.php?t=273312"
 };
 
-#include <adminmenu>
 #include <sdktools>
 #include <l4d2hud>
 #include <talents>
 #include <jutils>
 #include <l4d2>
+#include <adminmenu>
 
-#undef REQUIRE_PLUGIN
-#tryinclude <LMCCore>
-#define REQUIRE_PLUGIN
+enum struct ClassActionBinding
+{
+	char className[32];
+	char skillName[32];
+	SkillActionBinding action;
+	char hint[128];
+}
 
-#if !defined _LMCCore_included
-	native int LMC_SetClientOverlayModel(int iEntity, const char[] sModel);
-#endif
-
-#undef REQUIRE_PLUGIN
-#tryinclude <LMCL4D2SetTransmit>
-#define REQUIRE_PLUGIN
-
-#if !defined _LMCL4D2SetTransmit_included
-	native int LMC_L4D2_SetTransmit(int iEntity, int client);
-#endif
+ArrayList g_ClassActionBindings = null;
+StringMap g_ClassActionLookup = null;
 
 /**
 * PLUGIN LOGIC
@@ -108,6 +103,9 @@ public OnPluginStart( )
 	
 	if (g_hSkillTypeArray == INVALID_HANDLE)
 		g_hSkillTypeArray = CreateArray(16);
+
+	EnsureClassBindingConfig();
+	LoadClassActionBindings();
 
 	// Offsets
 	g_iNextPrimaryAttack = FindSendPropInfo("CBaseCombatWeapon", "m_flNextPrimaryAttack");
@@ -243,6 +241,220 @@ public OnPluginStart( )
 	}
 }
 
+void EnsureClassBindingConfig()
+{
+	char path[PLATFORM_MAX_PATH];
+	BuildPath(Path_SM, path, sizeof(path), "configs/dlr_class_actions.cfg");
+	if (FileExists(path))
+	{
+		return;
+	}
+
+	KeyValues kv = new KeyValues("DLR_ClassActions");
+	WriteDefaultBinding(kv, "Soldier", "Airstrike", "action_button", "Press the action button or !skill to call an airstrike.");
+	WriteDefaultBinding(kv, "Commando", "Berzerk", "action_button", "Press the action button or !skill to trigger berzerk mode.");
+	WriteDefaultBinding(kv, "Engineer", "Multiturret", "action_button", "Press the action button or !skill to deploy turrets and ammo support.");
+	WriteDefaultBinding(kv, "Medic", "Grenades", "action_button", "Press the action button or !skill to throw a healing orb.");
+	WriteDefaultBinding(kv, "Saboteur", "cloak", "action_button", "Press the action button or !skill to spawn a decoy and cloak.");
+	WriteDefaultBinding(kv, "Athlete", "Grenades", "action_button", "Press the action button or !skill to use the anti-gravity grenade.");
+	WriteDefaultBinding(kv, "Brawler", "", "none", "Brawler has no bound active skill.");
+
+	kv.ExportToFile(path);
+	delete kv;
+}
+
+void WriteDefaultBinding(KeyValues kv, const char[] className, const char[] skillName, const char[] action, const char[] hint)
+{
+	kv.JumpToKey(className, true);
+	kv.SetString("skill", skillName);
+	kv.SetString("action", action);
+	kv.SetString("hint", hint);
+	kv.GoBack();
+}
+
+void ToLowerInPlace(char[] buffer, int length)
+{
+	for (int i = 0; i < length && buffer[i] != '\0'; i++)
+	{
+		buffer[i] = CharToLower(buffer[i]);
+	}
+}
+
+SkillActionBinding ParseActionBinding(const char[] actionName)
+{
+	if (StrEqual(actionName, "build_button", false))
+		return SkillAction_BuildButton;
+	if (StrEqual(actionName, "secondary_action", false))
+		return SkillAction_SecondaryAction;
+	if (StrEqual(actionName, "none", false))
+		return SkillAction_None;
+	return SkillAction_ActionButton;
+}
+
+void AddBindingToMemory(const char[] className, const char[] skillName, SkillActionBinding action, const char[] hint)
+{
+	ClassActionBinding binding;
+	strcopy(binding.className, sizeof(binding.className), className);
+	strcopy(binding.skillName, sizeof(binding.skillName), skillName);
+	binding.action = action;
+	strcopy(binding.hint, sizeof(binding.hint), hint);
+	ToLowerInPlace(binding.className, sizeof(binding.className));
+
+	int index = g_ClassActionBindings.PushArray(binding);
+	g_ClassActionLookup.SetValue(binding.className, index);
+}
+
+void LoadDefaultClassBindingsIntoMemory()
+{
+	if (g_ClassActionBindings == null)
+	{
+		g_ClassActionBindings = new ArrayList(sizeof(ClassActionBinding));
+	}
+	else
+	{
+		g_ClassActionBindings.Clear();
+	}
+
+	if (g_ClassActionLookup == null)
+	{
+		g_ClassActionLookup = new StringMap();
+	}
+	else
+	{
+		delete g_ClassActionLookup;
+		g_ClassActionLookup = new StringMap();
+	}
+
+	AddBindingToMemory("Soldier", "Airstrike", SkillAction_ActionButton, "Press the action button or !skill to call an airstrike.");
+	AddBindingToMemory("Commando", "Berzerk", SkillAction_ActionButton, "Press the action button or !skill to trigger berzerk mode.");
+	AddBindingToMemory("Engineer", "Multiturret", SkillAction_ActionButton, "Press the action button or !skill to deploy turrets and ammo support.");
+	AddBindingToMemory("Medic", "Grenades", SkillAction_ActionButton, "Press the action button or !skill to throw a healing orb.");
+	AddBindingToMemory("Saboteur", "cloak", SkillAction_ActionButton, "Press the action button or !skill to spawn a decoy and cloak.");
+	AddBindingToMemory("Athlete", "Grenades", SkillAction_ActionButton, "Press the action button or !skill to use the anti-gravity grenade.");
+	AddBindingToMemory("Brawler", "", SkillAction_None, "Brawler has no bound active skill.");
+}
+
+void LoadClassActionBindings()
+{
+	if (g_ClassActionBindings == null)
+	{
+		g_ClassActionBindings = new ArrayList(sizeof(ClassActionBinding));
+	}
+	else
+	{
+		g_ClassActionBindings.Clear();
+	}
+
+	if (g_ClassActionLookup == null)
+	{
+		g_ClassActionLookup = new StringMap();
+	}
+	else
+	{
+		delete g_ClassActionLookup;
+		g_ClassActionLookup = new StringMap();
+	}
+
+	KeyValues kv = new KeyValues("DLR_ClassActions");
+	char path[PLATFORM_MAX_PATH];
+	BuildPath(Path_SM, path, sizeof(path), "configs/dlr_class_actions.cfg");
+
+	if (!kv.ImportFromFile(path) || !kv.GotoFirstSubKey(false))
+	{
+		LogError("Failed to read %s, loading defaults.", path);
+		delete kv;
+		LoadDefaultClassBindingsIntoMemory();
+		return;
+	}
+
+	do
+	{
+		ClassActionBinding binding;
+		kv.GetSectionName(binding.className, sizeof(binding.className));
+		kv.GetString("skill", binding.skillName, sizeof(binding.skillName), "");
+
+		char actionName[32];
+		kv.GetString("action", actionName, sizeof(actionName), "action_button");
+		binding.action = ParseActionBinding(actionName);
+
+		kv.GetString("hint", binding.hint, sizeof(binding.hint), "");
+
+		ToLowerInPlace(binding.className, sizeof(binding.className));
+
+		int index = g_ClassActionBindings.PushArray(binding);
+		g_ClassActionLookup.SetValue(binding.className, index);
+	}
+	while (kv.GotoNextKey(false));
+
+	delete kv;
+
+	if (g_ClassActionBindings.Length == 0)
+	{
+		LoadDefaultClassBindingsIntoMemory();
+	}
+}
+
+bool GetClassBinding(const char[] className, ClassActionBinding binding)
+{
+	if (g_ClassActionBindings == null || g_ClassActionLookup == null)
+	{
+		return false;
+	}
+
+	char key[32];
+	strcopy(key, sizeof(key), className);
+	ToLowerInPlace(key, sizeof(key));
+
+	int index;
+	if (!g_ClassActionLookup.GetValue(key, index))
+	{
+		return false;
+	}
+
+	g_ClassActionBindings.GetArray(index, binding);
+	return true;
+}
+
+void ApplyClassBindingToClient(int client)
+{
+	ClientData[client].actionBinding = SkillAction_None;
+	ClientData[client].skillBindingName[0] = '\0';
+	ClientData[client].skillHint[0] = '\0';
+	g_iPlayerSkill[client] = -1;
+
+	char className[32];
+	PlayerIdToClassName(client, className, sizeof(className));
+	if (className[0] == '\0')
+	{
+		return;
+	}
+
+	ClassActionBinding binding;
+	if (!GetClassBinding(className, binding))
+	{
+		return;
+	}
+
+	ClientData[client].actionBinding = binding.action;
+	strcopy(ClientData[client].skillBindingName, sizeof(ClientData[client].skillBindingName), binding.skillName);
+	strcopy(ClientData[client].skillHint, sizeof(ClientData[client].skillHint), binding.hint);
+
+	if (binding.skillName[0] == '\0')
+	{
+		return;
+	}
+
+	int skillId = FindSkillIdByName(binding.skillName);
+	if (skillId > -1)
+	{
+		g_iPlayerSkill[client] = skillId;
+	}
+	else
+	{
+		PrintToServer("[dlr_talents] Skill \"%s\" configured for class \"%s\" is not registered yet.", binding.skillName, className);
+	}
+}
+
 public ResetClientVariables(client)
 {
 
@@ -253,6 +465,9 @@ public ResetClientVariables(client)
 	ClientData[client].SpecialDropInterval = 0;
 	ClientData[client].ChosenClass = NONE;
 	ClientData[client].SpecialSkill = SpecialSkill:No_Skill;
+	ClientData[client].actionBinding = SkillAction_None;
+	ClientData[client].skillBindingName[0] = '\0';
+	ClientData[client].skillHint[0] = '\0';
 	ClientData[client].LastDropTime = 0.0;
 	g_bInSaferoom[client] = false;
 	g_bHide[client] = false;
@@ -299,7 +514,11 @@ public void GetPlayerSkillReadyHint(client) {
 
 	int classId = view_as<int>(ClientData[client].ChosenClass);
 	if (ClientData[client].SpecialLimit > ClientData[client].SpecialsUsed) {
-		PrintHintText(client,"%s", SpecialReadyTips[classId]);	
+		if (ClientData[client].skillHint[0] != '\0') {
+			PrintHintText(client, "%s", ClientData[client].skillHint);
+		} else {
+			PrintHintText(client,"%s", SpecialReadyTips[classId]);	
+		}
 	}
 }
 
@@ -318,22 +537,25 @@ public void SetupClasses(client, class)
 	new MaxPossibleHP = GetConVarInt(NONE_HEALTH);
 	DisableAllUpgrades(client);
 	bool useCustomModel = false;
-
-	#if defined _LMCL4D2SetTransmit_included
-	useCustomModel = true;
-	#endif
+	AssignSkills(client);
 
 	switch (view_as<ClassTypes>(class))
 	{
 
 		case soldier:	
 		{
-			char text[64];
-                        if (g_bAirstrike == true) {
-                                text = "Press MIDDLE BUTTON or type !skill for Airstrike!";
-                        }
+			char text[128];
+			text[0] = '\0';
+			if (ClientData[client].skillHint[0] != '\0')
+			{
+				Format(text, sizeof(text), "%s", ClientData[client].skillHint);
+			}
+			else if (g_bAirstrike == true)
+			{
+				text = "Press MIDDLE BUTTON or type !skill for Airstrike!";
+			}
 
-                        PrintHintText(client,"You have armor, fast attack rate and movement %s", text );
+			PrintHintText(client,"You have armor, fast attack rate and movement %s", text );
 			ClientData[client].SpecialDropInterval = GetConVarInt(MINIMUM_AIRSTRIKE_INTERVAL);
 			ClientData[client].SpecialLimit = GetConVarInt(SOLDIER_MAX_AIRSTRIKES);
 			MaxPossibleHP = GetConVarInt(SOLDIER_HEALTH);
@@ -341,7 +563,16 @@ public void SetupClasses(client, class)
 		
 		case medic:
 		{
-                        PrintHintText(client,"Hold CROUCH to heal others. Press SHIFT to drop medkits & supplies.\nPress MIDDLE button or type !skill to throw healing grenade!");
+			char hint[192];
+			if (ClientData[client].skillHint[0] != '\0')
+			{
+				Format(hint, sizeof(hint), "Hold CROUCH to heal others. Press SHIFT to drop medkits & supplies.\n%s", ClientData[client].skillHint);
+			}
+			else
+			{
+                        	Format(hint, sizeof(hint), "Hold CROUCH to heal others. Press SHIFT to drop medkits & supplies.\nPress MIDDLE button or type !skill to throw healing grenade!");
+			}
+			PrintHintText(client, "%s", hint);
 			CreateTimer(GetConVarFloat(MEDIC_HEALTH_INTERVAL), TimerDetectHealthChanges, client, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 			ClientData[client].SpecialLimit = GetConVarInt(MEDIC_MAX_ITEMS);
 			MaxPossibleHP = GetConVarInt(MEDIC_HEALTH);
@@ -351,6 +582,9 @@ public void SetupClasses(client, class)
 		{
 			decl String:text[64];
 			text = "";
+			if (ClientData[client].skillHint[0] != '\0') {
+				text = ClientData[client].skillHint;
+			}
 			if (GetConVarBool(ATHLETE_PARACHUTE_ENABLED) == true) {
 				text = "While in air, hold E to use parachute!";
 			}
@@ -369,20 +603,41 @@ public void SetupClasses(client, class)
 				text = ", You're immune to Tank knockdowns!";
 			} 
 
-                        PrintHintText(client,"You have faster reload & increased damage%s!\nPress MIDDLE button or type !skill to activate Berzerk mode!", text);
+			if (ClientData[client].skillHint[0] != '\0')
+			{
+				PrintHintText(client,"You have faster reload & increased damage%s!\n%s", text, ClientData[client].skillHint);
+			}
+			else
+			{
+                        	PrintHintText(client,"You have faster reload & increased damage%s!\nPress MIDDLE button or type !skill to activate Berzerk mode!", text);
+			}
 			MaxPossibleHP = GetConVarInt(COMMANDO_HEALTH);
 		}
 		
 		case engineer:
 		{
-                        PrintHintText(client,"Press MIDDLE button or type !skill to deploy turrets. Press SHIFT to drop ammo supplies!");
+			if (ClientData[client].skillHint[0] != '\0')
+			{
+	                        PrintHintText(client,"%s Press SHIFT to drop ammo supplies!", ClientData[client].skillHint);
+			}
+			else
+			{
+	                        PrintHintText(client,"Press MIDDLE button or type !skill to deploy turrets. Press SHIFT to drop ammo supplies!");
+			}
 			MaxPossibleHP = GetConVarInt(ENGINEER_HEALTH);
 			ClientData[client].SpecialLimit = GetConVarInt(ENGINEER_MAX_BUILDS);
 		}
 		
 		case saboteur:
 		{
-                        PrintHintText(client,"Press SHIFT to drop mines! Hold CROUCH 3 sec to go invisible.\nPress MIDDLE or !skill to summon Decoy. Use !extendedsight for wallhack");
+			if (ClientData[client].skillHint[0] != '\0')
+			{
+	                        PrintHintText(client,"Press SHIFT to drop mines! Hold CROUCH 3 sec to go invisible.\n%s", ClientData[client].skillHint);
+			}
+			else
+			{
+	                        PrintHintText(client,"Press SHIFT to drop mines! Hold CROUCH 3 sec to go invisible.\nPress MIDDLE or !skill to summon Decoy. Use !extendedsight for wallhack");
+			}
 			MaxPossibleHP = GetConVarInt(SABOTEUR_HEALTH);
 			ClientData[client].SpecialLimit = GetConVarInt(SABOTEUR_MAX_BOMBS);
 //			ToggleNightVision(client);
@@ -394,8 +649,6 @@ public void SetupClasses(client, class)
 			MaxPossibleHP = GetConVarInt(BRAWLER_HEALTH);
 		}
 	}
-
-	AssignSkills(client);
 	setPlayerHealth(client, MaxPossibleHP);
 }
 
@@ -405,46 +658,8 @@ public AssignSkills(client)
 {	
 	if (client < 1 || client > MaxClients) return;
 
-	g_iPlayerSkill[client] = -1;
+	ApplyClassBindingToClient(client);
 
-	switch (ClientData[client].ChosenClass) {
-		case engineer:
-		{
-			int skillId = FindSkillIdByName("Multiturret");
-			if (skillId > -1) {
-				g_iPlayerSkill[client] = skillId;
-			}
-		}
-
-		case soldier:
-		{
-			int skillId = FindSkillIdByName("Airstrike");
-			if (skillId > -1) {
-				g_iPlayerSkill[client] = skillId;
-			}
-		}
-		case medic:
-		{
-			int skillId = FindSkillIdByName("Grenades");
-			if (skillId > -1) {
-				g_iPlayerSkill[client] = skillId;
-			}
-		}
-		case commando:
-		{
-			int skillId = FindSkillIdByName("Berzerk");
-			if (skillId > -1) {
-				g_iPlayerSkill[client] = skillId;
-			}
-		}
-		case saboteur:
-		{
-			int skillId = FindSkillIdByName("cloak");
-			if (skillId > -1) {
-				g_iPlayerSkill[client] = skillId;
-			}
-		}
-	}
 	if (g_iPlayerSkill[client] >= 0) {
 		
 		char skillName[32];
@@ -486,6 +701,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	CreateNative("OnSpecialSkillSuccess", Native_OnSpecialSkillSuccess);
 	CreateNative("OnSpecialSkillFail", Native_OnSpecialSkillFail);
 	CreateNative("GetPlayerSkillID", Native_GetPlayerSkillID);
+	CreateNative("DLR_IsSkillAllowed", Native_IsSkillAllowed);
 	CreateNative("FindSkillNameById", Native_FindSkillNameById);
 	CreateNative("FindSkillIdByName", Native_FindSkillIdByName);
 	CreateNative("GetPlayerSkillName", Native_GetPlayerSkillName);
@@ -495,7 +711,6 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	CreateNative("DLR_RegPerk", Native_RegPerk);
 	CreateNative("DLR_FindPerk", Native_FindPerk);
 
-	MarkNativeAsOptional("LMC_GetEntityOverlayModel"); // LMC
 	MarkNativeAsOptional("OnCustomCommand");
 
 	return APLRes_Success;
@@ -665,7 +880,7 @@ any Native_OnSpecialSkillFail(Handle plugin, int numParams)
 	}
 	char[] reason = new char[len + 1];
 	GetNativeString(3, reason, len + 1);
-	PrintToChat(client, "%s failed due to: %s", name, reason);
+	PrintHintText(client, "%s failed due to: %s", name, reason);
 	return 0;
 }
 
@@ -737,6 +952,7 @@ public void OnMapEnd()
 
 public void OnConfigsExecuted()
 {
+	LoadClassActionBindings();
 	OnPluginReady();
 }
 
@@ -849,6 +1065,17 @@ public void useCustomCommand(char[] pluginName, int client, int entity, int type
 
 public Action CmdUseSkill(int client, int args)
 {
+	if (!client || !IsClientInGame(client) || GetClientTeam(client) != 2)
+	{
+		return Plugin_Handled;
+	}
+
+	char pendingMessage[128] = "Wait %i seconds to use your class skill again";
+	if (!canUseSpecialSkill(client, pendingMessage))
+	{
+		return Plugin_Handled;
+	}
+
         useSpecialSkill(client, 0);
         return Plugin_Handled;
 }
@@ -1118,6 +1345,46 @@ public Native_FindSkillIdByName(Handle:plugin, numParams)
 	} else {
 		return ThrowNativeError(SP_ERROR_NATIVE, "Invalid skill name (%s)", szSkillName);
 	}	
+}
+
+public any Native_IsSkillAllowed(Handle plugin, int numParams)
+{
+	int client = GetNativeCell(1);
+	if (client < 1 || client > MaxClients)
+	{
+		return ThrowNativeError(SP_ERROR_NATIVE, "Invalid client index (%d)", client);
+	}
+
+	int len;
+	GetNativeStringLength(2, len);
+	if (len <= 0)
+	{
+		return ThrowNativeError(SP_ERROR_NATIVE, "Empty skill name.");
+	}
+
+	char[] skillName = new char[len + 1];
+	GetNativeString(2, skillName, len + 1);
+
+	char className[32];
+	PlayerIdToClassName(client, className, sizeof(className));
+
+	if (!IsClientInGame(client) || GetClientTeam(client) != 2)
+	{
+		return false;
+	}
+
+	ClassActionBinding binding;
+	if (!GetClassBinding(className, binding))
+	{
+		return false;
+	}
+
+	if (binding.skillName[0] == '\0')
+	{
+		return false;
+	}
+
+	return StrEqual(binding.skillName, skillName, false);
 }
 
 public Native_GetPlayerClassName(Handle:plugin, numParams)

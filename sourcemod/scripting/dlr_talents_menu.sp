@@ -2,6 +2,8 @@
 #include <sourcemod>
 #include <extra_menu>
 
+#define THIRDPERSON_LIBRARY "dlr_talents_thirdperson"
+
 #if !defined IN_WALK
 #define IN_WALK (1<<18)
 #endif
@@ -13,6 +15,17 @@ native bool DLR_Music_IsPlaying(int client);
 native bool DLR_Music_GetCurrentTrack(int client, char[] buffer, int maxlen);
 native float DLR_Music_GetPlaybackTime(int client);
 
+enum
+{
+    ThirdPersonMode_Off = 0,
+    ThirdPersonMode_MeleeOnly = 1,
+    ThirdPersonMode_Always = 2
+};
+
+native bool DLRThirdPerson_IsAllowed();
+native int DLRThirdPerson_GetMode(int client);
+native bool DLRThirdPerson_SetMode(int client, int mode);
+
 const float MENU_OPEN_GRACE = 0.2;
 const float MENU_RELEASE_GRACE = 0.1;
 
@@ -21,6 +34,7 @@ const float MENU_RELEASE_GRACE = 0.1;
 
 bool g_bExtraMenuLoaded;
 bool g_bMusicLibraryAvailable;
+bool g_bThirdPersonAvailable;
 int g_iGuideMenuID;
 ConVar g_hHudEnabledCvar;
 
@@ -54,9 +68,13 @@ public void OnPluginStart()
     MarkNativeAsOptional("DLR_Music_IsPlaying");
     MarkNativeAsOptional("DLR_Music_GetCurrentTrack");
     MarkNativeAsOptional("DLR_Music_GetPlaybackTime");
+    MarkNativeAsOptional("DLRThirdPerson_IsAllowed");
+    MarkNativeAsOptional("DLRThirdPerson_GetMode");
+    MarkNativeAsOptional("DLRThirdPerson_SetMode");
 
     g_bExtraMenuLoaded = LibraryExists("extra_menu");
     g_bMusicLibraryAvailable = LibraryExists("dlr_music");
+    g_bThirdPersonAvailable = LibraryExists(THIRDPERSON_LIBRARY);
     g_hHudEnabledCvar = FindConVar("l4d2_scripted_hud_enable");
 
     if (g_bExtraMenuLoaded)
@@ -81,6 +99,10 @@ public void OnLibraryAdded(const char[] name)
     {
         g_bMusicLibraryAvailable = true;
     }
+    else if (strcmp(name, THIRDPERSON_LIBRARY) == 0)
+    {
+        g_bThirdPersonAvailable = true;
+    }
 }
 
 public void OnLibraryRemoved(const char[] name)
@@ -94,6 +116,10 @@ public void OnLibraryRemoved(const char[] name)
     else if (strcmp(name, "dlr_music") == 0)
     {
         g_bMusicLibraryAvailable = false;
+    }
+    else if (strcmp(name, THIRDPERSON_LIBRARY) == 0)
+    {
+        g_bThirdPersonAvailable = false;
     }
 }
 
@@ -155,6 +181,20 @@ public void ExtraMenu_OnSelect(int client, int menu_id, int option, int value)
     if (option == MENU_OPTION_GET_KIT)
     {
         HandleKitSelection(client);
+    }
+    else if (option == MENU_OPTION_3RD_PERSON)
+    {
+        if (ThirdPersonLibraryAvailable())
+        {
+            // Open third-person menu from the separate plugin.
+            ClientCommand(client, "sm_tp");
+        }
+        else
+        {
+            PrintToChat(client, "[DLR] Third-person controls are unavailable.");
+        }
+
+        RefreshClientMenu(client);
     }
     else if (option == MENU_OPTION_SET_AWAY)
     {
@@ -262,9 +302,10 @@ int BuildGameMenu(int client)
     }
 
     int menu_id = ExtraMenu_Create();
+    int thirdPersonDefault = GetThirdPersonDefault(client);
 
     AddGameMenuHeader(menu_id, client);
-    AddPlayerActionsSection(menu_id, client);
+    AddPlayerActionsSection(menu_id, client, thirdPersonDefault);
     AddVotingSection(menu_id);
 
     ExtraMenu_NewPage(menu_id);
@@ -284,9 +325,9 @@ void AddGameMenuHeader(int menu_id, int client)
     ExtraMenu_AddEntry(menu_id, " ", MENU_ENTRY);
 }
 
-void AddPlayerActionsSection(int menu_id, int client)
+void AddPlayerActionsSection(int menu_id, int client, int thirdPersonDefault)
 {
-    ExtraMenu_AddEntry(menu_id, "1. 3rd person mode: _OPT_", MENU_SELECT_LIST);
+    ExtraMenu_AddEntry(menu_id, "1. 3rd person mode: _OPT_", MENU_SELECT_LIST, false, thirdPersonDefault);
     ExtraMenu_AddOptions(menu_id, "Off|Melee Only|Always");
 
     char kitLine[64];
@@ -325,6 +366,31 @@ void AddOptionsPage(int menu_id, int client)
     ExtraMenu_AddEntry(menu_id, "4. Music Volume: _OPT_", MENU_SELECT_LIST);
     ExtraMenu_AddOptions(menu_id, "□□□□□□□□□□|■□□□□□□□□□|■■□□□□□□□□|■■■□□□□□□□|■■■■□□□□□□|■■■■■□□□□□|■■■■■■□□□□|■■■■■■■□□□|■■■■■■■■□□|■■■■■■■■■□|■■■■■■■■■■");
     ExtraMenu_AddEntry(menu_id, " ", MENU_ENTRY);
+}
+
+int GetThirdPersonDefault(int client)
+{
+    if (!ThirdPersonLibraryAvailable())
+    {
+        return ThirdPersonMode_Off;
+    }
+
+    return ClampThirdPersonMode(DLRThirdPerson_GetMode(client));
+}
+
+int ClampThirdPersonMode(int mode)
+{
+    if (mode < ThirdPersonMode_Off || mode > ThirdPersonMode_Always)
+    {
+        return ThirdPersonMode_Off;
+    }
+
+    return mode;
+}
+
+bool ThirdPersonLibraryAvailable()
+{
+    return g_bThirdPersonAvailable && LibraryExists(THIRDPERSON_LIBRARY);
 }
 
 bool ExtraMenuAvailable()

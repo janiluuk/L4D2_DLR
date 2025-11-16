@@ -68,6 +68,14 @@ enum SpecialSkill {
 	Multiturret
 }
 
+enum SkillActionBinding
+{
+	SkillAction_None = 0,
+	SkillAction_ActionButton,
+	SkillAction_BuildButton,
+	SkillAction_SecondaryAction
+}
+
 enum SkillType {
 	On_Demand = 0,
 	Perk,
@@ -100,6 +108,9 @@ enum struct PlayerInfo
 	int SpecialDropInterval;
 	int SpecialLimit;
 	SpecialSkill SpecialSkill;			
+	SkillActionBinding actionBinding;
+	char skillBindingName[32];
+	char skillHint[128];
 	char EquippedGun[64];
 	StringMap perks;	
 

@@ -7,7 +7,7 @@ A celebratory remix of Left 4 Dead 2 that turns every round into a playable acti
 - **Mix-and-match perks.** Stack advantages, accept trade-offs, and discover combos that keep each run fresh.
 - **Instant clarity.** A toggleable HUD calls out kills, warnings, and supplies, while the guide menu explains every talent in clear language.
 - **Fast admin access.** Type `!adm` for spawn tools, debug switches, and quick clean-up options without leaving the fight.
-- **Hold-to-open game menu.** Press and hold ALT to pop up a full-screen selector with 3rd-person view, kit pickup, class change, music control, and more. Release the key and it disappears.
+- **Hold-to-open game menu.** Press and hold ALT to pop up a full-screen selector with 3rd-person view (Off / Melee Only / Always), kit pickup, class change, music control, and more. Release the key and it disappears.
 - **Now playing overlay.** The active track title and playtime stay pinned to every menu page so the entire lobby knows what’s on the air.
 
 ## Play your way
@@ -38,6 +38,7 @@ A celebratory remix of Left 4 Dead 2 that turns every round into a playable acti
 
 ## Toys, tricks, and server spice
 - **Prototype grenades** – Equip one and experiment with gravity wells, lightning storms, medic clouds, and more just by cycling the throw style.
+- **Third-person camera** – Switch between off, melee-only, or always-on views from the ALT menu or `!tps <0|1|2>` command; your choice is saved per player.
 - **Music player** – Type `!music` to choose the soundtrack, skip songs, or go silent. Preferences stick with you between maps.
 - **Away toggle** – Need a breather? Mark yourself AFK directly from the menu and hop back in when ready.
 - **Multiple equipment mode** – Pick how forgiving pickups are, from classic single-use kits to double-tap weapon swaps.
@@ -49,6 +50,9 @@ Drop a list of 44.1 kHz MP3s into the supplied music text files, point your fa
 
 ## Admin corner
 Need to tidy the battlefield? `!adm` opens a dedicated panel with spawn helpers, restart controls, god mode, and slow-motion toggles. Everything is grouped for quick decisions mid-round.
+
+## Configuration quick hits
+- `cfg/sourcemod/dlr_thirdperson.cfg` – flip `l4d_thirdperson_allow` to disable or re-enable the third-person camera toggle if you need to lock everyone to first-person.
 
 ## Ready to tinker?
 Rage Edition is built from modular SourceMod plugins, so you can add new talents, swap out effects, or write your own class packs without touching the core. Check the `sourcemod/scripting` folder for clean, well-documented examples.

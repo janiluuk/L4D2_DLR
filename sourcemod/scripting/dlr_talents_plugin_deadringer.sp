@@ -5,6 +5,11 @@
 #define PLUGIN_URL ""
 #define PLUGIN_SKILL_NAME "cloak"
 
+/**
+ * Purpose: Cloak/decoy skill bound via configs/dlr_class_actions.cfg.
+ * Bound Classes: default Saboteur (configurable through the class binding config).
+ */
+
 //A few functions and signatures have been taken from the Infected Release plugin:
 //https://forums.alliedmods.net/showthread.php?p=994506
 
@@ -118,6 +123,7 @@ ConVar version_cvar;
 	native void GetPlayerSkillName(int client, char[] skillName, int size);
 	native int FindSkillIdByName(char[] skillName);
 	native int RegisterDLRSkill(char[] skillName, int type);
+	native bool DLR_IsSkillAllowed(int client, const char[] skillName);
 	#define DLR_PLUGIN_NAME	"dlr_talents"
 #endif
 /****************************************************/
@@ -137,6 +143,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	MarkNativeAsOptional("GetPlayerSkillName");	
 	MarkNativeAsOptional("RegisterDLRSkill");
 	MarkNativeAsOptional("DLR_OnPluginState");	
+	MarkNativeAsOptional("DLR_IsSkillAllowed");	
 	return APLRes_Success;
 
 }
@@ -329,13 +336,16 @@ public int OnSpecialSkillUsed(int iClient, int skill, int type)
 	}
 	if (StrEqual(szSkillName,PLUGIN_SKILL_NAME))
 	{
-		PrintToChat(iClient, "You activated \x04CLOAK!\x01");
+		if (LibraryExists("dlr_talents") && DLR_IsSkillAllowed(iClient, PLUGIN_SKILL_NAME) == false)
+		{
+			OnSpecialSkillFail(iClient, PLUGIN_SKILL_NAME, "class_mismatch");
+			return 0;
+		}
+		PrintHintText(iClient, "You activated \x04CLOAK!\x01");
 		TriggerDeadRinger(iClient, true, false, false, false);
-		BeginDeadRingerFromDamage(iClient, iClient, iClient, 1.0, 0, -1);
-	
-		OnSpecialSkillSuccess(iClient, PLUGIN_SKILL_NAME);
 		return 1;
 	}
+	return 0;
 }
 
 public void OnMapStart() {

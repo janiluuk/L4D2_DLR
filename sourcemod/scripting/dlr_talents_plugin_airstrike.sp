@@ -107,7 +107,10 @@
 
 ======================================================================================*/
 
-#pragma semicolon 1
+#define DEBUG 0
+
+//Includes
+#pragma semicolon 2 //Who doesn't like semicolons? :)
 #pragma newdecls required
 #include <sourcemod>
 #include <sdktools>
@@ -117,6 +120,11 @@
 #define CVAR_FLAGS			FCVAR_NOTIFY
 #define CHAT_TAG			"\x03[Airstrike] \x05"
 #define MAX_ENTITIES		8
+
+/**
+ * Purpose: Tactical airstrike skill bound via configs/dlr_class_actions.cfg.
+ * Bound Classes: default Soldier (configurable through class binding config).
+ */
 
 #define MODEL_AGM65			"models/missiles/f18_agm65maverick.mdl"
 #define MODEL_F18			"models/f18/f18_sb.mdl"
@@ -154,12 +162,12 @@
 	native void GetPlayerSkillName(int client, char[] skillName, int size);
 	native int FindSkillIdByName(char[] skillName);
 	native int RegisterDLRSkill(char[] skillName, int type);
+	native bool DLR_IsSkillAllowed(int client, const char[] skillName);
 #endif
+
 /****************************************************/
 int g_iClassID = -1;
-static bool DLR_Available = false;
-
-
+bool DLR_Available;
 ConVar g_hCvarAllow, g_hCvarDamage, g_hCvarDistance, g_hCvarHorde, g_hCvarMPGameMode, g_hCvarModes, g_hCvarModesOff, g_hCvarModesTog, g_hCvarLimit, g_hCvarScale, g_hCvarShake, g_hCvarSpread, g_hCvarStumble, g_hCvarStyle, g_hCvarVocalize;
 int g_iCvarDamage, g_iCvarDistance, g_iCvarHorde, g_iCvarLimit, g_iCvarScale, g_iCvarShake, g_iCvarSpread, g_iCvarStumble, g_iCvarStyle, g_iCvarVocalize;
 bool g_bCvarAllow, g_bMapStarted;
@@ -216,16 +224,16 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	MarkNativeAsOptional("DLR_OnPluginState");	
 	MarkNativeAsOptional("GetPlayerSkillName");	
 	MarkNativeAsOptional("RegisterDLRSkill");
+	MarkNativeAsOptional("DLR_IsSkillAllowed");
 
 	return APLRes_Success;
 }
 
 public void OnAllPluginsLoaded()
 {
-	if (g_iClassID != -1) return;
-
 	DLR_Available = LibraryExists("dlr_talents");
-	g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
+        if (g_iClassID != -1) return;
+        g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
 }
 
 public int OnSpecialSkillUsed(int iClient, int skill, int type)
@@ -234,6 +242,11 @@ public int OnSpecialSkillUsed(int iClient, int skill, int type)
 	GetPlayerSkillName(iClient, szSkillName, sizeof(szSkillName));
 	if (StrEqual(szSkillName,PLUGIN_SKILL_NAME))
 	{
+		if (DLR_Available && !DLR_IsSkillAllowed(iClient, PLUGIN_SKILL_NAME))
+		{
+			OnSpecialSkillFail(iClient, PLUGIN_SKILL_NAME, "class_mismatch");
+			return 0;
+		}
 		float vPos[3], vAng[3];
 		GetClientAbsOrigin(iClient, vPos);
 		GetClientEyeAngles(iClient, vAng);

@@ -8,6 +8,11 @@
 #define PLUGIN_SKILL_NAME "Nightvision"
 #define PLUGIN_DESCRIPTION "Toggle nightvision goggles"
 
+/**
+ * Purpose: Toggle nightvision goggles for the class binding defined in configs/dlr_class_actions.cfg (default: Soldier).
+ * Bound Classes: Controlled through DLR skill mapping for "Nightvision".
+ */
+
 /****************************************************/
 #tryinclude <DLRCore>
 #if !defined _DLRCore_included
@@ -17,6 +22,7 @@
     native void GetPlayerSkillName(int client, char[] skillName, int size);
     native int RegisterDLRSkill(char[] skillName, int type);
     native int GetPlayerClassName(int client, char[] className, int size);
+    native bool DLR_IsSkillAllowed(int client, const char[] skillName);
 #endif
 /****************************************************/
 
@@ -46,6 +52,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
     MarkNativeAsOptional("GetPlayerSkillName");
     MarkNativeAsOptional("GetPlayerClassName");
     MarkNativeAsOptional("RegisterDLRSkill");
+    MarkNativeAsOptional("DLR_IsSkillAllowed");
     MarkNativeAsOptional("DLR_OnPluginState");
 
     return APLRes_Success;
@@ -95,6 +102,11 @@ public int OnSpecialSkillUsed(int client, int skill, int type)
     GetPlayerSkillName(client, skillName, sizeof(skillName));
     if (StrEqual(skillName, PLUGIN_SKILL_NAME))
     {
+        if (g_bDLR && DLR_IsSkillAllowed(client, PLUGIN_SKILL_NAME) == false)
+        {
+            OnSpecialSkillFail(client, PLUGIN_SKILL_NAME, "not_allowed");
+            return 0;
+        }
         ToggleNightVision(client);
         OnSpecialSkillSuccess(client, PLUGIN_SKILL_NAME);
         return 1;
@@ -107,11 +119,18 @@ public Action Command_NightVision(int client, int args)
     if (!client || !IsClientInGame(client))
         return Plugin_Handled;
 
+    if (g_bDLR && DLR_IsSkillAllowed(client, PLUGIN_SKILL_NAME) == false)
+    {
+        PrintHintText(client, "This skill is not bound to your class.");
+        OnSpecialSkillFail(client, PLUGIN_SKILL_NAME, "not_allowed");
+        return Plugin_Handled;
+    }
+
     char className[32];
     GetPlayerClassName(client, className, sizeof(className));
-    if (!StrEqual(className, "Soldier", false))
+    if (!g_bDLR && !StrEqual(className, "Soldier", false))
     {
-        PrintToChat(client, "\x04[Error]\x01 Nightvision is available to soldiers only");
+        PrintHintText(client, "\x04[Error]\x01 Nightvision is available to soldiers only");
         OnSpecialSkillFail(client, PLUGIN_SKILL_NAME, "not_soldier");
         return Plugin_Handled;
     }
@@ -126,5 +145,5 @@ void ToggleNightVision(int client)
     int current = GetEntProp(client, Prop_Send, "m_bNightVisionOn");
     int next = current ? 0 : 1;
     SetEntProp(client, Prop_Send, "m_bNightVisionOn", next);
-    PrintToChat(client, "\x04[Nightvision]\x01 %s", next ? "Enabled" : "Disabled");
+    PrintHintText(client, "\x04[Nightvision]\x01 %s", next ? "Enabled" : "Disabled");
 }

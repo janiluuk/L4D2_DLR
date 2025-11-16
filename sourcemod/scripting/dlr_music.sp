@@ -132,8 +132,6 @@ ConVar g_dlrCvarPlayRoundStart;
 
 bool g_dlrEnabled;
 
-void ClearClientTrackState(int client);
-void BeginTrackingClientTrack(int client, const char[] sound);
 
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
 {

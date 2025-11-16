@@ -1,6 +1,6 @@
 /*
 *	Left 4 DHooks Direct
-*	Copyright (C) 2023 Silvers
+*	Copyright (C) 2025 Silvers
 *
 *	This program is free software: you can redistribute it and/or modify
 *	it under the terms of the GNU General Public License as published by
@@ -18,11 +18,11 @@
 
 
 
-#define PLUGIN_VERSION		"1.128"
-#define PLUGIN_VERLONG		1128
+#define PLUGIN_VERSION		"1.159"
+#define PLUGIN_VERLONG		1159
 
 #define DEBUG				0
-// #define DEBUG			1	// Prints addresses + detour info (only use for debugging, slows server down)
+// #define DEBUG			1	// Prints addresses + detour info (only use for debugging, slows server down).
 
 #define DETOUR_ALL			0	// Only enable required detours, for public release.
 // #define DETOUR_ALL		1	// Enable all detours, for testing.
@@ -67,7 +67,7 @@
 		"Fyren" for being so awesome and inspiring me from his sdktools patch to do custom |this| calls.
 		"ivailosp" for providing the Windows addresses that needed to be patched to get player slot unlocking to work.
 		"dvander" for making sourcemod and teaching me about the mod r/m bytes.
-		"DDRKhat" for letting me use his Linux server to test this
+		"DDRKhat" for letting me use his Linux server to test this.
 		"Frustian" for being a champ and poking around random Linux sigs so I could the one native I actually needed.
 		"XBetaAlpha" for making this a team effort rather than one guy writing all the code.
 
@@ -115,10 +115,12 @@
 
 // ====================================================================================================
 // UPDATER
-#define UPDATE_URL					"https://raw.githubusercontent.com/SilvDev/Left4DHooks/main/sourcemod/updater.txt"
+#define UPDATE_URL						"https://raw.githubusercontent.com/SilvDev/Left4DHooks/main/sourcemod/updater.txt"
 
 native void Updater_AddPlugin(const char[] url);
 // ====================================================================================================
+
+
 
 // PROFILER
 #if DEBUG
@@ -140,6 +142,7 @@ float g_fProf;
 #define GAMEDATA_TEMP						"left4dhooks.temp"
 #define NATIVE_UNSUPPORTED1					"\n==========\nThis Native is only supported in L4D1.\nPlease fix the code to avoid calling this native from L4D2.\n=========="
 #define NATIVE_UNSUPPORTED2					"\n==========\nThis Native is only supported in L4D2.\nPlease fix the code to avoid calling this native from L4D1.\n=========="
+#define NATIVE_TOO_EARLY					"\n==========\nNative '%s' should not be used before OnMapStart, please report to 3rd party plugin author.\n=========="
 #define COMPILE_FROM_MAIN					true
 
 
@@ -178,6 +181,13 @@ float g_fProf;
 // Dissolver
 #define SPRITE_GLOW							"sprites/blueglow1.vmt"
 
+// GasCan model for damage hook
+#define MODEL_GASCAN						"models/props_junk/gascan001a.mdl"
+
+// PipeBomb particles
+#define PARTICLE_FUSE						"weapon_pipebomb_fuse"
+#define PARTICLE_LIGHT						"weapon_pipebomb_blinking_light"
+
 
 
 // Precache models for spawning
@@ -201,10 +211,10 @@ static const char g_sModels2[][] =
 
 
 // Dynamic Detours:
-#define MAX_FWD_LEN							64		// Maximum string length of forward and signature names, used for ArrayList.
+#define MAX_FWD_LEN							64		// Maximum string length of forward and signature names, used for ArrayList
 
 // ToDo: When using extra-api.ext (or hopefully one day native SM forwards), g_aDetoursHooked will store the number of plugins using each forward
-// so we can disable when the value is 0 and not have to check all plugins just to determine if still required.
+// so we can disable when the value is 0 and not have to check all plugins just to determine if still required
 ArrayList g_aDetoursHooked;					// Identifies if the detour hook is enabled or disabled
 ArrayList g_aDetourHandles;					// Stores detour handles to enable/disable as required
 ArrayList g_aGameDataSigs;					// Stores Signature names
@@ -220,6 +230,7 @@ bool g_bCreatedDetours;						// To determine first time creation of detours, or 
 float g_fLoadTime;							// When the plugin was loaded, to ignore when "AP_OnPluginUpdate" fires
 Handle g_hThisPlugin;						// Ignore checking this plugin
 GameData g_hGameData;						// GameData file - to speed up loading
+GameData g_hTempGameData;					// TempGameData file
 int g_iScriptVMDetourIndex;
 float g_fCvar_Adrenaline, g_fCvar_PillsDecay;
 int g_iCvar_AddonsEclipse, g_iCvar_RescueDeadTime;
@@ -256,13 +267,18 @@ int g_iOff_LobbyReservation;
 int g_iOff_VersusStartTimer;
 int g_iOff_m_rescueCheckTimer;
 int g_iOff_m_iszScriptId;
-int g_iOff_SpawnTimer;
+int g_iOff_m_flBecomeGhostAt;
 int g_iOff_MobSpawnTimer;
+int g_iOff_m_iSetupNotifyTime;
 int g_iOff_VersusMaxCompletionScore;
 int g_iOff_OnBeginRoundSetupTime;
 int g_iOff_m_iTankCount;
 int g_iOff_m_iWitchCount;
+int g_iOff_m_PlayerAnimState;
+int g_iOff_m_eCurrentMainSequenceActivity;
+int g_iOff_m_bIsCustomSequence;
 int g_iOff_m_iCampaignScores;
+int g_iOff_m_iCampaignScores2;
 int g_iOff_m_fTankSpawnFlowPercent;
 int g_iOff_m_fWitchSpawnFlowPercent;
 int g_iOff_m_iTankPassedCount;
@@ -278,11 +294,13 @@ int g_iOff_m_bFirstSurvivorLeftStartArea;
 int g_iOff_m_preIncapacitatedHealth;
 int g_iOff_m_preIncapacitatedHealthBuffer;
 int g_iOff_m_maxFlames;
+int g_iOff_Intensity;
 int g_iOff_m_flow;
 int g_iOff_m_PendingMobCount;
 int g_iOff_m_nFirstClassIndex;
 int g_iOff_m_fMapMaxFlowDistance;
 int g_iOff_m_chapter;
+int g_iOff_m_bInIntro;
 int g_iOff_m_attributeFlags;
 int g_iOff_m_spawnAttributes;
 int g_iOff_NavAreaID;
@@ -292,11 +310,11 @@ int g_iOff_NavAreaID;
 // Address TeamScoresAddress;
 
 // l4d2timers.inc
-int L4D2CountdownTimer_Offsets[9];
+int L4D2CountdownTimer_Offsets[10];
 int L4D2IntervalTimer_Offsets[6];
 
 // l4d2weapons.inc
-int L4D2IntWeapon_Offsets[6];
+int L4D2IntWeapon_Offsets[7];
 int L4D2FloatWeapon_Offsets[21];
 int L4D2BoolMeleeWeapon_Offsets[1];
 int L4D2IntMeleeWeapon_Offsets[2];
@@ -307,8 +325,14 @@ int L4D2FloatMeleeWeapon_Offsets[3];
 // Pointers
 int g_pScriptedEventManager;
 int g_pVersusMode;
+int g_pSurvivalMode;
 int g_pScavengeMode;
+int g_pItemManager;
+int g_pMusicBanks;
+int g_pSessionManager;
+int g_pChallengeMode;
 Address g_pServer;
+Address g_pAmmoDef;
 Address g_pDirector;
 Address g_pGameRules;
 Address g_pTheNavAreas;
@@ -331,17 +355,23 @@ int g_iCanBecomeGhostOffset;
 
 // Other
 Address g_pScriptId;
-int g_iAttackTimer;
+int g_iCancelStagger[MAXPLAYERS+1];
+int g_iClientDeathModel[MAXPLAYERS+1];
+int g_iDeathModel;
+int g_iPlayerResourceRef;
 int g_iOffsetAmmo;
 int g_iPrimaryAmmoType;
 int g_iCurrentMode;
 int g_iMaxChapters;
 int g_iClassTank;
+int g_iGasCanModel;
 char g_sSystem[16];
 bool g_bLinuxOS;
 bool g_bLeft4Dead2;
+bool g_bFinalCheck;
 bool g_bMapStarted;
 bool g_bRoundEnded;
+bool g_bBreakable;
 bool g_bCheckpointFirst[MAXPLAYERS+1];
 bool g_bCheckpointLast[MAXPLAYERS+1];
 ConVar g_hCvar_VScriptBuffer;
@@ -355,22 +385,6 @@ DynamicHook g_hScriptHook;
 
 
 
-// Spitter acid projectile damage
-bool g_bAcidWatch;
-int g_iAcidEntity[2048];
-
-char g_sAcidSounds[6][] =
-{
-	"player/PZ/hit/zombie_slice_1.wav",
-	"player/PZ/hit/zombie_slice_2.wav",
-	"player/PZ/hit/zombie_slice_3.wav",
-	"player/PZ/hit/zombie_slice_4.wav",
-	"player/PZ/hit/zombie_slice_5.wav",
-	"player/PZ/hit/zombie_slice_6.wav"
-};
-
-
-
 #if DEBUG
 bool g_bLateLoad;
 #endif
@@ -379,29 +393,19 @@ bool g_bLateLoad;
 
 
 
-// ====================================================================================================
-//										TARGET FILTERS
-// ====================================================================================================
+// TARGET FILTERS
 #include "l4dd/l4dd_targetfilters.sp"
 
-// ====================================================================================================
-//										NATIVES
-// ====================================================================================================
+// NATIVES
 #include "l4dd/l4dd_natives.sp"
 
-// ====================================================================================================
-//										DETOURS - FORWARDS
-// ====================================================================================================
+// DETOURS - FORWARDS
 #include "l4dd/l4dd_forwards.sp"
 
-// ====================================================================================================
-//										GAMEDATA
-// ====================================================================================================
+// GAMEDATA
 #include "l4dd/l4dd_gamedata.sp"
 
-// ====================================================================================================
-//										SETUP FORWARDS AND NATIVES
-// ====================================================================================================
+// SETUP FORWARDS AND NATIVES
 #include "l4dd/l4dd_setup.sp"
 
 
@@ -441,16 +445,16 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 
 
 
-	// ====================================================================================================
-	//									UPDATER
-	// ====================================================================================================
+	// =================
+	// UPDATER
+	// =================
 	MarkNativeAsOptional("Updater_AddPlugin");
 
 
 
-	// ====================================================================================================
-	//									DUPLICATE PLUGIN RUNNING
-	// ====================================================================================================
+	// =================
+	// DUPLICATE PLUGIN RUNNING
+	// =================
 	if( GetFeatureStatus(FeatureType_Native, "L4D_BecomeGhost") == FeatureStatus_Available )
 	{
 		strcopy(error, err_max, "\n====================\nPlugin \"Left 4 DHooks\" is already running. Please remove the duplicate plugin.\n====================");
@@ -459,9 +463,9 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 
 
 
-	// ====================================================================================================
-	//									EXTENSION BLOCK
-	// ====================================================================================================
+	// =================
+	// EXTENSION BLOCK
+	// =================
 	if( GetFeatureStatus(FeatureType_Native, "L4D_RestartScenarioFromVote") != FeatureStatus_Unknown )
 	{
 		strcopy(error, err_max, "\n====================\nThis plugin replaces Left4Downtown. Delete the extension to run.\n====================");
@@ -470,16 +474,16 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 
 
 
-	// ====================================================================================================
-	//									SETUP FORWARDS AND NATIVES
-	// ====================================================================================================
+	// =================
+	// SETUP FORWARDS AND NATIVES
+	// =================
 	SetupForwardsNatives(); // From: "l4dd/l4dd_setup.sp"
 
 
 
-	// ====================================================================================================
-	//									END SETUP
-	// ====================================================================================================
+	// =================
+	// END SETUP
+	// =================
 	RegPluginLibrary("left4dhooks");
 
 
@@ -524,8 +528,6 @@ public void OnPluginStart()
 
 	g_hCanBecomeGhost = new ArrayList();
 
-	if( g_bLeft4Dead2 )
-		g_iAttackTimer = FindSendPropInfo("CTerrorWeapon", "m_attackTimer");
 	g_iOffsetAmmo = FindSendPropInfo("CTerrorPlayer", "m_iAmmo");
 	g_iPrimaryAmmoType = FindSendPropInfo("CBaseCombatWeapon", "m_iPrimaryAmmoType");
 
@@ -671,7 +673,7 @@ public void OnPluginStart()
 	// ====================================================================================================
 	//									COMMANDS
 	// ====================================================================================================
-	// When adding or removing plugins that use any detours during gameplay. To optimize forwards by disabling unused or enabling required functions that were previously unused. TODO: Not needed when using extra-api.ext.
+	// When adding or removing plugins that use any detours during gameplay. To optimize forwards by disabling unused or enabling required functions that were previously unused. TODO: Not needed when using extra-api.ext
 	RegAdminCmd("sm_l4dd_unreserve",	CmdLobby,	ADMFLAG_ROOT, "Removes lobby reservation.");
 	RegAdminCmd("sm_l4dd_reload",		CmdReload,	ADMFLAG_ROOT, "Reloads the detour hooks, enabling or disabling depending if they're required by other plugins.");
 	RegAdminCmd("sm_l4dd_detours",		CmdDetours,	ADMFLAG_ROOT, "Lists the currently active forwards and the plugins using them.");
@@ -725,8 +727,12 @@ public void OnPluginStart()
 		HookEvent("round_end",						Event_RoundEnd);
 		HookEvent("player_entered_start_area",		Event_EnteredStartArea);
 		HookEvent("player_left_start_area",			Event_LeftStartArea);
-		HookEvent("player_left_checkpoint",			Event_LeftCheckpoint);
 		HookEvent("player_entered_checkpoint",		Event_EnteredCheckpoint);
+		HookEvent("player_left_checkpoint",			Event_LeftCheckpoint);
+	}
+	else
+	{
+		HookEvent("player_death",					Event_PlayerDeath);
 	}
 }
 
@@ -737,15 +743,7 @@ void Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
 
 void Event_RoundEnd(Event event, const char[] name, bool dontBroadcast)
 {
-	// Reset checkpoints
-	if( !g_bLeft4Dead2 )
-	{
-		for( int i = 1; i <= MaxClients; i++ )
-		{
-			g_bCheckpointFirst[i] = false;
-			g_bCheckpointLast[i] = false;
-		}
-	}
+	ResetVars();
 }
 
 void Event_EnteredStartArea(Event event, const char[] name, bool dontBroadcast)
@@ -796,6 +794,12 @@ void Event_LeftCheckpoint(Event event, const char[] name, bool dontBroadcast)
 	}
 }
 
+void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast)
+{
+	int client = event.GetInt("userid");
+	g_iClientDeathModel[GetClientOfUserId(client)] = g_iDeathModel;
+}
+
 
 
 // ====================================================================================================
@@ -818,6 +822,32 @@ public void OnPluginEnd()
 	UnloadTargetFilters();
 }
 
+void ResetVars()
+{
+	// Reset L4D1 variables
+	if( !g_bLeft4Dead2 )
+	{
+		for( int i = 1; i <= MaxClients; i++ )
+		{
+			// Reset checkpoints
+			g_bCheckpointFirst[i] = false;
+			g_bCheckpointLast[i] = false;
+
+			// Reset stagger hooks
+			if( g_iCancelStagger[i] )
+				SDKUnhook(i, SDKHook_PostThinkPost, OnThinkCancelStagger);
+			g_iCancelStagger[i] = 0;
+		}
+	}
+	else
+	{
+		for( int i = 1; i <= MaxClients; i++ )
+		{
+			g_iClientDeathModel[i] = 0;
+		}
+	}
+}
+
 
 
 // ====================================================================================================
@@ -836,7 +866,7 @@ void GetGameMode() // Forward "L4D_OnGameModeChange"
 {
 	g_iCurrentMode = 0;
 
-	static char sMode[12];
+	static char sMode[10];
 
 	if( g_bLeft4Dead2 )
 	{
@@ -847,6 +877,7 @@ void GetGameMode() // Forward "L4D_OnGameModeChange"
 		SDKCall(g_hSDK_CDirector_GetGameModeBase, g_pDirector, sMode, sizeof(sMode));
 
 		if( strcmp(sMode,			"coop") == 0 )		g_iCurrentMode = GAMEMODE_COOP;
+		else if( strcmp(sMode,		"realism") == 0 )	g_iCurrentMode = GAMEMODE_COOP;
 		else if( strcmp(sMode,		"survival") == 0 )	g_iCurrentMode = GAMEMODE_SURVIVAL;
 		else if( strcmp(sMode,		"versus") == 0 )	g_iCurrentMode = GAMEMODE_VERSUS;
 		else if( strcmp(sMode,		"scavenge") == 0 )	g_iCurrentMode = GAMEMODE_SCAVENGE;
@@ -878,6 +909,14 @@ int Native_Internal_GetGameMode(Handle plugin, int numParams) // Native "L4D_Get
 
 int Native_CTerrorGameRules_IsGenericCooperativeMode(Handle plugin, int numParams) // Native "L4D2_IsGenericCooperativeMode"
 {
+	if( !g_bLeft4Dead2 ) ThrowNativeError(SP_ERROR_NOT_RUNNABLE, NATIVE_UNSUPPORTED2);
+
+	if( !g_bMapStarted )
+	{
+		ThrowNativeError(SP_ERROR_NOT_RUNNABLE, NATIVE_TOO_EARLY, "L4D2_IsGenericCooperativeMode");
+		return false;
+	}
+
 	ValidateAddress(g_pGameRules, "g_pGameRules");
 	ValidateNatives(g_hSDK_CTerrorGameRules_IsGenericCooperativeMode, "CTerrorGameRules::IsGenericCooperativeMode");
 
@@ -887,11 +926,34 @@ int Native_CTerrorGameRules_IsGenericCooperativeMode(Handle plugin, int numParam
 
 int Native_Internal_IsCoopMode(Handle plugin, int numParams) // Native "L4D_IsCoopMode"
 {
+	if( g_iCurrentMode == GAMEMODE_COOP && g_bLeft4Dead2 )
+	{
+		if( !g_bMapStarted )
+		{
+			ThrowNativeError(SP_ERROR_NOT_RUNNABLE, NATIVE_TOO_EARLY, "L4D_IsCoopMode");
+			return false;
+		}
+
+		ValidateAddress(g_pGameRules, "g_pGameRules");
+		ValidateNatives(g_hSDK_CTerrorGameRules_IsRealismMode, "CTerrorGameRules::IsRealismMode");
+
+		//PrintToServer("#### CALL g_hSDK_CTerrorGameRules_IsRealismMode");
+		return SDKCall(g_hSDK_CTerrorGameRules_IsRealismMode, g_pGameRules) == false;
+	}
+
 	return g_iCurrentMode == GAMEMODE_COOP;
 }
 
 int Native_Internal_IsRealismMode(Handle plugin, int numParams) // Native "L4D2_IsRealismMode"
 {
+	if( !g_bLeft4Dead2 ) ThrowNativeError(SP_ERROR_NOT_RUNNABLE, NATIVE_UNSUPPORTED2);
+
+	if( !g_bMapStarted )
+	{
+		ThrowNativeError(SP_ERROR_NOT_RUNNABLE, NATIVE_TOO_EARLY, "L4D2_IsRealismMode");
+		return false;
+	}
+
 	ValidateAddress(g_pGameRules, "g_pGameRules");
 	ValidateNatives(g_hSDK_CTerrorGameRules_IsRealismMode, "CTerrorGameRules::IsRealismMode");
 
@@ -923,21 +985,18 @@ public void OnMapEnd()
 {
 	// Reset vars
 	g_bMapStarted = false;
+	g_bFinalCheck = false;
 	g_iMaxChapters = 0;
 
-	// Reset checkpoints
-	if( !g_bLeft4Dead2 )
-	{
-		for( int i = 1; i <= MaxClients; i++ )
-		{
-			g_bCheckpointFirst[i] = false;
-			g_bCheckpointLast[i] = false;
-		}
-	}
+	ResetVars();
 
-	// Reset hooks
-	g_iAnimationHookedClients.Clear();
-	g_iAnimationHookedPlugins.Clear();
+	// Reset hooks - Clear causes memory leaks, delete and re-create
+	// g_iAnimationHookedClients.Clear();
+	// g_iAnimationHookedPlugins.Clear();
+	delete g_iAnimationHookedClients;
+	delete g_iAnimationHookedPlugins;
+	g_iAnimationHookedClients = new ArrayList();
+	g_iAnimationHookedPlugins = new ArrayList(2);
 
 	// Remove all hooked functions from private forward
 	Handle hIter = GetPluginIterator();
@@ -948,10 +1007,13 @@ public void OnMapEnd()
 	{
 		hPlug = ReadPlugin(hIter);
 
-		for( int i = 1; i <= MaxClients; i++ )
+		if( hPlug )
 		{
-			g_hAnimationCallbackPre[i].RemoveAllFunctions(hPlug);
-			g_hAnimationCallbackPost[i].RemoveAllFunctions(hPlug);
+			for( int i = 1; i <= MaxClients; i++ )
+			{
+				g_hAnimationCallbackPre[i].RemoveAllFunctions(hPlug);
+				g_hAnimationCallbackPost[i].RemoveAllFunctions(hPlug);
+			}
 		}
 	}
 
@@ -962,6 +1024,8 @@ public void OnClientDisconnect(int client)
 {
 	g_bCheckpointFirst[client] = false;
 	g_bCheckpointLast[client] = false;
+
+
 
 	// Remove client from hooked list
 	int index = g_iAnimationHookedClients.FindValue(client);
@@ -984,6 +1048,8 @@ public void OnClientDisconnect(int client)
 		delete hIter;
 	}
 
+
+
 	// Loop through all anim hooks for specific client
 	int length = g_iAnimationHookedPlugins.Length;
 
@@ -1002,6 +1068,24 @@ public void OnClientDisconnect(int client)
 		else
 		{
 			i++;
+		}
+	}
+
+
+
+	// Acid damage, no sound fix
+	if( g_bLeft4Dead2 )
+	{
+		if( !IsClientInGame(client) || (GetClientTeam(client) == 3 && GetEntProp(client, Prop_Send, "m_zombieClass") == L4D2_ZOMBIE_CLASS_SPITTER) )
+		{
+			int entity = -1;
+			while( (entity = FindEntityByClassname(entity, "insect_swarm")) != INVALID_ENT_REFERENCE )
+			{
+				if( GetEntPropEnt(entity, Prop_Data, "m_hOwnerEntity") == client )
+				{
+					AcidDamageTest(0, entity); // See the "l4dd_natives.sp" file
+				}
+			}
 		}
 	}
 }
@@ -1063,8 +1147,7 @@ int Native_AnimHookDisable(Handle plugin, int numParams) // Native "AnimHookDisa
 	int entity;
 
 	// Loop through all anim hooks
-	int length = g_iAnimationHookedPlugins.Length;
-	for( int i = 0; i < length; i++ )
+	for( int i = g_iAnimationHookedPlugins.Length-1; i >= 0; i-- )
 	{
 		// Get hooked plugin handle
 		target = g_iAnimationHookedPlugins.Get(i, 0);
@@ -1079,8 +1162,6 @@ int Native_AnimHookDisable(Handle plugin, int numParams) // Native "AnimHookDisa
 			if( client == entity )
 			{
 				g_iAnimationHookedPlugins.Erase(i);
-				if( i > 0 ) i--;
-				length--;
 			} else {
 				keep = true;
 			}
@@ -1097,7 +1178,7 @@ int Native_AnimHookDisable(Handle plugin, int numParams) // Native "AnimHookDisa
 	}
 
 	// Remove detour, no more plugins using it
-	if( length == 0 && g_aDetoursHooked.Get(index) == 1 && g_aForceDetours.Get(g_iAnimationDetourIndex) == 1 )
+	if( g_iAnimationHookedPlugins.Length == 0 && g_aDetoursHooked.Get(index) == 1 && g_aForceDetours.Get(g_iAnimationDetourIndex) == 1 )
 	{
 		g_bAnimationRemoveHook = true;
 		RequestFrame(OnFrameRemoveDetour);
@@ -1276,7 +1357,7 @@ void AddonsDisabler_Unpatch()
 // ====================================================================================================
 //										ADDONS DISABLER DETOUR
 // ====================================================================================================
-MRESReturn DTR_AddonsDisabler(int pThis, Handle hReturn, DHookParam hParams) // Forward "L4D2_OnClientDisableAddons"
+MRESReturn DTR_AddonsDisabler(int pThis, DHookReturn hReturn, DHookParam hParams) // Forward "L4D2_OnClientDisableAddons"
 {
 	// Details on finding offsets can be found here: https://github.com/ProdigySim/left4dhooks/pull/1
 	// Big thanks to "ProdigySim" for updating for The Last Stand update.
@@ -1386,6 +1467,13 @@ public void OnMapStart()
 
 
 
+	// Load PlayerResource
+	int iPlayerResource = FindEntityByClassname(-1, "terror_player_manager");
+
+	g_iPlayerResourceRef = (iPlayerResource != INVALID_ENT_REFERENCE) ? EntIndexToEntRef(iPlayerResource) : INVALID_ENT_REFERENCE;
+
+
+
 	// Putting this here so g_pGameRules is valid. Changes for each map.
 	LoadGameDataRules(g_hGameData);
 
@@ -1413,6 +1501,9 @@ public void OnMapStart()
 	// Enable or Disable detours as required.
 	CheckRequiredDetours();
 
+
+
+	// Benchmark
 	#if DEBUG
 	g_vProf.Stop();
 	g_fProf += g_vProf.Time;
@@ -1425,120 +1516,127 @@ public void OnMapStart()
 
 
 	// Because reload command calls this function. We only want these loaded on actual map start.
-	if( !g_bMapStarted )
+	if( g_bMapStarted ) return;
+
+
+
+	GetGameMode(); // Get current game mode
+
+
+
+	// Precache Models, prevent crashing when spawning with SpawnSpecial()
+	for( int i = 0; i < sizeof(g_sModels1); i++ )
+		PrecacheModel(g_sModels1[i]);
+
+	PrecacheModel(SPRITE_GLOW, true); // Dissolver
+
+	g_iGasCanModel = PrecacheModel(MODEL_GASCAN);
+
+	if( g_bLeft4Dead2 )
 	{
-		g_bMapStarted = true;
+		for( int i = 0; i < sizeof(g_sModels2); i++ )
+			PrecacheModel(g_sModels2[i]);
 
-		GetGameMode(); // Get current game mode
+		for( int i = 0; i < sizeof(g_sAcidSounds); i++ )
+			PrecacheSound(g_sAcidSounds[i]);
+
+		for( int i = 0; i < 2048; i++ )
+			g_iAcidEntity[i] = 0;
+	}
+
+	// PipeBomb projectile
+	PrecacheParticle(PARTICLE_FUSE);
+	PrecacheParticle(PARTICLE_LIGHT);
 
 
 
-		// Precache Models, prevent crashing when spawning with SpawnSpecial()
-		for( int i = 0; i < sizeof(g_sModels1); i++ )
-			PrecacheModel(g_sModels1[i]);
+	// Director Variables initialized before the plugin is able to hook.
+	// Extension was able to process these and fire the forwards accordingly.
+	// Some plugins want to overwrite these values from the forward. Please report which ones are required.
+	static bool bDirectorVars;
+	if( g_bLeft4Dead2 && bDirectorVars == false )
+	{
+		bDirectorVars = true;
 
-		PrecacheModel(SPRITE_GLOW, true); // Dissolver
+		// Variable + default value you're passing, which may be used if the director var is not set. Probably uses cvar instead. Unknown.
+		SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "MaxSpecials",			1); // This doesn't appear to work in the finale. At least for some maps.
 
-		if( g_bLeft4Dead2 )
+		// These only appear to work in the Finale, or maybe some specific maps. Unknown.
+		SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "SmokerLimit",			1);
+		SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "BoomerLimit",			1);
+		SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "HunterLimit",			1);
+		SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "SpitterLimit",		1);
+		SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "JockeyLimit",			1);
+		SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "ChargerLimit",		1);
+		SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "TankLimit",			1);
+		SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "DominatorLimit",		1);
+		SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "WitchLimit",			1);
+		SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "CommonLimit",			1);
+
+		// Challenge mode required?
+		SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "cm_MaxSpecials",		1);
+		SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "cm_BaseSpecialLimit",	1);
+		SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "cm_SmokerLimit",		1);
+		SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "cm_BoomerLimit",		1);
+		SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "cm_HunterLimit",		1);
+		SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "cm_SpitterLimit",		1);
+		SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "cm_JockeyLimit",		1);
+		SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "cm_ChargerLimit",		1);
+		SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "cm_TankLimit",		1);
+		SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "cm_DominatorLimit",	1);
+		SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "cm_WitchLimit",		1);
+		SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "cm_CommonLimit",		1);
+
+		// These also exist, required?
+		SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "TotalSmokers",		1);
+		SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "TotalBoomers",		1);
+		SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "TotalHunters",		1);
+		SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "TotalSpitter",		1);
+		SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "TotalJockey",			1);
+		SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "TotalCharger",		1);
+	}
+
+
+
+	// Melee weapon IDs - They can change when switching map depending on what melee weapons are enabled
+	if( g_bLeft4Dead2 )
+	{
+		delete g_aMeleePtrs;
+		delete g_aMeleeIDs;
+
+		g_aMeleePtrs = new ArrayList(2);
+		g_aMeleeIDs = new StringMap();
+
+		int iTable = FindStringTable("meleeweapons");
+		if( iTable == INVALID_STRING_TABLE ) // Default to known IDs
 		{
-			for( int i = 0; i < sizeof(g_sModels2); i++ )
-				PrecacheModel(g_sModels2[i]);
+			g_aMeleeIDs.SetValue("fireaxe",				0);
+			g_aMeleeIDs.SetValue("frying_pan",			1);
+			g_aMeleeIDs.SetValue("machete",				2);
+			g_aMeleeIDs.SetValue("baseball_bat",		3);
+			g_aMeleeIDs.SetValue("crowbar",				4);
+			g_aMeleeIDs.SetValue("cricket_bat",			5);
+			g_aMeleeIDs.SetValue("tonfa",				6);
+			g_aMeleeIDs.SetValue("katana",				7);
+			g_aMeleeIDs.SetValue("electric_guitar",		8);
+			g_aMeleeIDs.SetValue("knife",				9);
+			g_aMeleeIDs.SetValue("golfclub",			10);
+			g_aMeleeIDs.SetValue("pitchfork",			11);
+			g_aMeleeIDs.SetValue("shovel",				12);
+		} else {
+			// Get actual IDs
+			int iNum = GetStringTableNumStrings(iTable);
+			char sName[PLATFORM_MAX_PATH];
 
-			for( int i = 0; i < sizeof(g_sAcidSounds); i++ )
-				PrecacheSound(g_sAcidSounds[i]);
-
-			for( int i = 0; i < 2048; i++ )
-				g_iAcidEntity[i] = 0;
-		}
-
-
-
-		// Director Variables initialized before the plugin is able to hook.
-		// Extension was able to process these and fire the forwards accordingly.
-		// Some plugins want to overwrite these values from the forward. Please report which ones are required.
-		static bool bDirectorVars;
-		if( g_bLeft4Dead2 && bDirectorVars == false )
-		{
-			bDirectorVars = true;
-
-			// Variable + default value you're passing, which may be used if the director var is not set. Probably uses cvar instead. Unknown.
-			SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "MaxSpecials",			1); // This doesn't appear to work in the finale. At least for some maps.
-
-			// These only appear to work in the Finale, or maybe some specific maps. Unknown.
-			SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "SmokerLimit",			1);
-			SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "BoomerLimit",			1);
-			SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "HunterLimit",			1);
-			SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "SpitterLimit",		1);
-			SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "JockeyLimit",			1);
-			SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "ChargerLimit",		1);
-			SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "TankLimit",			1);
-			SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "DominatorLimit",		1);
-			SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "WitchLimit",			1);
-			SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "CommonLimit",			1);
-
-			// Challenge mode required?
-			SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "cm_MaxSpecials",		1);
-			SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "cm_BaseSpecialLimit",	1);
-			SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "cm_SmokerLimit",		1);
-			SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "cm_BoomerLimit",		1);
-			SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "cm_HunterLimit",		1);
-			SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "cm_SpitterLimit",		1);
-			SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "cm_JockeyLimit",		1);
-			SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "cm_ChargerLimit",		1);
-			SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "cm_TankLimit",		1);
-			SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "cm_DominatorLimit",	1);
-			SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "cm_WitchLimit",		1);
-			SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "cm_CommonLimit",		1);
-
-			// These also exist, required?
-			SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "TotalSmokers",		1);
-			SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "TotalBoomers",		1);
-			SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "TotalHunters",		1);
-			SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "TotalSpitter",		1);
-			SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "TotalJockey",			1);
-			SDKCall(g_hSDK_CDirector_GetScriptValueInt, g_pDirector, "TotalCharger",		1);
-		}
-
-
-
-		// Melee weapon IDs - They can change when switching map depending on what melee weapons are enabled
-		if( g_bLeft4Dead2 )
-		{
-			delete g_aMeleePtrs;
-			delete g_aMeleeIDs;
-
-			g_aMeleePtrs = new ArrayList(2);
-			g_aMeleeIDs = new StringMap();
-
-			int iTable = FindStringTable("meleeweapons");
-			if( iTable == INVALID_STRING_TABLE ) // Default to known IDs
+			for( int i = 0; i < iNum; i++ )
 			{
-				g_aMeleeIDs.SetValue("fireaxe",				0);
-				g_aMeleeIDs.SetValue("frying_pan",			1);
-				g_aMeleeIDs.SetValue("machete",				2);
-				g_aMeleeIDs.SetValue("baseball_bat",		3);
-				g_aMeleeIDs.SetValue("crowbar",				4);
-				g_aMeleeIDs.SetValue("cricket_bat",			5);
-				g_aMeleeIDs.SetValue("tonfa",				6);
-				g_aMeleeIDs.SetValue("katana",				7);
-				g_aMeleeIDs.SetValue("electric_guitar",		8);
-				g_aMeleeIDs.SetValue("knife",				9);
-				g_aMeleeIDs.SetValue("golfclub",			10);
-				g_aMeleeIDs.SetValue("pitchfork",			11);
-				g_aMeleeIDs.SetValue("shovel",				12);
-			} else {
-				// Get actual IDs
-				int iNum = GetStringTableNumStrings(iTable);
-				char sName[PLATFORM_MAX_PATH];
-
-				for( int i = 0; i < iNum; i++ )
-				{
-					ReadStringTable(iTable, i, sName, sizeof(sName));
-					g_aMeleeIDs.SetValue(sName, i);
-				}
+				ReadStringTable(iTable, i, sName, sizeof(sName));
+				g_aMeleeIDs.SetValue(sName, i);
 			}
 		}
 	}
+
+	g_bMapStarted = true;
 }
 
 
