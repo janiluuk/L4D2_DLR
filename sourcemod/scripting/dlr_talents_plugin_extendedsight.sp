@@ -33,7 +33,7 @@ const int CLASS_SABOTEUR = 4;
 	native void GetPlayerSkillName(int client, char[] skillName, int size);
 	native int FindSkillIdByName(char[] skillName);
 	native int RegisterDLRSkill(char[] skillName, int type);
-	#define DLR_PLUGIN_NAME	"dlr_talents"
+	#define DLR_PLUGIN_NAME	"rage_talents"
 #endif
 /****************************************************/
 

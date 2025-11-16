@@ -59,7 +59,7 @@ public void OnPluginStart()
 
 public void OnAllPluginsLoaded()
 {
-    g_bDLR = LibraryExists("dlr_talents");
+    g_bDLR = LibraryExists("rage_talents");
     if (g_bDLR && g_iClassID == -1)
     {
         g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
@@ -68,7 +68,7 @@ public void OnAllPluginsLoaded()
 
 public void DLR_OnPluginState(char[] plugin, int state)
 {
-    if (StrEqual(plugin, "dlr_talents"))
+    if (StrEqual(plugin, "rage_talents"))
     {
         if (state == 1 && g_iClassID == -1)
         {

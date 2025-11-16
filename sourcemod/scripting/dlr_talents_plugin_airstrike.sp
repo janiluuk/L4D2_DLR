@@ -224,7 +224,7 @@ public void OnAllPluginsLoaded()
 {
 	if (g_iClassID != -1) return;
 
-	DLR_Available = LibraryExists("dlr_talents");
+    DLR_Available = LibraryExists("rage_talents");
 	g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
 }
 
@@ -298,7 +298,7 @@ public void OnLibraryAdded(const char[] name)
 	if( strcmp(name, "l4d2_airstrike.triggers") == 0 )
 		g_bPluginTrigger = true;
 
-	if(StrEqual(name, "dlr_talents")) {
+    if(StrEqual(name, "rage_talents")) {
 		DLR_Available = true;	
 		if (g_iClassID < 0)	
 			g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
@@ -309,7 +309,7 @@ public void DLR_OnPluginState(char[] plugin, int pluginstate)
 {
 	static int dlrstate;
 
-	if( StrEqual(plugin, "dlr_talents") && pluginstate == 1 && dlrstate == 0 )
+    if( StrEqual(plugin, "rage_talents") && pluginstate == 1 && dlrstate == 0 )
 	{
 		SetConVarBool(g_hCvarAllow, true);
 		dlrstate = 1;
@@ -318,7 +318,7 @@ public void DLR_OnPluginState(char[] plugin, int pluginstate)
 		}
 
 	}
-	else if(StrEqual(plugin, "dlr_talents") && pluginstate == 0 && dlrstate == 1 )
+    else if(StrEqual(plugin, "rage_talents") && pluginstate == 0 && dlrstate == 1 )
 	{
 		SetConVarBool(g_hCvarAllow, false);
 		dlrstate = 0;

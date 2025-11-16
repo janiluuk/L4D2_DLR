@@ -118,7 +118,7 @@ ConVar version_cvar;
 	native void GetPlayerSkillName(int client, char[] skillName, int size);
 	native int FindSkillIdByName(char[] skillName);
 	native int RegisterDLRSkill(char[] skillName, int type);
-	#define DLR_PLUGIN_NAME	"dlr_talents"
+	#define DLR_PLUGIN_NAME	"rage_talents"
 #endif
 /****************************************************/
 
@@ -249,7 +249,7 @@ public void OnAllPluginsLoaded()
 {
 	
 	if (g_iClassID != -1) return;
-	if (LibraryExists("dlr_talents")) {
+	if (LibraryExists("rage_talents")) {
 		g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
 	}
  

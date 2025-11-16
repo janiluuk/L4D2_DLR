@@ -4,8 +4,8 @@
 #endif
 #define _DLRCore_included
 #define DLRCore_version "1.0.0"
-#define DLR_PLUGIN_NAME "dlr_talents"
-#define DLR_PLUGIN_FILE "dlr_talents.smx"
+#define DLR_PLUGIN_NAME "rage_talents"
+#define DLR_PLUGIN_FILE "rage_talents.smx"
 
 /**
  * Get player classname
@@ -147,8 +147,8 @@ native int UnregisterDLRSkill(char[] skillName);
 
 public SharedPlugin __pl_DLRCore = 
 {
-    name = "dlr_talents",
-    file = "dlr_talents.smx",
+    name = "rage_talents",
+    file = "rage_talents.smx",
 #if defined REQUIRE_PLUGIN
     required = 1,
 #else

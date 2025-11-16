@@ -17,7 +17,7 @@
 
 #define PLUGIN_NAME "Talents Plugin 2023 anniversary edition"
 #define PLUGIN_VERSION "1.82b"
-#define PLUGIN_IDENTIFIER "dlr_talents"
+#define PLUGIN_IDENTIFIER "rage_talents"
 #pragma semicolon 1
 #define DEBUG 0
 #define DEBUG_LOG 1
@@ -67,9 +67,9 @@ public OnPluginStart( )
         RegConsoleCmd("sm_classinfo", CmdClassInfo, "Shows clClearMessagesass descriptions");
         RegConsoleCmd("sm_classes", CmdClasses, "Shows class descriptions");
         RegConsoleCmd("sm_skill", CmdUseSkill, "Use your class special skill");
-	RegAdminCmd("sm_dlrm", CmdDlrMenu, ADMFLAG_ROOT, "Debug & Manage");
+        RegAdminCmd("sm_ragem", CmdRageMenu, ADMFLAG_ROOT, "Debug & Manage");
 	RegAdminCmd("sm_hide", HideCommand, ADMFLAG_ROOT, "Hide player");
-	RegAdminCmd("sm_dlr_plugins", CmdPlugins, ADMFLAG_ROOT, "List plugins");	
+        RegAdminCmd("sm_rage_plugins", CmdPlugins, ADMFLAG_ROOT, "List plugins");
 	RegAdminCmd("sm_yay", GrenadeCommand, ADMFLAG_ROOT, "Test grenades");
 	RegAdminCmd("sm_hud", Cmd_PrintToHUD, ADMFLAG_ROOT, "Test HUD");
 	RegAdminCmd("sm_hud_clear", Cmd_ClearHUD, ADMFLAG_ROOT, "Clear HUD");
@@ -98,7 +98,7 @@ public OnPluginStart( )
 
 	// void DLR_OnLoad(int client);
 	//Create menu and set properties
-	g_hSkillMenu = CreateMenu(DlrSkillMenuHandler);
+        g_hSkillMenu = CreateMenu(RageSkillMenuHandler);
 	SetMenuTitle(g_hSkillMenu, "Registered plugins");
 	SetMenuExitButton(g_hSkillMenu, true);
 	//Create a Class Selection forward
@@ -505,7 +505,7 @@ public void OnPluginEnd()
 {
 	ResetPlugin();
 	char plugin[32];
-	plugin = "dlr_talents";
+    plugin = "rage_talents";
 	
 	Call_StartForward(g_hForwardPluginState);
 	Call_PushString(plugin);
@@ -747,7 +747,7 @@ public OnPluginReady() {
 		PrintDebugAll("Talents plugin is now ready");
 		Call_StartForward(g_hForwardPluginState);
 
-		Call_PushString("dlr_talents");
+            Call_PushString("rage_talents");
 		Call_PushCell(1);
 		Call_Finish();
 		g_bPluginLoaded = true;
@@ -762,7 +762,7 @@ public OnPluginReady() {
 		g_bPluginLoaded = false;
 		ResetPlugin();
 		Call_StartForward(g_hForwardPluginState);
-		Call_PushString("dlr_talents");
+            Call_PushString("rage_talents");
 		Call_PushCell(0);
 		Call_Finish();
 	}

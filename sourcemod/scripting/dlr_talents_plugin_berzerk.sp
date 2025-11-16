@@ -741,7 +741,7 @@ public OnMapStart()
 	native void GetPlayerSkillName(int client, char[] skillName, int size);
 	native int FindSkillIdByName(char[] skillName);
 	native int RegisterDLRSkill(char[] skillName, int type);
-	#define DLR_PLUGIN_NAME = "dlr_talents"
+    #define DLR_PLUGIN_NAME = "rage_talents"
 #endif
 
 bool	DLR_Available;
@@ -792,7 +792,7 @@ public int OnSpecialSkillUsed(int iClient, int skill, int type)
 
 public void OnAllPluginsLoaded()
 {
-	DLR_Available = LibraryExists("dlr_talents");
+    DLR_Available = LibraryExists("rage_talents");
 	if (DLR_Available && g_iClassID == -1) {
 		g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
 	}

@@ -128,7 +128,7 @@ public Plugin myinfo =
 	native void GetPlayerSkillName(int client, char[] skillName, int size);
 	native int FindSkillIdByName(char[] skillName);
 	native int RegisterDLRSkill(char[] skillName, int type);
-	#define DLR_PLUGIN_NAME	"dlr_talents"
+	#define DLR_PLUGIN_NAME	"rage_talents"
 #endif
 /****************************************************/
 
@@ -398,7 +398,7 @@ public int OnSpecialSkillUsed(int iClient, int skill, int type)
 public void OnAllPluginsLoaded()
 {
 	bLMC_Available = LibraryExists("LMCEDeathHandler");
-	DLR_Available = LibraryExists("dlr_talents");
+	DLR_Available = LibraryExists("rage_talents");
 
 	if (g_iClassID != -1) return;
 	g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
@@ -425,7 +425,7 @@ public void OnLibraryAdded(const char[] sName)
 {
 	if(StrEqual(sName, "LMCEDeathHandler"))
 		bLMC_Available = true;
-	if(StrEqual(sName, "dlr_talents"))
+	if(StrEqual(sName, "rage_talents"))
 		DLR_Available = true;		
 }
 
@@ -433,7 +433,7 @@ public void OnLibraryRemoved(const char[] sName)
 {
 	if(StrEqual(sName, "LMCEDeathHandler"))
 		bLMC_Available = false;
-	if(StrEqual(sName, "dlr_talents"))
+	if(StrEqual(sName, "rage_talents"))
 		DLR_Available = false;	
 }
 

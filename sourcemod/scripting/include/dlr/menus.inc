@@ -402,7 +402,7 @@ public bool:isAdmin(client)
 	else { return true; }
 }
 
-public PanelHandler_DlrMenu(Handle:menu, MenuAction:action, client, param)
+public PanelHandler_RageMenu(Handle:menu, MenuAction:action, client, param)
 {
 	switch (action)
 	{
@@ -448,7 +448,7 @@ public PanelHandler_DlrMenu(Handle:menu, MenuAction:action, client, param)
 	}
 }
 
-public DlrSkillMenuHandler(Handle:hMenu, MenuAction:action, client, iSkillSelection)
+public RageSkillMenuHandler(Handle:hMenu, MenuAction:action, client, iSkillSelection)
 {
     if(action == MenuAction_Select)
     {
@@ -480,16 +480,16 @@ public OnAdminMenuReady(Handle:topmenu) {
 	// We save the handle
 	hTopMenu = topmenu;
 
-	new TopMenuObject:dlr_menu = AddToTopMenu(hTopMenu, "DlrDebugMenu", TopMenuObject_Category, Admin_TopMainMenu, INVALID_TOPMENUOBJECT); 
-	
-	// now we add the function ...
-	if (dlr_menu != INVALID_TOPMENUOBJECT)
-	{
-		
-		AddToTopMenu(hTopMenu, "dlrdebug", TopMenuObject_Item, Admin_MainMenu, dlr_menu, "dlrdebug", ADMFLAG_GENERIC, "0");
-		AddToTopMenu(hTopMenu, "dlrmenu", TopMenuObject_Item, Admin_MainMenu, dlr_menu, "dlrmenu", ADMFLAG_GENERIC, "1");
-		AddToTopMenu(hTopMenu, "dlrplayers", TopMenuObject_Item, Admin_MainMenu, dlr_menu, "dlrplayers", ADMFLAG_GENERIC, "2");						
-	}
+    new TopMenuObject:rage_menu = AddToTopMenu(hTopMenu, "RageDebugMenu", TopMenuObject_Category, Admin_TopMainMenu, INVALID_TOPMENUOBJECT);
+
+        // now we add the function ...
+        if (rage_menu != INVALID_TOPMENUOBJECT)
+        {
+
+                AddToTopMenu(hTopMenu, "ragedebug", TopMenuObject_Item, Admin_MainMenu, rage_menu, "ragedebug", ADMFLAG_GENERIC, "0");
+                AddToTopMenu(hTopMenu, "ragemenu", TopMenuObject_Item, Admin_MainMenu, rage_menu, "ragemenu", ADMFLAG_GENERIC, "1");
+                AddToTopMenu(hTopMenu, "rageplayers", TopMenuObject_Item, Admin_MainMenu, rage_menu, "rageplayers", ADMFLAG_GENERIC, "2");
+        }
 }
 
 new String:CommandText[][] = {
@@ -516,25 +516,25 @@ public Admin_MainMenu(Handle:topmenu, TopMenuAction:action, TopMenuObject:object
 		}
 		case TopMenuAction_SelectOption:
 		{
-			if (index == 1) { ShowDLRMenu(param); }
-			else if (index == 2) { CreateDlrMenu(param); }
+                        if (index == 1) { ShowRageMenu(param); }
+                    else if (index == 2) { CreateRageMenu(param); }
 			else if (index == 3) { ShowDebugMenu(param); }
 			/**else if (index == 4) { Command_PauseGame(param, 0); }	
 			else if (index == 5) { Command_UnpauseGame(param, 0); }	
 			else if (index == 6) { ShowCurrTeamPanel(param, 0); }
 			else if (index == 7) { ShowLastRoundTeamPanel(param, 0); }	*/
-			else if (index == 0) { ShowDLRMenu(param); }
+                    else if (index == 0) { ShowRageMenu(param); }
 		}			
 	}
 }
 
-public Action:CmdDlrMenu(client, args)
+public Action:CmdRageMenu(client, args)
 {
 	if (isAdmin(client)) 
-		CreateDlrMenu(client);
+                CreateRageMenu(client);
 }
 
-public CreateDlrMenu(client) {
+public CreateRageMenu(client) {
 
 	if (!client)
 	return false;
@@ -543,7 +543,7 @@ public CreateDlrMenu(client) {
 	
 	if((hPanel = CreatePanel()) == INVALID_HANDLE)
 	{
-		LogError("Cannot create hPanel on DlrMenu");
+                LogError("Cannot create hPanel on RageMenu");
 		return false;
 	}
 	
@@ -554,13 +554,13 @@ public CreateDlrMenu(client) {
 	DrawPanelItem(hPanel, "List registered skills");
 	DrawPanelText(hPanel, " ");
 	DrawPanelItem(hPanel, "Exit");
-	SendPanelToClient(hPanel, client, PanelHandler_DlrMenu, MENU_OPEN_TIME);
+        SendPanelToClient(hPanel, client, PanelHandler_RageMenu, MENU_OPEN_TIME);
 	CloseHandle(hPanel);
 	
 	return true;
 }
 
-public Admin_MnuHdlr_DlrOpts(Handle:menu, MenuAction:action, param1, param2) {
+public Admin_MnuHdlr_RageOpts(Handle:menu, MenuAction:action, param1, param2) {
 
 	switch (action)
 	{
@@ -577,7 +577,7 @@ public Admin_MnuHdlr_DlrOpts(Handle:menu, MenuAction:action, param1, param2) {
 		}
 		case MenuAction_Select:
 		{
-			if( param2 == 0)
+                        if( param2 == 0)
 			{
 				PrintHintText(param1,"Debug mode is %s",  (getDebugMode() > 0) ? "ON" : "OFF");
 			}
@@ -669,9 +669,9 @@ stock ShowDebugMenu(client) {
 	DisplayMenu(menu, client, MENU_TIME_FOREVER);
 }
 
-stock ShowDLRMenu(client) {
+stock ShowRageMenu(client) {
 
-	new Handle:menu = CreateMenu(Admin_MnuHdlr_DlrOpts);	
+    new Handle:menu = CreateMenu(Admin_MnuHdlr_RageOpts);
 	
 	decl String:title[100];
 	Format(title, sizeof(title), "DLR Settings");
