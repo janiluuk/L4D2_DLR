@@ -1,11 +1,11 @@
 
-#if defined _DLRCore_included
+#if defined _RageCore_included
 #endinput
 #endif
-#define _DLRCore_included
-#define DLRCore_version "1.0.0"
-#define DLR_PLUGIN_NAME "dlr_talents"
-#define DLR_PLUGIN_FILE "dlr_talents.smx"
+#define _RageCore_included
+#define RageCore_version "1.0.0"
+#define RAGE_PLUGIN_NAME "rage_survivor"
+#define RAGE_PLUGIN_FILE "rage_survivor.smx"
 
 /**
  * Get player classname
@@ -26,7 +26,7 @@ native int GetPlayerClassName(int client, char[] skillName, int size);
  */
 native int GetPlayerSkillName(int client, char[] skillName, int size);
 
-forward DLR_GetClientSkill(int client, char[] skillName);
+forward Rage_GetClientSkill(int client, char[] skillName);
 
 
 /**
@@ -82,14 +82,14 @@ forward OnSpecialSkillUsed(int iClient, int skill, int type);
  * @param state 	int value, 1=Started/0=Finished
  * @noreturn
  */
-forward DLR_OnRoundState(int roundstate);
+forward Rage_OnRoundState(int roundstate);
 
 /**
  * Called when client hooks up with the skil
  * @param int client
  * @noreturn
  */
-forward void DLR_OnLoad(int client);
+forward void Rage_OnLoad(int client);
 
 /**
  * Called when plugin becomes available
@@ -98,7 +98,7 @@ forward void DLR_OnLoad(int client);
  * @param state 	int value, 1=Available/0=Unloaded
  * @noreturn
  */
-forward void DLR_OnPluginState(char[] plugin, int pluginstate);
+forward void Rage_OnPluginState(char[] plugin, int pluginstate);
 
 /**
  * Called when plugin wants to execute custom command instead
@@ -141,14 +141,14 @@ native void OnGetPerkName(int client, const char[] name, int level, char[] resul
  * @param type       	 0 = On Demand skill (e.g. push button), 1 = Constant perk that is applied throughout the game
  * @return int
  */
-native int RegisterDLRSkill(char[] skillName, int type);  
+native int RegisterRageSkill(char[] skillName, int type);
 
-native int UnregisterDLRSkill(char[] skillName);  
+native int UnregisterRageSkill(char[] skillName);
 
-public SharedPlugin __pl_DLRCore = 
+public SharedPlugin __pl_RageCore =
 {
-    name = "dlr_talents",
-    file = "dlr_talents.smx",
+    name = RAGE_PLUGIN_NAME,
+    file = RAGE_PLUGIN_FILE,
 #if defined REQUIRE_PLUGIN
     required = 1,
 #else
@@ -157,17 +157,17 @@ public SharedPlugin __pl_DLRCore =
 };
 
 #if !defined REQUIRE_PLUGIN
-public __pl_DLRCore_SetNTVOptional()
+public __pl_RageCore_SetNTVOptional()
 {
     MarkNativeAsOptional("PlayerClassName");
     MarkNativeAsOptional("OnSpecialSkillFail");
     MarkNativeAsOptional("OnSpecialSkillSuccess");
-    MarkNativeAsOptional("RegisterDLRSkill");
-    MarkNativeAsOptional("UnregisterDLRSkill");
+    MarkNativeAsOptional("RegisterRageSkill");
+    MarkNativeAsOptional("UnregisterRageSkill");
     MarkNativeAsOptional("FindSkillIdByName");
     MarkNativeAsOptional("FindSkillNameByName");
     MarkNativeAsOptional("OnPluginStateChange");
-    MarkNativeAsOptional("DLR_GetClientSkill");    
+    MarkNativeAsOptional("Rage_GetClientSkill");
 }
 #endif
 

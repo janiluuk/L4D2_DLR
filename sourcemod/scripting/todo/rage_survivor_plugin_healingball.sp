@@ -9,7 +9,7 @@
 #define PLUGIN_SKILL_DESCRIPTION "Summons health orb around player to heal others."
 public Plugin myinfo =
 {
-	name = "[DLR] Healing ball plugin version",
+	name = "[Rage] Healing ball plugin version",
 	author = "zonde306, Yani",
 	description = PLUGIN_SKILL_DESCRIPTION,
 	version = PLUGIN_VERSION,
@@ -40,7 +40,7 @@ public void OnSpecialSkillUsed(int client, const char[] skillName)
 	HealingBallRadius[client] = 130.0);
 	HealingBallDuration[client] = 8.0;
 	HealingBallFunction(client);
-	PrintToChat(client, "\x03[DLR]\x01 Healing ball now active\x01", HealingBallDuration[client]);
+	PrintToChat(client, "\x03[Rage]\x01 Healing ball now active\x01", HealingBallDuration[client]);
 }
 
 public void OnMapStart()

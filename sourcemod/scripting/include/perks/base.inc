@@ -332,7 +332,7 @@ void ApplyPerk(int player, const char[] name, int activator, perkModifier modifi
     int perkIndex = GetPerk(name, perk);
     if(perkIndex == -1) {
         ReplyToCommand(activator, "Unknown perk \"%s\"", name);
-        PrintToServer("[DLR] %N attempted to apply unknown perk: %s", activator, name);
+        PrintToServer("[Rage] %N attempted to apply unknown perk: %s", activator, name);
         return;
     }
 
@@ -378,7 +378,7 @@ void ApplyPerk(int player, const char[] name, int activator, perkModifier modifi
     // Log all actions, indicating if constant or single-fire, and if any flags
     if(!silent) {
         if(isActive) {
-            CShowActivityEx(activator, "[DLR] ", "deactivated {yellow}\"%s\"{default} on %N. ", perk.name, player);
+            CShowActivityEx(activator, "[Rage] ", "deactivated {yellow}\"%s\"{default} on %N. ", perk.name, player);
             LogAction(activator, player, "\"%L\" deactivated {yellow}\"%s\"{default} on \"%L\"", activator, perk.name, player);
         } else {
             static char flagName[MAX_PERK_FLAG_LENGTH];
@@ -407,20 +407,20 @@ void ApplyPerk(int player, const char[] name, int activator, perkModifier modifi
             if(modifier & PerkMod_Constant) {
                 if(flags > 0) {
                     if(flagName[0] != '\0') {
-                        CShowActivityEx(activator, "[DLR] ", "activated constant {yellow}%s{default} ({yellow}%s{default}) for %N. ", perk.name, flagName, player);
+                        CShowActivityEx(activator, "[Rage] ", "activated constant {yellow}%s{default} ({yellow}%s{default}) for %N. ", perk.name, flagName, player);
                     } else {
-                        CShowActivityEx(activator, "[DLR] ", "activated constant {yellow}%s{default} ({yellow}%d{default}) for %N. ", perk.name, flags, player);
+                        CShowActivityEx(activator, "[Rage] ", "activated constant {yellow}%s{default} ({yellow}%d{default}) for %N. ", perk.name, flags, player);
                     }
                 } else
-                    CShowActivityEx(activator, "[DLR] ", "activated constant {yellow}%s{default} for %N. ", perk.name, player);
+                    CShowActivityEx(activator, "[Rage] ", "activated constant {yellow}%s{default} for %N. ", perk.name, player);
             } else if(flags > 0) {
                 if(flagName[0] != '\0') {
-				    CShowActivityEx(activator, "[DLR] ", "activated {yellow}%s{default} ({yellow}%s{default}) for %N. ", perk.name, flagName, player);
+				    CShowActivityEx(activator, "[Rage] ", "activated {yellow}%s{default} ({yellow}%s{default}) for %N. ", perk.name, flagName, player);
                 } else {
-				    CShowActivityEx(activator, "[DLR] ", "activated {yellow}%s{default} ({yellow}%d{default}) for %N. ", perk.name, flags, player);
+				    CShowActivityEx(activator, "[Rage] ", "activated {yellow}%s{default} ({yellow}%d{default}) for %N. ", perk.name, flags, player);
                 }
             } else
-				CShowActivityEx(activator, "[DLR] ", "activated {yellow}%s{default} for %N. ", perk.name, player);
+				CShowActivityEx(activator, "[Rage] ", "activated {yellow}%s{default} for %N. ", perk.name, player);
             
             LogAction(activator, player, "\"%L\" activated \"%s\" (%d) for \"%L\"", activator, perk.name, flags, player);
         }

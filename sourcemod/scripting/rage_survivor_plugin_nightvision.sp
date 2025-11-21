@@ -9,20 +9,20 @@
 #define PLUGIN_DESCRIPTION "Toggle nightvision goggles"
 
 /****************************************************/
-#tryinclude <DLRCore>
-#if !defined _DLRCore_included
-    // Optional native from DLR Talents
+#tryinclude <RageCore>
+#if !defined _RageCore_included
+    // Optional native from Rage Survivor
     native void OnSpecialSkillSuccess(int client, char[] skillName);
     native void OnSpecialSkillFail(int client, char[] skillName, char[] reason);
     native void GetPlayerSkillName(int client, char[] skillName, int size);
-    native int RegisterDLRSkill(char[] skillName, int type);
+    native int RegisterRageSkill(char[] skillName, int type);
     native int GetPlayerClassName(int client, char[] className, int size);
 #endif
 /****************************************************/
 
 public Plugin myinfo =
 {
-    name = "[DLR] Nightvision",
+    name = "[Rage] Nightvision",
     author = "Pan Xiaohai & Mr. Zero, Yani",
     description = PLUGIN_DESCRIPTION,
     version = PLUGIN_VERSION,
@@ -30,7 +30,7 @@ public Plugin myinfo =
 };
 
 int g_iClassID = -1;
-bool g_bDLR;
+bool g_bRage;
 
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
 {
@@ -45,8 +45,8 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
     MarkNativeAsOptional("OnSpecialSkillSuccess");
     MarkNativeAsOptional("GetPlayerSkillName");
     MarkNativeAsOptional("GetPlayerClassName");
-    MarkNativeAsOptional("RegisterDLRSkill");
-    MarkNativeAsOptional("DLR_OnPluginState");
+    MarkNativeAsOptional("RegisterRageSkill");
+    MarkNativeAsOptional("Rage_OnPluginState");
 
     return APLRes_Success;
 }
@@ -59,20 +59,20 @@ public void OnPluginStart()
 
 public void OnAllPluginsLoaded()
 {
-    g_bDLR = LibraryExists("dlr_talents");
-    if (g_bDLR && g_iClassID == -1)
+    g_bRage = LibraryExists("rage_survivor");
+    if (g_bRage && g_iClassID == -1)
     {
-        g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
+        g_iClassID = RegisterRageSkill(PLUGIN_SKILL_NAME, 0);
     }
 }
 
-public void DLR_OnPluginState(char[] plugin, int state)
+public void Rage_OnPluginState(char[] plugin, int state)
 {
-    if (StrEqual(plugin, "dlr_talents"))
+    if (StrEqual(plugin, "rage_survivor"))
     {
         if (state == 1 && g_iClassID == -1)
         {
-            g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
+            g_iClassID = RegisterRageSkill(PLUGIN_SKILL_NAME, 0);
         }
         else if (state == 0)
         {

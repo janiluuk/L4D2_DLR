@@ -174,7 +174,7 @@ public Action Timer_ShootReverse(Handle h, DataPack pack) {
 
 public Action Timer_CheckSpecialSpawned(Handle h, int id) {
 	if(g_iSpId == id) {
-		PrintToServer("[DLR] Special did not spawn in time, continuing.");
+		PrintToServer("[Rage] Special did not spawn in time, continuing.");
 		g_iSpId++;
 		ProcessSpecialQueue();
 	}

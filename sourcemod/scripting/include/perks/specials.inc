@@ -93,7 +93,7 @@ bool ProcessSpecialQueue() {
 		int target = GetClientOfUserId(spActiveRequest.targetUserId);
 		if(view_as<int>(spActiveRequest.type) <= 6) {
 			// CreateTimer(2.0, Timer_CheckSpecialSpawn, spCurrentId);
-			int bot = CreateFakeClient("DLRSpecialBot");
+			int bot = CreateFakeClient("RageSpecialBot");
 			if (bot != 0) {
 				ChangeClientTeam(bot, 3);
 				CreateTimer(0.1, Timer_KickBot, bot);

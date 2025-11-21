@@ -59,15 +59,9 @@ public Action:TimerThink(Handle:hTimer, any:userid)
 			}
 			if (buttons & IN_ZOOM) {
 					char pendingMessage[128] = "Wait for %i seconds to activate cloak again";
-					if (canUseSpecialSkill(client, pendingMessage, true)) {
-						new Handle:hPack = CreateDataPack();
-						WritePackCell(hPack, GetClientUserId(client));
-						WritePackCell(hPack, ClientData[client].ChosenClass);
-
-						CreateTimer(3.0, TimerRestorePlayer, hPack, TIMER_FLAG_NO_MAPCHANGE);	
-						useSpecialSkill(client, 1);	
-						PrintHintText(client, "You spawned a decoy, you have 10 seconds to sneak away without weapons.");
-
+					if (canUseSpecialSkill(client, pendingMessage)) {
+						useSpecialSkill(client, 1);						
+						ClientData[client].LastDropTime = GetGameTime();
 					}
 
 			}
@@ -78,7 +72,6 @@ public Action:TimerThink(Handle:hTimer, any:userid)
 					if (InvisibilityTimestamp != hidingTime && InvisibilityHint == false) 
 					{
 						SetRenderProperties(client);
-						PrintHintText(client,"You are now invisible for 20 seconds. You can see enemies during this time.");
 
                                                 FakeClientCommand(client, "sm_nap_apply 7");
                                                 FakeClientCommand(client, "sm_extendedsight");
@@ -99,7 +92,6 @@ public Action:TimerThink(Handle:hTimer, any:userid)
 						InvisibilityTimestamp = hidingTime;
 					}
 				}
-
 			}
 			
 			else if (buttons & IN_SPEED)
@@ -108,7 +100,7 @@ public Action:TimerThink(Handle:hTimer, any:userid)
 				} else {
 					if (CanDrop == false && (iDropTime > 0 && iDropTime < GetConVarInt(MINIMUM_DROP_INTERVAL))) 
 					{
-							PrintHintText(client ,"Wait %i seconds to deploy next mine", (GetConVarInt(MINIMUM_DROP_INTERVAL) - iDropTime));
+							PrintHintText(client ,"Wait %i seconds to another mine", (GetConVarInt(MINIMUM_DROP_INTERVAL) - iDropTime));
 					} else {
 
 						if (CanDrop == true && !IsPlayerInSaferoom(client) && !IsInEndingSaferoom(client))
@@ -392,6 +384,49 @@ public Action:TimerDetectHealthChanges(Handle:hTimer, any:client)
 	}
 	
 	return Plugin_Continue;
+}
+
+public Action:TimerAirstrike(Handle timer, Handle:hPack)
+{
+	new Float:pos[3];
+	new Float:time;
+	int client;
+	int entity;
+	int userId;
+	ResetPack(hPack);
+	userId = ReadPackCell(hPack);		
+	client = GetClientOfUserId(userId);
+	pos[0] = ReadPackFloat(hPack);
+	pos[1] = ReadPackFloat(hPack);
+	pos[2] = ReadPackFloat(hPack);
+	time =  ReadPackFloat(hPack);
+	entity = ReadPackCell(hPack);
+
+	if (client > 0 && IsClientInGame(client) && RoundToFloor(GetGameTime()-time) <= 10) {
+		PrintHintTextToAll("Airstrike in %i, take cover!",10-(RoundToFloor(GetGameTime()-time)));
+		
+		return Plugin_Continue;
+	} else {
+
+		g_bAirstrikeValid = true;
+		PrintHintTextToAll("Airstrike completed!");
+		ClientData[client].SpecialsUsed++;
+		F18_ShowAirstrike(pos, GetRandomFloat(0.0, 180.0));
+
+		if(IsValidEntity(entity))
+		{
+			AcceptEntityInput(entity, "Kill");
+		}
+	}
+
+	return Plugin_Stop;
+}
+
+public Action:TimerActivateBomb(Handle:hTimer, Handle:hPack)
+{
+	CreateTimer(0.3, TimerCheckBombSensors, hPack, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+	
+	return Plugin_Stop;
 }
 
 public Action:TimerCheckBombSensors(Handle:hTimer, Handle:hPack)

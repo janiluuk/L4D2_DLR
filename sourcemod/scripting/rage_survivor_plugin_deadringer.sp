@@ -1,4 +1,4 @@
-#define PLUGIN_NAME "[DLR] Dead Ringer Plugin"
+#define PLUGIN_NAME "[Rage] Dead Ringer Plugin"
 #define PLUGIN_AUTHOR "Yani & Shadowysn"
 #define PLUGIN_DESC "Activate a dead ringer distraction and cloak the user."
 #define PLUGIN_VERSION "1.0"
@@ -110,15 +110,15 @@ Handle hOnRideEnded = null;
 
 ConVar version_cvar;
 /****************************************************/
-#tryinclude <DLRCore>
-#if !defined _DLRCore_included
-	// Optional native from DLR Talents
+#tryinclude <RageCore>
+#if !defined _RageCore_included
+	// Optional native from Rage Survivor
 	native void OnSpecialSkillSuccess(int client, char[] skillName);
 	native void OnSpecialSkillFail(int client, char[] skillName, char[] reason);
 	native void GetPlayerSkillName(int client, char[] skillName, int size);
 	native int FindSkillIdByName(char[] skillName);
-	native int RegisterDLRSkill(char[] skillName, int type);
-	#define DLR_PLUGIN_NAME	"dlr_talents"
+	native int RegisterRageSkill(char[] skillName, int type);
+	#define Rage_PLUGIN_NAME	"rage_survivor"
 #endif
 /****************************************************/
 
@@ -135,8 +135,8 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	MarkNativeAsOptional("OnSpecialSkillSuccess");		
 	MarkNativeAsOptional("OnPlayerClassChange");
 	MarkNativeAsOptional("GetPlayerSkillName");	
-	MarkNativeAsOptional("RegisterDLRSkill");
-	MarkNativeAsOptional("DLR_OnPluginState");	
+	MarkNativeAsOptional("RegisterRageSkill");
+	MarkNativeAsOptional("Rage_OnPluginState");	
 	return APLRes_Success;
 
 }
@@ -249,19 +249,19 @@ public void OnAllPluginsLoaded()
 {
 	
 	if (g_iClassID != -1) return;
-	if (LibraryExists("dlr_talents")) {
-		g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
+	if (LibraryExists("rage_survivor")) {
+		g_iClassID = RegisterRageSkill(PLUGIN_SKILL_NAME, 0);
 	}
  
 }
 
-public void DLR_OnPluginState(char[] plugin, int pluginstate)
+public void Rage_OnPluginState(char[] plugin, int pluginstate)
 {
 	if( pluginstate == 1)
 	{
 		SetConVarBool(DeadRinger_EnableComm, true);
 		if (g_iClassID == -1)
-		g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
+		g_iClassID = RegisterRageSkill(PLUGIN_SKILL_NAME, 0);
 	}
 	else if( pluginstate == 0)
 	{
@@ -303,7 +303,7 @@ public void OnPluginEnd()
 
 }
 // ====================================================================================================
-//					DLR
+//					Rage
 // ====================================================================================================
 
 /*public void OnPlayerClassChange(int client, int newClass, int previousClass)

@@ -28,7 +28,7 @@ bool SetWitchTarget(int witch, int target) {
 		action.OnUpdate = OnWitchActionUpdate; 
 		return true;
 	#else
-		PrintToServer("[DLR] SetWitchTarget() called when behaviors plugin not found");
+		PrintToServer("[Rage] SetWitchTarget() called when behaviors plugin not found");
 		return false;
 	#endif
 }
@@ -37,7 +37,7 @@ bool ToggleMarkPlayer(int client, int target) {
 	if(pdata[target].pendingPerkBan > 0) {
 		pdata[target].pendingPerkBan = 0;
 		LogAction(client, target, "\"%L\" unmarked \"%L\" as perk", client, target);
-		ShowActivityEx(client, "[DLR] ", "unmarked %N as perk", target);
+		ShowActivityEx(client, "[Rage] ", "unmarked %N as perk", target);
 		return true;
 	}else{
 		bool isClientAdmin = GetUserAdmin(client) != INVALID_ADMIN_ID;
@@ -58,7 +58,7 @@ bool ToggleMarkPlayer(int client, int target) {
 		pdata[target].pendingPerkBan = GetClientUserId(client);
 		EnablePerk(target, "No Profanity");
 		LogAction(client, target, "\"%L\" marked \"%L\" as perk", client, target);
-		ShowActivityEx(client, "[DLR] ", "marked %N as perk", target);
+		ShowActivityEx(client, "[Rage] ", "marked %N as perk", target);
 		return true;
 	}
 }
@@ -87,12 +87,12 @@ void LoadTypos() {
 	BuildPath(Path_SM, sPath, sizeof(sPath), "data/ftt_typos.txt");
 
 	if(!FileExists(sPath)) {
-		PrintToServer("[DLR] Missing typos list: data/ftt_typos.txt");
+		PrintToServer("[Rage] Missing typos list: data/ftt_typos.txt");
 		return;
 	}
 	File file = OpenFile(sPath, "r", false, NULL_STRING);
 	if(file == null) {
-		PrintToServer("[DLR] Cannot open: data/ftt_typos.txt");
+		PrintToServer("[Rage] Cannot open: data/ftt_typos.txt");
 		return;
 	}
 
@@ -127,7 +127,7 @@ void LoadPhrases() {
 
 	if(!FileExists(sPath) || !kv.ImportFromFile(sPath)) {
 		delete kv;
-		PrintToServer("[DLR] Could not load phrase list from data/perks_phrases.cfg");
+		PrintToServer("[Rage] Could not load phrase list from data/perks_phrases.cfg");
 		return;
 	}
 	static char word[32];
@@ -472,7 +472,7 @@ bool AddSurvivor() {
 		return false;
 	}
 
-	int i = CreateFakeClient("DLRSurvivorBot");
+	int i = CreateFakeClient("RageSurvivorBot");
 	bool result;
 	if (i > 0) {
 		if (DispatchKeyValue(i, "classname", "SurvivorBot")) {

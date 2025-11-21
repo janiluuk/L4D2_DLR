@@ -1,13 +1,13 @@
 /**
 * =============================================================================
-* Talents Plugin by DLR / Neil / Spirit / panxiaohai / Yani
+* Talents Plugin by Rage / Neil / Spirit / panxiaohai / Yani
 * Incorporates Survivor classes.
 *
 * (C)2023 DeadLandRape / Neil / Yani.  All rights reserved.
 * =============================================================================
 *
-*	Developed for DeadLandRape Gaming. This plugin is DLR proprietary software.
-*	DLR claims complete rights to this plugin, including, but not limited to:
+*	Developed for DeadLandRape Gaming. This plugin is Rage proprietary software.
+*	Rage claims complete rights to this plugin, including, but not limited to:
 *
 *		- The right to use this plugin in their servers
 *		- The right to modify this plugin
@@ -17,7 +17,7 @@
 
 #define PLUGIN_NAME "Talents Plugin 2023 anniversary edition"
 #define PLUGIN_VERSION "1.82b"
-#define PLUGIN_IDENTIFIER "dlr_talents"
+#define PLUGIN_IDENTIFIER "rage_survivor"
 #pragma semicolon 1
 #define DEBUG 0
 #define DEBUG_LOG 1
@@ -27,7 +27,7 @@ stock int DEBUG_MODE = 0;
 public Plugin:myinfo =
 {
 	name = PLUGIN_NAME,
-	author = "DLR / Ken / Neil / Spirit / panxiaohai / Yani",
+	author = "Rage / Ken / Neil / Spirit / panxiaohai / Yani",
 	description = "Incorporates Survivor Classes",
 	version = PLUGIN_VERSION,
 	url = "https://forums.alliedmods.net/showthread.php?t=273312"
@@ -67,9 +67,9 @@ public OnPluginStart( )
         RegConsoleCmd("sm_classinfo", CmdClassInfo, "Shows clClearMessagesass descriptions");
         RegConsoleCmd("sm_classes", CmdClasses, "Shows class descriptions");
         RegConsoleCmd("sm_skill", CmdUseSkill, "Use your class special skill");
-	RegAdminCmd("sm_dlrm", CmdDlrMenu, ADMFLAG_ROOT, "Debug & Manage");
+        RegAdminCmd("sm_ragem", CmdRageMenu, ADMFLAG_ROOT, "Debug & Manage");
 	RegAdminCmd("sm_hide", HideCommand, ADMFLAG_ROOT, "Hide player");
-	RegAdminCmd("sm_dlr_plugins", CmdPlugins, ADMFLAG_ROOT, "List plugins");	
+        RegAdminCmd("sm_rage_plugins", CmdPlugins, ADMFLAG_ROOT, "List plugins");
 	RegAdminCmd("sm_yay", GrenadeCommand, ADMFLAG_ROOT, "Test grenades");
 	RegAdminCmd("sm_hud", Cmd_PrintToHUD, ADMFLAG_ROOT, "Test HUD");
 	RegAdminCmd("sm_hud_clear", Cmd_ClearHUD, ADMFLAG_ROOT, "Clear HUD");
@@ -89,16 +89,16 @@ public OnPluginStart( )
 	g_hfwdOnCustomCommand = CreateGlobalForward("OnCustomCommand", ET_Ignore, Param_String, Param_Cell, Param_Cell, Param_Cell);
 	//Create a Class Selection forward
 	g_hOnSkillSelected = CreateGlobalForward("OnSkillSelected", ET_Event, Param_Cell, Param_Cell);	
-	g_hForwardPluginState = CreateGlobalForward("DLR_OnPluginState", ET_Ignore, Param_String, Param_Cell);
-	g_hForwardRoundState = CreateGlobalForward("DLR_OnRoundState", ET_Ignore, Param_Cell);
-	g_fwPerkPre = CreateGlobalForward("DLR_OnPerkPre", ET_Hook, Param_Cell, Param_Cell, Param_String, Param_Cell);
-	g_fwPerkPost = CreateGlobalForward("DLR_OnPerkPost", ET_Ignore, Param_Cell, Param_Cell, Param_String);
-	g_fwCanAccessPerk = CreateGlobalForward("DLR_CanAccessPerk", ET_Event, Param_Cell, Param_Cell, Param_String, Param_CellByRef);
-	g_fwSlotName = CreateGlobalForward("DLR_OnGetSlotName", ET_Event, Param_Cell, Param_Cell, Param_String, Param_Cell);
+	g_hForwardPluginState = CreateGlobalForward("Rage_OnPluginState", ET_Ignore, Param_String, Param_Cell);
+	g_hForwardRoundState = CreateGlobalForward("Rage_OnRoundState", ET_Ignore, Param_Cell);
+	g_fwPerkPre = CreateGlobalForward("Rage_OnPerkPre", ET_Hook, Param_Cell, Param_Cell, Param_String, Param_Cell);
+	g_fwPerkPost = CreateGlobalForward("Rage_OnPerkPost", ET_Ignore, Param_Cell, Param_Cell, Param_String);
+	g_fwCanAccessPerk = CreateGlobalForward("Rage_CanAccessPerk", ET_Event, Param_Cell, Param_Cell, Param_String, Param_CellByRef);
+	g_fwSlotName = CreateGlobalForward("Rage_OnGetSlotName", ET_Event, Param_Cell, Param_Cell, Param_String, Param_Cell);
 
-	// void DLR_OnLoad(int client);
+	// void Rage_OnLoad(int client);
 	//Create menu and set properties
-	g_hSkillMenu = CreateMenu(DlrSkillMenuHandler);
+        g_hSkillMenu = CreateMenu(RageSkillMenuHandler);
 	SetMenuTitle(g_hSkillMenu, "Registered plugins");
 	SetMenuExitButton(g_hSkillMenu, true);
 	//Create a Class Selection forward
@@ -481,8 +481,8 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	}
 	RegPluginLibrary(PLUGIN_IDENTIFIER);
 	CreateNative("GetPlayerClassName", Native_GetPlayerClassName);
-	CreateNative("RegisterDLRSkill", Native_RegisterSkill);
-	CreateNative("UnregisterDLRSkill", Native_UnregisterSkill);	
+	CreateNative("RegisterRageSkill", Native_RegisterSkill);
+	CreateNative("UnregisterRageSkill", Native_UnregisterSkill);	
 	CreateNative("OnSpecialSkillSuccess", Native_OnSpecialSkillSuccess);
 	CreateNative("OnSpecialSkillFail", Native_OnSpecialSkillFail);
 	CreateNative("GetPlayerSkillID", Native_GetPlayerSkillID);
@@ -490,10 +490,10 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	CreateNative("FindSkillIdByName", Native_FindSkillIdByName);
 	CreateNative("GetPlayerSkillName", Native_GetPlayerSkillName);
 	
-	CreateNative("DLR_GetAllPerks", Native_GetAllPerks);
-	CreateNative("DLR_GetPlayerPerk", Native_GetPlayerPerk);
-	CreateNative("DLR_RegPerk", Native_RegPerk);
-	CreateNative("DLR_FindPerk", Native_FindPerk);
+	CreateNative("Rage_GetAllPerks", Native_GetAllPerks);
+	CreateNative("Rage_GetPlayerPerk", Native_GetPlayerPerk);
+	CreateNative("Rage_RegPerk", Native_RegPerk);
+	CreateNative("Rage_FindPerk", Native_FindPerk);
 
 	MarkNativeAsOptional("LMC_GetEntityOverlayModel"); // LMC
 	MarkNativeAsOptional("OnCustomCommand");
@@ -505,7 +505,7 @@ public void OnPluginEnd()
 {
 	ResetPlugin();
 	char plugin[32];
-	plugin = "dlr_talents";
+    plugin = "rage_survivor";
 	
 	Call_StartForward(g_hForwardPluginState);
 	Call_PushString(plugin);
@@ -546,7 +546,7 @@ public Native_RegisterSkill(Handle:plugin, numParams)
 {
 	if (g_hPluginEnabled == INVALID_HANDLE) 
 	{
-		PrintDebugAll("DLR plugin is not yet loading, queueing");
+		PrintDebugAll("Rage plugin is not yet loading, queueing");
 	}
 	char szItemInfo[3];
 	int type;
@@ -747,7 +747,7 @@ public OnPluginReady() {
 		PrintDebugAll("Talents plugin is now ready");
 		Call_StartForward(g_hForwardPluginState);
 
-		Call_PushString("dlr_talents");
+            Call_PushString("rage_survivor");
 		Call_PushCell(1);
 		Call_Finish();
 		g_bPluginLoaded = true;
@@ -762,7 +762,7 @@ public OnPluginReady() {
 		g_bPluginLoaded = false;
 		ResetPlugin();
 		Call_StartForward(g_hForwardPluginState);
-		Call_PushString("dlr_talents");
+            Call_PushString("rage_survivor");
 		Call_PushCell(0);
 		Call_Finish();
 	}
@@ -880,7 +880,11 @@ bool canUseSpecialSkill(client, char[] pendingMessage, bool ignorePinned = false
 	int iDropTime = RoundToFloor(fCanDropTime);
 
 	if (IsPlayerInSaferoom(client) || IsInEndingSaferoom(client)) {
-		PrintHintText(client, "Cannot use it here");
+		PrintHintText(client, "Cannot deploy here");
+		return false;
+	}
+	if (FindAttacker(client) > 0 || IsIncapacitated(client)) {
+		PrintHintText(client, "You're too screwed to use special skills");
 		return false;
 	}
 	if ((FindAttacker(client) > 0 || IsIncapacitated(client)) && ignorePinned == false) {
@@ -966,22 +970,22 @@ public Event_RoundStart(Handle:event, String:name[], bool:dontBroadcast)
 
 public void OnRoundState(int roundstate)
 {
-	static int dlrstate;
+        static int rageState;
 
-	if( roundstate == 1 && dlrstate == 0 )
-	{
-		dlrstate = 1;
-		Call_StartForward(g_hForwardRoundState);
-		Call_PushCell(1);
-		Call_Finish();
-	}
-	else if( roundstate == 0 && dlrstate == 1 )
-	{
-		dlrstate = 0;
-		Call_StartForward(g_hForwardRoundState);
-		Call_PushCell(0);
-		Call_Finish();
-	}
+        if( roundstate == 1 && rageState == 0 )
+        {
+                rageState = 1;
+                Call_StartForward(g_hForwardRoundState);
+                Call_PushCell(1);
+                Call_Finish();
+        }
+        else if( roundstate == 0 && rageState == 1 )
+        {
+                rageState = 0;
+                Call_StartForward(g_hForwardRoundState);
+                Call_PushCell(0);
+                Call_Finish();
+        }
 }
 
 public Event_PlayerSpawn(Handle:hEvent, String:sName[], bool:bDontBroadcast)
@@ -2236,6 +2240,40 @@ public DropMineEntity(Float:pos[3], int index)
 	return entity;
 }
 
+
+public void CreateAirStrike(int client) {
+	
+	float vPos[3];
+
+	if (SetClientLocation(client, vPos)) {
+		char color[12];
+
+		int entity = CreateEntityByName("info_particle_system");
+		TeleportEntity(entity, vPos, NULL_VECTOR, NULL_VECTOR);
+		DispatchKeyValue(entity, "effect_name", BOMB_GLOW);
+		DispatchSpawn(entity);
+		DispatchSpawn(entity);
+		ActivateEntity(entity);
+		AcceptEntityInput(entity, "start");
+
+		CreateBeamRing(entity, { 255, 0, 255, 255 },0.1, 180.0, 3);		
+		PrintHintTextToAll("%N ordered airstrike, take cover!", client);
+		GetConVarString(SABOTEUR_ACTIVE_BOMB_COLOR, color, sizeof(color));
+		SetupPrjEffects(entity, vPos, color); // Red
+
+		EmitSoundToAll(SOUND_DROP_BOMB);
+
+		new Handle:pack = CreateDataPack();
+		WritePackCell(pack, GetClientUserId(client));
+		WritePackFloat(pack, vPos[0]);
+		WritePackFloat(pack, vPos[1]);
+		WritePackFloat(pack, vPos[2]);
+		WritePackFloat(pack, GetGameTime());
+		WritePackCell(pack, entity);									
+		CreateTimer(1.0, TimerAirstrike, pack, TIMER_FLAG_NO_MAPCHANGE ); 	
+ 		CreateTimer(10.0, DeleteParticles, entity, TIMER_FLAG_NO_MAPCHANGE ); 													
+	} 
+}
 /**
 * STOCK FUNCTIONS
 */

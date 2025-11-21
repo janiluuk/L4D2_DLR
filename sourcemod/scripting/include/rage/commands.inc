@@ -8,7 +8,7 @@ public Action:Command_Debug(client, args) {
 	
 	if (args < 1)
 	{
-		ReplyToCommand(client, "\x03[DLR]\x01 Usage: \x04sm_debug\x01 [0 = Off|1 = On]");
+		ReplyToCommand(client, "\x03[Rage]\x01 Usage: \x04sm_debug\x01 [0 = Off|1 = On]");
 		return Plugin_Handled;
 	}
 		
@@ -37,8 +37,9 @@ public Action:CmdModel(client, args) {
 	char sModel[128];
 	GetCmdArg(1, sModel, sizeof(sModel));
 
-	LMC_L4D2_SetTransmit(client, LMC_SetClientOverlayModel(client, sModel));
-	ReplyToCommand(client, "Changing model to %s", sModel);
+	LMC_L4D2_SetTransmit(client);
+	LMC_SetClientOverlayModel(client, arg1);
+	ReplyToCommand(client, "Changing model to %s", arg1);
 	
 }
 public Action:CmdClassMenu(client, args)
