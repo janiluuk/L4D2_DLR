@@ -1,6 +1,6 @@
-# L4D2 DLR Talents
+# L4D2 Rage edition
 
-A brutal anniversary overhaul of the infamous DLR mode for Left 4 Dead 2. DLR Talents resurrects the 2013 classic with modular perks, class-based abilities and a plugin-friendly core that lets you sculpt chaotic co-op sessions.
+A brutal anniversary overhaul of the infamous Rage mode for Left 4 Dead 2. L4D2 Rage edition resurrects the 2013 classic with modular perks, class-based abilities and a plugin-friendly core that lets you sculpt chaotic co-op sessions.
 
 ## Core Features
 - Sourcemod 1.11 compatible
@@ -90,7 +90,7 @@ Include `RageCore.sp` and implement the required callbacks:
 forward OnSpecialSkillUsed(int client, const char[] skillName);
 native void OnSpecialSkillSuccess(int client, const char[] skillName);
 native void OnSpecialSkillFail(int client, const char[] skillName, const char[] reason);
-native int RegisterDLRSkill(char[] skillName);
+native int RegisterRageSkill(char[] skillName);
 ```
 
 Helper natives:
@@ -100,7 +100,7 @@ forward FindSkillIdByName(const char[] skillName, int &skillId);
 native int GetPlayerClassName(int client);
 ```
 
-Add `RageCore.sp` to your include folder and register your skill during `OnPluginStart` or `DLR_OnPluginState`. See the multiturret plugin for a complete example.
+Add `RageCore.sp` to your include folder and register your skill during `OnPluginStart` or `Rage_OnPluginState`. See the multiturret plugin for a complete example.
 
 See https://forums.alliedmods.net/showthread.php?t=273312 for more info.
 

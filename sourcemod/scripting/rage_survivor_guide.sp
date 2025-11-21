@@ -19,7 +19,7 @@ public void OnPluginStart()
     RegConsoleCmd("sm_ragetutorial", CmdGuideMenu, "Open the Rage tutorial guide");
 
     CreateNative("RageGuide_ShowMainMenu", Native_ShowGuideMenu);
-    RegPluginLibrary("rage_talents_guide");
+    RegPluginLibrary("rage_survivor_guide");
 }
 
 public int Native_ShowGuideMenu(Handle plugin, int numParams)

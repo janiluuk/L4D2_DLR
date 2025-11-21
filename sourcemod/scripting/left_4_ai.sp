@@ -6,10 +6,10 @@
 
 public Plugin myinfo = {
     name = "left_4_ai",
-    author = "original authors, integrated by DLR",
+    author = "original authors, integrated by Rage",
     description = "AI chat for L4D2",
     version = "1.0.0",
-    url = "https://github.com/janiluuk/L4D2_DLR"
+    url = "https://github.com/janiluuk/L4D2_Rage"
 };
 
 public void OnPluginStart() {
