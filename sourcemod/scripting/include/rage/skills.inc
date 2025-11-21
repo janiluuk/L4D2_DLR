@@ -22,7 +22,7 @@ stock bool RageSkills_IsAvailable()
     return LibraryExists(RAGE_PLUGIN_NAME);
 }
 
-stock void RageSkills_Refresh(const char[] skillName, int skillType, int &skillId, bool &available)
+stock void RageSkills_Refresh(char[] skillName, int skillType, int &skillId, bool &available)
 {
     available = RageSkills_IsAvailable();
     if (available && skillId == -1)
@@ -31,7 +31,7 @@ stock void RageSkills_Refresh(const char[] skillName, int skillType, int &skillI
     }
 }
 
-stock void RageSkills_OnLibraryAdded(const char[] name, const char[] skillName, int skillType, int &skillId, bool &available)
+stock void RageSkills_OnLibraryAdded(const char[] name, char[] skillName, int skillType, int &skillId, bool &available)
 {
     if (StrEqual(name, RAGE_PLUGIN_NAME, false))
     {

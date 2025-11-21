@@ -334,7 +334,7 @@ bool TryShowGuideMenu(int client)
     return true;
 }
 
-void AddGameModeOptions(int menu_id)
+public void AddGameModeOptions(int menu_id)
 {
     char options[512];
     options[0] = '\0';
