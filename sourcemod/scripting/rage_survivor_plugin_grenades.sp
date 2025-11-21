@@ -272,7 +272,9 @@
 
 
 //Rage
+#if !defined REQUIRE_PLUGIN
 #define REQUIRE_PLUGIN
+#endif
 #tryinclude <RageCore>
 
 #if !defined _RageCore_included
@@ -975,28 +977,34 @@ public void OnAllPluginsLoaded()
 
 public void OnLibraryAdded(const char[] sName)
 {
-else if( strcmp(sName, "left4dhooks") == 0 )
-g_bLeft4DHooks = true;
-    else if( strcmp(sName, "rage_survivor") == 0 )
-Rage_Available = true;
-	else if( g_bLeft4Dead2 && strcmp(sName, "l4d2_airstrike") == 0 )
-	{
-		g_bAirstrike = true;
-		// Assuming valid for late load
-		if( g_bLateLoad )
-			g_bAirstrikeValid = true;
-	}
+        if( strcmp(sName, "left4dhooks") == 0 )
+        {
+                g_bLeft4DHooks = true;
+        }
+        else if( strcmp(sName, "rage_survivor") == 0 )
+        {
+                Rage_Available = true;
+        }
+        else if( g_bLeft4Dead2 && strcmp(sName, "l4d2_airstrike") == 0 )
+        {
+                g_bAirstrike = true;
+                // Assuming valid for late load
+                if( g_bLateLoad )
+                        g_bAirstrikeValid = true;
+        }
 }
 public void OnLibraryRemoved(const char[] sName)
 {
-else if( strcmp(sName, "left4dhooks") == 0 )
-g_bLeft4DHooks = false;
-   else if( strcmp(sName, "rage_survivor") == 0 ) {
-		Rage_Available = false;
-		g_iClassID = -1;
-	}
-	else if( g_bLeft4Dead2 && strcmp(sName, "l4d2_airstrike") == 0 )
-		g_bAirstrike = true;
+        if( strcmp(sName, "left4dhooks") == 0 )
+        {
+                g_bLeft4DHooks = false;
+        }
+        else if( strcmp(sName, "rage_survivor") == 0 ) {
+                Rage_Available = false;
+                g_iClassID = -1;
+        }
+        else if( g_bLeft4Dead2 && strcmp(sName, "l4d2_airstrike") == 0 )
+                g_bAirstrike = true;
 }
 
 public void OnPluginEnd()
