@@ -1,4 +1,4 @@
-wa#if defined _perk_included_
+#if defined _perk_included_
   #endinput
 #endif
 #define _perk_included_
