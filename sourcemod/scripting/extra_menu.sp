@@ -639,7 +639,7 @@ void DisplayExtraMenu(int client, int menu_id)
 				{
 					if( selected == i )
 					{
-						Format(sTemp, sizeof(sTemp), "➤%s", sTemp);
+                                            Format(sTemp, sizeof(sTemp), "> %s", sTemp);
 					} else {
 						Format(sTemp, sizeof(sTemp), "   %s", sTemp);
 					}
@@ -652,9 +652,9 @@ void DisplayExtraMenu(int client, int menu_id)
 						{
 							if( data.MenuVals[client].Get(i) == 1 )
 							{
-								ReplaceString(sTemp, sizeof(sTemp), "_OPT_", "[●]");
+                                                            ReplaceString(sTemp, sizeof(sTemp), "_OPT_", "[X]");
 							} else {
-								ReplaceString(sTemp, sizeof(sTemp), "_OPT_", "[○]");
+                                                            ReplaceString(sTemp, sizeof(sTemp), "_OPT_", "[ ]");
 							}
 						}
 
