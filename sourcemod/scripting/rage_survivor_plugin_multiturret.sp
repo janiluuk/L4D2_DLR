@@ -3569,7 +3569,7 @@ stock void CreateLaser(float vPos[3], float vTargetPosition[3])
 	TE_SendToAll();
 }
 
-stock void CreateBeam(const char[] sStartName, const char[] sEndName, const float vStart[3], const float vEnd[3], int client, const char[] sNoiseAmplitude = "50", const char[] sRenderColor, const float fTimeDuration = 0.5) // Crea un árco eléctrico.
+stock void CreateBeam(const char[] sStartName, const char[] sEndName, const float vStart[3], const float vEnd[3], int client, const char[] sNoiseAmplitude = "50", const char[] sRenderColor, const float fTimeDuration = 0.5) // Crea un arco electrico.
 {
 	int iBeam_Entity = CreateEntityByName("env_beam");
 	int iStartPoint_Entity = CreateEntityByName("env_beam");
@@ -4186,7 +4186,7 @@ public Action DissolveCommonDelay(Handle hTimer, any TargetID)
 
 /*************************************************************************************************************************************/
 /*
-void ShoveClient(int victim) // Empuja al objetivo, pero sin reacción de sonido.
+void ShoveClient(int victim) // Empuja al objetivo, pero sin reaccion de sonido.
 {
 	static float vDir[3]; 
 	

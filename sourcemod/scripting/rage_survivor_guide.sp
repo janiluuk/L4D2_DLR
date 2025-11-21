@@ -255,7 +255,7 @@ public int MenuHandler_Athlete(Menu menu, MenuAction action, int param1, int par
             }
             else if (StrEqual(info, "ninja"))
             {
-                PrintGuideLine(param1, "Leap into infected to deliver a ninja kick that knocks them down—great for peeling specials off teammates.");
+                PrintGuideLine(param1, "Leap into infected to deliver a ninja kick that knocks them down - great for peeling specials off teammates.");
                 DisplayAthleteMenu(param1);
             }
         }
@@ -295,7 +295,7 @@ public int MenuHandler_Commando(Menu menu, MenuAction action, int param1, int pa
             GetMenuItem(menu, param2, info, sizeof(info));
             if (StrEqual(info, "damage"))
             {
-                PrintGuideLine(param1, "Commandos carry weapon-specific damage modifiers—swap to whatever gun the team needs and keep pressure on tanks.");
+                PrintGuideLine(param1, "Commandos carry weapon-specific damage modifiers - swap to whatever gun the team needs and keep pressure on tanks.");
                 DisplayCommandoMenu(param1);
             }
             else if (StrEqual(info, "berserk"))
@@ -345,7 +345,7 @@ public int MenuHandler_Medic(Menu menu, MenuAction action, int param1, int param
             GetMenuItem(menu, param2, info, sizeof(info));
             if (StrEqual(info, "aura"))
             {
-                PrintGuideLine(param1, "Medics pulse heals to nearby survivors and get movement boosts while healing—stay near the front line.");
+                PrintGuideLine(param1, "Medics pulse heals to nearby survivors and get movement boosts while healing - stay near the front line.");
                 DisplayMedicMenu(param1);
             }
             else if (StrEqual(info, "orbs"))
@@ -395,7 +395,7 @@ public int MenuHandler_Engineer(Menu menu, MenuAction action, int param1, int pa
             GetMenuItem(menu, param2, info, sizeof(info));
             if (StrEqual(info, "kits"))
             {
-                PrintGuideLine(param1, "Engineers spawn ready-to-use upgrade packs for ammo, armor or barricades—drop them between events.");
+                PrintGuideLine(param1, "Engineers spawn ready-to-use upgrade packs for ammo, armor or barricades - drop them between events.");
                 DisplayEngineerMenu(param1);
             }
             else if (StrEqual(info, "turrets"))
@@ -451,7 +451,7 @@ public int MenuHandler_Saboteur(Menu menu, MenuAction action, int param1, int pa
             }
             else if (StrEqual(info, "sight"))
             {
-                PrintGuideLine(param1, "!extendedsight highlights special infected for 20 seconds every two minutes—call targets for your team.");
+                PrintGuideLine(param1, "!extendedsight highlights special infected for 20 seconds every two minutes - call targets for your team.");
                 DisplaySaboteurMenu(param1);
             }
             else if (StrEqual(info, "mines"))
@@ -461,7 +461,7 @@ public int MenuHandler_Saboteur(Menu menu, MenuAction action, int param1, int pa
             }
             else if (StrEqual(info, "damage"))
             {
-                PrintGuideLine(param1, "Saboteurs trade lower survivor damage for higher infected damage—use your gadgets to set up assassinations.");
+                PrintGuideLine(param1, "Saboteurs trade lower survivor damage for higher infected damage - use your gadgets to set up assassinations.");
                 DisplaySaboteurMenu(param1);
             }
         }
@@ -588,7 +588,7 @@ public int MenuHandler_GameModes(Menu menu, MenuAction action, int param1, int p
             }
             else if (StrEqual(info, "rage"))
             {
-                PrintGuideLine(param1, "Escort Run, Deathmatch and Race Jockey are custom Rage chaos modes—experiment when you want a break from Versus.");
+                PrintGuideLine(param1, "Escort Run, Deathmatch and Race Jockey are custom Rage chaos modes - experiment when you want a break from Versus.");
             }
             else if (StrEqual(info, "switch"))
             {
@@ -633,7 +633,7 @@ public int MenuHandler_Tips(Menu menu, MenuAction action, int param1, int param2
             GetMenuItem(menu, param2, info, sizeof(info));
             if (StrEqual(info, "team"))
             {
-                PrintGuideLine(param1, "Mix roles—Soldier tanks, Medic heals, Engineer builds cover, Saboteur scouts and Athlete runs objectives.");
+                PrintGuideLine(param1, "Mix roles - Soldier tanks, Medic heals, Engineer builds cover, Saboteur scouts and Athlete runs objectives.");
             }
             else if (StrEqual(info, "resources"))
             {
