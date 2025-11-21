@@ -1354,7 +1354,7 @@ void GetHUD2_Text(char[] output, int size)
         char health[64];
 
         if (IsPlayerIncapacitated(client))
-            FormatEx(health, sizeof(health), "☠");
+            FormatEx(health, sizeof(health), "X");
         else
             FormatEx(health, sizeof(health), "%i", GetClientHealth(client));
 
@@ -1403,7 +1403,7 @@ void GetHUD3_Text(char[] output, int size)
 
         char health[64];
         if (!IsPlayerAlive(client))
-            FormatEx(health, sizeof(health), "☠");
+            FormatEx(health, sizeof(health), "X");
         else
             FormatEx(health, sizeof(health), "%i", GetClientHealth(client) + GetClientTempHealth(client));
 
