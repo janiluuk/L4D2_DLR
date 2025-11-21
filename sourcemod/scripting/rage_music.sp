@@ -609,7 +609,7 @@ public int MenuHandler_MenuMusic(Menu menu, MenuAction action, int param1, int p
                 }
                 case -1: {
                     ShowMenuSettings(client);
-                    return;
+                    return 0;
                 }
             }
             ShowMusicMenu(client);
@@ -669,7 +669,7 @@ public int MenuHandler_MenuSettings(Menu menu, MenuAction action, int param1, in
             switch(StringToInt(sItem)) {
                 case 7: {
                     ShowVolumeMenu(client);
-                    return;
+                    return 0;
                 }
                 case 8: {
                     FakeClientCommand(client, "sm_music -1");
