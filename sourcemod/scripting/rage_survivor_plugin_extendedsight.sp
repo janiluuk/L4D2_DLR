@@ -26,14 +26,14 @@ int g_rageHasAbility[MAXPLAYERS+1] = {-1, ...};
 const int CLASS_SABOTEUR = 4;
 /****************************************************/
 #tryinclude <RageCore>
-#if !defined _DLRCore_included
-	// Optional native from DLR Talents
+#if !defined _RageCore_included
+	// Optional native from Rage Survivor
 	native void OnSpecialSkillSuccess(int client, char[] skillName);
 	native void OnSpecialSkillFail(int client, char[] skillName, char[] reason);
 	native void GetPlayerSkillName(int client, char[] skillName, int size);
 	native int FindSkillIdByName(char[] skillName);
-	native int RegisterDLRSkill(char[] skillName, int type);
-	#define DLR_PLUGIN_NAME	"rage_talents"
+	native int RegisterRageSkill(char[] skillName, int type);
+	#define Rage_PLUGIN_NAME	"rage_survivor"
 #endif
 /****************************************************/
 
@@ -50,8 +50,8 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	MarkNativeAsOptional("OnSpecialSkillSuccess");		
 	MarkNativeAsOptional("OnPlayerClassChange");
 	MarkNativeAsOptional("GetPlayerSkillName");	
-	MarkNativeAsOptional("RegisterDLRSkill");
-	MarkNativeAsOptional("DLR_OnPluginState");	
+	MarkNativeAsOptional("RegisterRageSkill");
+	MarkNativeAsOptional("Rage_OnPluginState");	
 	return APLRes_Success;
 
 }

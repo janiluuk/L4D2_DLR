@@ -2,7 +2,7 @@
 #define PLUGIN_VERSION "0.3"
 #include <sourcemod>
 #include <extra_menu>
-#include <rage_talents_guide>
+#include <rage_survivor_guide>
 
 #define GAMEMODE_OPTION_COUNT 11
 
@@ -215,7 +215,7 @@ public void OnLibraryAdded(const char[] name)
         g_iMenuID = menu_id;
     }
 
-    if (strcmp(name, "rage_talents_guide") == 0)
+    if (strcmp(name, "rage_survivor_guide") == 0)
     {
         RefreshGuideLibraryStatus();
     }
@@ -228,7 +228,7 @@ public void OnLibraryRemoved(const char[] name)
         OnPluginEnd();
     }
 
-    if (strcmp(name, "rage_talents_guide") == 0)
+    if (strcmp(name, "rage_survivor_guide") == 0)
     {
         RefreshGuideLibraryStatus();
     }

@@ -1,17 +1,17 @@
-#if defined _rage_talents_guide_included
+#if defined _rage_survivor_guide_included
     #endinput
 #endif
-#define _rage_talents_guide_included
+#define _rage_survivor_guide_included
 
 /**
  * Opens the interactive Rage tutorial menu for the specified player.
  */
 native void RageGuide_ShowMainMenu(int client);
 
-public SharedPlugin __pl_rage_talents_guide =
+public SharedPlugin __pl_rage_survivor_guide =
 {
-    name = "rage_talents_guide",
-    file = "rage_talents_guide.smx",
+    name = "rage_survivor_guide",
+    file = "rage_survivor_guide.smx",
 #if defined REQUIRE_PLUGIN
     required = 1,
 #else
@@ -20,7 +20,7 @@ public SharedPlugin __pl_rage_talents_guide =
 };
 
 #if !defined REQUIRE_PLUGIN
-public void __pl_rage_talents_guide_SetNTVOptional()
+public void __pl_rage_survivor_guide_SetNTVOptional()
 {
     MarkNativeAsOptional("RageGuide_ShowMainMenu");
 }
