@@ -484,7 +484,6 @@ void DisplaySkillMenu(int client)
 {
     Menu menu = CreateMenu(MenuHandler_Skills);
     SetMenuTitle(menu, "Special Skills & Commands");
-    AddMenuItem(menu, "controls", "Skill controls & readiness");
     AddMenuItem(menu, "skill", "Class skill command");
     AddMenuItem(menu, "grenades", "Prototype grenades");
     AddMenuItem(menu, "deadringer", "Dead Ringer");
@@ -506,13 +505,7 @@ public int MenuHandler_Skills(Menu menu, MenuAction action, int param1, int para
         {
             char info[32];
             GetMenuItem(menu, param2, info, sizeof(info));
-            if (StrEqual(info, "controls"))
-            {
-                PrintGuideLine(param1, "Middle-click: special action. Use + middle-click: secondary. Hold Shift: build action when your class supports it.");
-                PrintGuideLine(param1, "If an ability is charging or locked, a hint shows how long until it unlocks; you'll also get a ready ping when it finishes.");
-                PrintGuideLine(param1, "Team chat/center hints appear when someone activates their main ability or deploys a buildable so squads can react together.");
-            }
-            else if (StrEqual(info, "skill"))
+            if (StrEqual(info, "skill"))
             {
                 PrintGuideLine(param1, "Bind a key to !skill (or type the command) to trigger your class ability consistently every round.");
             }

@@ -19,7 +19,6 @@ jobs:
             os_short: oldlinux
           - os: windows-latest
             os_short: win
-
     steps:
       - name: Prepare env
         shell: bash
@@ -45,15 +44,11 @@ jobs:
             wget -nv "https://sm.alliedmods.net/smdrop/1.12/sourcemod-1.12.0-git7219-windows.zip" -O sm.zip
             unzip sm.zip -d sm
           else
-            wget -nv "https://www.sourcemod.net/smdrop/1.12/sourcemod-1.12.0-git7219-linux.tar.gz" -O sm.tar.gz
+
+            wget -nv "https://sm.alliedmods.net/smdrop/1.12/sourcemod-1.12.0-git7219-linux.tar.gz" -O sm.tar.gz
             mkdir -p sm
             tar -xzf sm.tar.gz -C sm
           fi
-
-      - name: Getting own repository
-        uses: actions/checkout@v4
-        with:
-          path: src
 
       - name: Compile plugins
         shell: bash
