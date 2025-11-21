@@ -289,13 +289,13 @@ bool	bLMC_Available;
 #tryinclude <RageCore>
 
 #if !defined _RageCore_included
-	// Optional native from Rage Talents
+	// Optional native from Rage Survivor
 	native void OnSpecialSkillSuccess(int client, char[] skillName);
 	native void OnSpecialSkillFail(int client, char[] skillName, char[] reason);
 	native void GetPlayerSkillName(int client, char[] skillName, int size);
 	native int FindSkillIdByName(char[] skillName);
 	native int RegisterRageSkill(char[] skillName, int type);
-    #define Rage_PLUGIN_NAME = "rage_talents"
+    #define Rage_PLUGIN_NAME = "rage_survivor"
 #endif
 
 bool	Rage_Available;
@@ -702,14 +702,14 @@ public int OnCustomCommand(char[] name, int client, int entity, int type)
 public void Rage_OnPluginState(char[] plugin, int pluginstate)
 {
 
-    if(StrEqual(plugin,"rage_talents") && pluginstate == 1)
+    if(StrEqual(plugin,"rage_survivor") && pluginstate == 1)
 	{
 		SetConVarBool(g_hCvarAllow, true);
 		Rage_Available = true;	
 		g_iClassID = RegisterRageSkill(PLUGIN_SKILL_NAME, 0);
 
 	}
-    else if(StrEqual(plugin, "rage_talents") && pluginstate == 0)
+    else if(StrEqual(plugin, "rage_survivor") && pluginstate == 0)
 	{
 		SetConVarBool(g_hCvarAllow, false);
 		Rage_Available = false;
@@ -981,7 +981,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 public void OnAllPluginsLoaded()
 {
 	bLMC_Available = LibraryExists("LMCEDeathHandler");
-    Rage_Available = LibraryExists("rage_talents");
+    Rage_Available = LibraryExists("rage_survivor");
 
 	if (g_iClassID != -1) return;
 	
@@ -994,7 +994,7 @@ public void OnLibraryAdded(const char[] sName)
 		bLMC_Available = true;
 	else if( strcmp(sName, "left4dhooks") == 0 )
 		g_bLeft4DHooks = true;
-    else if( strcmp(sName, "rage_talents") == 0 )
+    else if( strcmp(sName, "rage_survivor") == 0 )
 		Rage_Available = true;	
 	else if( g_bLeft4Dead2 && strcmp(sName, "l4d2_airstrike") == 0 )
 	{
@@ -1010,7 +1010,7 @@ public void OnLibraryRemoved(const char[] sName)
 		bLMC_Available = false;
 	else if( strcmp(sName, "left4dhooks") == 0 )
 		g_bLeft4DHooks = false;
-   else if( strcmp(sName, "rage_talents") == 0 ) {
+   else if( strcmp(sName, "rage_survivor") == 0 ) {
 		Rage_Available = false;
 		g_iClassID = -1;
 	}

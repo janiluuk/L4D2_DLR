@@ -1,6 +1,6 @@
-# L4D2 Rage Talents
+# L4D2 Rage edition
 
-A brutal anniversary overhaul of the infamous Rage mode for Left 4 Dead 2. Rage Talents resurrects the 2013 classic with modular perks, class-based abilities and a plugin-friendly core that lets you sculpt chaotic co-op sessions.
+A brutal anniversary overhaul of the infamous Rage mode for Left 4 Dead 2. L4D2 Rage edition resurrects the 2013 classic with modular perks, class-based abilities and a plugin-friendly core that lets you sculpt chaotic co-op sessions.
 
 ## Core Features
 - Sourcemod 1.11 compatible

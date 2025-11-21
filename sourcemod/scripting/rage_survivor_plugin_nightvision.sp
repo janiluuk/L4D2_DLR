@@ -11,7 +11,7 @@
 /****************************************************/
 #tryinclude <RageCore>
 #if !defined _RageCore_included
-    // Optional native from Rage Talents
+    // Optional native from Rage Survivor
     native void OnSpecialSkillSuccess(int client, char[] skillName);
     native void OnSpecialSkillFail(int client, char[] skillName, char[] reason);
     native void GetPlayerSkillName(int client, char[] skillName, int size);
@@ -59,7 +59,7 @@ public void OnPluginStart()
 
 public void OnAllPluginsLoaded()
 {
-    g_bRage = LibraryExists("rage_talents");
+    g_bRage = LibraryExists("rage_survivor");
     if (g_bRage && g_iClassID == -1)
     {
         g_iClassID = RegisterRageSkill(PLUGIN_SKILL_NAME, 0);
@@ -68,7 +68,7 @@ public void OnAllPluginsLoaded()
 
 public void Rage_OnPluginState(char[] plugin, int state)
 {
-    if (StrEqual(plugin, "rage_talents"))
+    if (StrEqual(plugin, "rage_survivor"))
     {
         if (state == 1 && g_iClassID == -1)
         {

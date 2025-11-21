@@ -17,7 +17,7 @@
 
 #define PLUGIN_NAME "Talents Plugin 2023 anniversary edition"
 #define PLUGIN_VERSION "1.82b"
-#define PLUGIN_IDENTIFIER "rage_talents"
+#define PLUGIN_IDENTIFIER "rage_survivor"
 #pragma semicolon 1
 #define DEBUG 0
 #define DEBUG_LOG 1
@@ -505,7 +505,7 @@ public void OnPluginEnd()
 {
 	ResetPlugin();
 	char plugin[32];
-    plugin = "rage_talents";
+    plugin = "rage_survivor";
 	
 	Call_StartForward(g_hForwardPluginState);
 	Call_PushString(plugin);
@@ -747,7 +747,7 @@ public OnPluginReady() {
 		PrintDebugAll("Talents plugin is now ready");
 		Call_StartForward(g_hForwardPluginState);
 
-            Call_PushString("rage_talents");
+            Call_PushString("rage_survivor");
 		Call_PushCell(1);
 		Call_Finish();
 		g_bPluginLoaded = true;
@@ -762,7 +762,7 @@ public OnPluginReady() {
 		g_bPluginLoaded = false;
 		ResetPlugin();
 		Call_StartForward(g_hForwardPluginState);
-            Call_PushString("rage_talents");
+            Call_PushString("rage_survivor");
 		Call_PushCell(0);
 		Call_Finish();
 	}

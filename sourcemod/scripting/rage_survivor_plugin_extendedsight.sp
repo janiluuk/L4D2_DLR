@@ -27,13 +27,13 @@ const int CLASS_SABOTEUR = 4;
 /****************************************************/
 #tryinclude <RageCore>
 #if !defined _RageCore_included
-	// Optional native from Rage Talents
+	// Optional native from Rage Survivor
 	native void OnSpecialSkillSuccess(int client, char[] skillName);
 	native void OnSpecialSkillFail(int client, char[] skillName, char[] reason);
 	native void GetPlayerSkillName(int client, char[] skillName, int size);
 	native int FindSkillIdByName(char[] skillName);
 	native int RegisterRageSkill(char[] skillName, int type);
-	#define Rage_PLUGIN_NAME	"rage_talents"
+	#define Rage_PLUGIN_NAME	"rage_survivor"
 #endif
 /****************************************************/
 

@@ -6,7 +6,7 @@
 #include <RageCore>
 
 /**
- * Helpers for optional Rage Talents skill registration.
+ * Helpers for optional Rage Survivor skill registration.
  */
 
 stock void RageSkills_MarkNativesOptional()

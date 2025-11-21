@@ -4,8 +4,8 @@
 #endif
 #define _RageCore_included
 #define RageCore_version "1.0.0"
-#define RAGE_PLUGIN_NAME "rage_talents"
-#define RAGE_PLUGIN_FILE "rage_talents.smx"
+#define RAGE_PLUGIN_NAME "rage_survivor"
+#define RAGE_PLUGIN_FILE "rage_survivor.smx"
 
 /**
  * Get player classname

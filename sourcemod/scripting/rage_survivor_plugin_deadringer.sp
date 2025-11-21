@@ -112,13 +112,13 @@ ConVar version_cvar;
 /****************************************************/
 #tryinclude <RageCore>
 #if !defined _RageCore_included
-	// Optional native from Rage Talents
+	// Optional native from Rage Survivor
 	native void OnSpecialSkillSuccess(int client, char[] skillName);
 	native void OnSpecialSkillFail(int client, char[] skillName, char[] reason);
 	native void GetPlayerSkillName(int client, char[] skillName, int size);
 	native int FindSkillIdByName(char[] skillName);
 	native int RegisterRageSkill(char[] skillName, int type);
-	#define Rage_PLUGIN_NAME	"rage_talents"
+	#define Rage_PLUGIN_NAME	"rage_survivor"
 #endif
 /****************************************************/
 
@@ -249,7 +249,7 @@ public void OnAllPluginsLoaded()
 {
 	
 	if (g_iClassID != -1) return;
-	if (LibraryExists("rage_talents")) {
+	if (LibraryExists("rage_survivor")) {
 		g_iClassID = RegisterRageSkill(PLUGIN_SKILL_NAME, 0);
 	}
  

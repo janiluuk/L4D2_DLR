@@ -295,7 +295,7 @@ public void Rage_OnPluginState(char[] plugin, int pluginstate)
 {
 static int ragestate;
 
-if( StrEqual(plugin, "rage_talents") && pluginstate == 1 && ragestate == 0 )
+if( StrEqual(plugin, "rage_survivor") && pluginstate == 1 && ragestate == 0 )
 {
 SetConVarBool(g_hCvarAllow, true);
 ragestate = 1;
@@ -304,7 +304,7 @@ g_iClassID = RegisterRageSkill(PLUGIN_SKILL_NAME, 0);
 }
 
 }
-else if(StrEqual(plugin, "rage_talents") && pluginstate == 0 && ragestate == 1 )
+else if(StrEqual(plugin, "rage_survivor") && pluginstate == 0 && ragestate == 1 )
 	{
 		SetConVarBool(g_hCvarAllow, false);
 		ragestate = 0;
