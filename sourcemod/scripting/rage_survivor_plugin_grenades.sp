@@ -160,8 +160,7 @@
 
 1.14 (24-Nov-2019)
 	- Added Simplified Chinese translations. Thanks to "asd2323208" for providing.
-	- Fix for potential godmode zombies when using LMC.
-	- Fixed error msg: "Entity 157 (class 'pipe_bomb_projectile') reported ENTITY_CHANGE_NONE but 'm_flCreateTime' changed.".
+        - Fixed error msg: "Entity 157 (class 'pipe_bomb_projectile') reported ENTITY_CHANGE_NONE but 'm_flCreateTime' changed.".
 
 1.13 (11-Nov-2019)
 	- Added option "0" to "preferences" in the config to give stock grenades on pickup.
@@ -271,18 +270,6 @@
 #include <sdkhooks>
 
 
-
-//LMC
-#undef REQUIRE_PLUGIN
-#tryinclude <LMCCore>
-#define REQUIRE_PLUGIN
-
-#if !defined _LMCCore_included
-	native int LMC_GetEntityOverlayModel(int iEntity);
-#endif
-
-bool	bLMC_Available;
-//LMC
 
 //Rage
 #define REQUIRE_PLUGIN
@@ -965,8 +952,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 		strcopy(error, err_max, "Plugin only supports Left 4 Dead 1 & 2.");
 		return APLRes_SilentFailure;
 	}
-	MarkNativeAsOptional("LMC_GetEntityOverlayModel"); // LMC
-	MarkNativeAsOptional("L4D_AngularVelocity");
+MarkNativeAsOptional("L4D_AngularVelocity");
 	MarkNativeAsOptional("F18_ShowAirstrike");
 	MarkNativeAsOptional("OnCustomCommand");	
 	MarkNativeAsOptional("Rage_OnRoundState");	
@@ -980,22 +966,19 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 
 public void OnAllPluginsLoaded()
 {
-	bLMC_Available = LibraryExists("LMCEDeathHandler");
-    Rage_Available = LibraryExists("rage_survivor");
+        Rage_Available = LibraryExists("rage_survivor");
 
-	if (g_iClassID != -1) return;
-	
-	g_iClassID = RegisterRageSkill(PLUGIN_SKILL_NAME, 0);	
+        if (g_iClassID != -1) return;
+
+        g_iClassID = RegisterRageSkill(PLUGIN_SKILL_NAME, 0);
 }
 
 public void OnLibraryAdded(const char[] sName)
 {
-	if( strcmp(sName, "LMCEDeathHandler") == 0 )
-		bLMC_Available = true;
-	else if( strcmp(sName, "left4dhooks") == 0 )
-		g_bLeft4DHooks = true;
+else if( strcmp(sName, "left4dhooks") == 0 )
+g_bLeft4DHooks = true;
     else if( strcmp(sName, "rage_survivor") == 0 )
-		Rage_Available = true;	
+Rage_Available = true;
 	else if( g_bLeft4Dead2 && strcmp(sName, "l4d2_airstrike") == 0 )
 	{
 		g_bAirstrike = true;
@@ -1006,10 +989,8 @@ public void OnLibraryAdded(const char[] sName)
 }
 public void OnLibraryRemoved(const char[] sName)
 {
-	if( strcmp(sName, "LMCEDeathHandler") == 0 )
-		bLMC_Available = false;
-	else if( strcmp(sName, "left4dhooks") == 0 )
-		g_bLeft4DHooks = false;
+else if( strcmp(sName, "left4dhooks") == 0 )
+g_bLeft4DHooks = false;
    else if( strcmp(sName, "rage_survivor") == 0 ) {
 		Rage_Available = false;
 		g_iClassID = -1;
@@ -4012,8 +3993,6 @@ int GetPlayerManager()
 	return entity;
 }
 
-// Stock taken from "LMC_Black_and_White_Notifier" by "Lux".
-// https://github.com/LuxLuma/LMC_Black_and_White_Notifier/blob/master/LMC_Black_and_White_Notifier.sp
 int GetMaxReviveCount()
 {
 	static Handle hMaxReviveCount = INVALID_HANDLE;
@@ -4065,26 +4044,19 @@ void DissolveCommon(int client, int entity, int target, float fDamage)
 	if( GetEntProp(target, Prop_Data, "m_iHealth") - fDamage > 0 )
 		return;
 
-	// Dissolve
-	int iOverlayModel = -1;
-	if( bLMC_Available )
-		iOverlayModel = LMC_GetEntityOverlayModel(target);
-
-	if( target <= MaxClients )
-	{
+// Dissolve
+if( target <= MaxClients )
+{
 		int clone = AttachFakeRagdoll(target);
 		if( clone > 0 )
 		{
 			SetEntityRenderMode(clone, RENDER_NONE); // Hide and dissolve clone - method to show more particles
 			DissolveTarget(client, clone, GetEntProp(target, Prop_Send, "m_zombieClass") == 2 ? 0 : target); // Exclude boomer to producer gibs
 		}
-	} else {
-		SetEntityRenderFx(target, RENDERFX_FADE_FAST);
-		if( iOverlayModel < 1 )
-			DissolveTarget(client, target);
-		else
-			DissolveTarget(client, target, iOverlayModel);
-	}
+} else {
+SetEntityRenderFx(target, RENDERFX_FADE_FAST);
+DissolveTarget(client, target);
+}
 }
 
 void DissolveTarget(int client, int target, int iOverlayModel = 0)

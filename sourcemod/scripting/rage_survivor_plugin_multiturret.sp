@@ -112,13 +112,6 @@ public Plugin myinfo =
 
 /****************************************************/
 #undef REQUIRE_PLUGIN
-#tryinclude <LMCCore>
-#define REQUIRE_PLUGIN
-
-#if !defined _LMCCore_included
-	native int LMC_GetEntityOverlayModel(int iEntity);
-#endif
-
 /****************************************************/
 #tryinclude <RageCore>
 #if !defined _RageCore_included
@@ -136,7 +129,6 @@ int MachineCount = 0;
 
 int g_iClassID = -1;
 
-static bool bLMC_Available = false;
 static bool Rage_Available = false;
 
 static bool bLeft4DeadTwo = true;
@@ -397,8 +389,7 @@ public int OnSpecialSkillUsed(int iClient, int skill, int type)
 
 public void OnAllPluginsLoaded()
 {
-	bLMC_Available = LibraryExists("LMCEDeathHandler");
-	Rage_Available = LibraryExists("rage_survivor");
+Rage_Available = LibraryExists("rage_survivor");
 
 	if (g_iClassID != -1) return;
 	g_iClassID = RegisterRageSkill(PLUGIN_SKILL_NAME, 0);
@@ -423,18 +414,14 @@ public void Rage_OnPluginState(char[] plugin, int pluginstate)
 
 public void OnLibraryAdded(const char[] sName)
 {
-	if(StrEqual(sName, "LMCEDeathHandler"))
-		bLMC_Available = true;
-	if(StrEqual(sName, "rage_survivor"))
-		Rage_Available = true;		
+if(StrEqual(sName, "rage_survivor"))
+Rage_Available = true;
 }
 
 public void OnLibraryRemoved(const char[] sName)
 {
-	if(StrEqual(sName, "LMCEDeathHandler"))
-		bLMC_Available = false;
-	if(StrEqual(sName, "rage_survivor"))
-		Rage_Available = false;	
+if(StrEqual(sName, "rage_survivor"))
+Rage_Available = false;
 }
 
 public void OnPluginStart()
@@ -4089,28 +4076,21 @@ void DissolveCommon(int target)
 	if(GetEntProp(target, Prop_Data, "m_iHealth") > 0)
 		return;
 
-	// Dissolve
-	int iOverlayModel = -1;
-	if(bLMC_Available)
-		iOverlayModel = LMC_GetEntityOverlayModel(target);
-
-	if(target <= MaxClients)
-	{
-		int clone = AttachFakeRagdoll(target);
+// Dissolve
+if(target <= MaxClients)
+{
+int clone = AttachFakeRagdoll(target);
 		if(clone > 0)
 		{
 			SetEntityRenderMode(clone, RENDER_NONE); // Hide and dissolve clone - method to show more particles
 			DissolveTarget(clone, GetEntProp(target, Prop_Send, "m_zombieClass") == 2 ? 0 : target); // Exclude boomer to producer gibs
 		}
 	} 
-	else 
-	{
-		SetEntityRenderFx(target, RENDERFX_FADE_FAST);
-		if(iOverlayModel < 1)
-			DissolveTarget(target);
-		else
-			DissolveTarget(target, iOverlayModel);
-	}
+else
+{
+SetEntityRenderFx(target, RENDERFX_FADE_FAST);
+DissolveTarget(target);
+}
 }
 
 void DissolveTarget(int target, int iOverlayModel = 0)
