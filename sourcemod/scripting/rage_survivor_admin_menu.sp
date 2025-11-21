@@ -10,16 +10,16 @@ int g_iAdminMenuID;
 
 public Plugin myinfo =
 {
-    name = "[DLR] Admin Menu",
+    name = "[Rage Survivor] Admin Menu",
     author = "Yani",
-    description = "Provides admin specific menu options for DLR",
+    description = "Provides admin specific menu options for Rage Survivor",
     version = PLUGIN_VERSION,
     url = ""
 };
 
 public void OnPluginStart()
 {
-    RegAdminCmd("sm_adm", CmdDLRAdminMenu, ADMFLAG_ROOT);
+    RegAdminCmd("sm_adm", CmdRageAdminMenu, ADMFLAG_ROOT);
 }
 
 public void OnLibraryAdded(const char[] name)
@@ -45,7 +45,7 @@ public void OnPluginEnd()
     DeleteAdminMenu();
 }
 
-Action CmdDLRAdminMenu(int client, int args)
+Action CmdRageAdminMenu(int client, int args)
 {
     if (!IsValidClient(client) || !g_bExtraMenuLoaded || g_iAdminMenuID == 0)
     {
@@ -81,7 +81,7 @@ void BuildAdminMenu()
     ExtraMenu_AddEntry(g_iAdminMenuID, "1. Spawn Items: _OPT_", MENU_SELECT_LIST);
     ExtraMenu_AddOptions(g_iAdminMenuID, "New cabinet|New weapon|Special Infected|Special tank");
     ExtraMenu_AddEntry(g_iAdminMenuID, "2. Reload _OPT_", MENU_SELECT_LIST);
-    ExtraMenu_AddOptions(g_iAdminMenuID, "Map|DLR Plugins|All plugins|Restart server");
+    ExtraMenu_AddOptions(g_iAdminMenuID, "Map|Rage Plugins|All plugins|Restart server");
     ExtraMenu_AddEntry(g_iAdminMenuID, "3. Manage skills", MENU_SELECT_ONLY, true);
     ExtraMenu_AddEntry(g_iAdminMenuID, "4. Manage perks", MENU_SELECT_ONLY, true);
     ExtraMenu_AddEntry(g_iAdminMenuID, "5. Apply effect on player", MENU_SELECT_ONLY, true);

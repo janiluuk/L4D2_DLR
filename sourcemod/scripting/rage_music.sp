@@ -491,7 +491,7 @@ public void OnClientPutInServer(int client)
 public Action Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
 {
     if (g_rageCvarPlayRoundStart.IntValue == 0)
-        return;
+        return Plugin_Continue;
 
     for (int i = 1; i <= MaxClients; i++)
     {
@@ -503,11 +503,15 @@ public Action Event_RoundStart(Event event, const char[] name, bool dontBroadcas
             }
         }
     }
+
+    return Plugin_Continue;
 }
 
 public Action Event_RoundEnd(Event event, const char[] name, bool dontBroadcast)
 {
     ResetTimer();
+
+    return Plugin_Continue;
 }
 public void OnMapEnd()
 {
@@ -551,6 +555,8 @@ public Action Timer_PlayMusic(Handle timer, int UserId)
         }
         g_rageFirstConnect[client] = false;
     }
+
+    return Plugin_Stop;
 }
 
 void ShowMusicMenu(int client)
@@ -572,8 +578,11 @@ public int MenuHandler_MenuMusic(Menu menu, MenuAction action, int param1, int p
     switch (action)
     {
         case MenuAction_End:
+        {
             delete menu;
-        
+            return 0;
+        }
+
         case MenuAction_Select:
         {
             int client = param1;
@@ -603,12 +612,15 @@ public int MenuHandler_MenuMusic(Menu menu, MenuAction action, int param1, int p
                 }
                 case -1: {
                     ShowMenuSettings(client);
-                    return;
+                    return 0;
                 }
             }
             ShowMusicMenu(client);
+            return 0;
         }
     }
+
+    return 0;
 }
 
 void ShowMenuSettings(int client)
@@ -644,12 +656,16 @@ public int MenuHandler_MenuSettings(Menu menu, MenuAction action, int param1, in
     switch (action)
     {
         case MenuAction_End:
+        {
             delete menu;
-        
+            return 0;
+        }
+
         case MenuAction_Cancel:
             if (param2 == MenuCancel_ExitBack)
                 ShowMusicMenu(param1);
-        
+            return 0;
+
         case MenuAction_Select:
         {
             int client = param1;
@@ -661,7 +677,7 @@ public int MenuHandler_MenuSettings(Menu menu, MenuAction action, int param1, in
             switch(StringToInt(sItem)) {
                 case 7: {
                     ShowVolumeMenu(client);
-                    return;
+                    return 0;
                 }
                 case 8: {
                     FakeClientCommand(client, "sm_music -1");
@@ -676,8 +692,11 @@ public int MenuHandler_MenuSettings(Menu menu, MenuAction action, int param1, in
                 }
             }
             ShowMenuSettings(client);
+            return 0;
         }
     }
+
+    return 0;
 }
 
 void StopCurrentSound(int client)
@@ -719,12 +738,16 @@ public int MenuHandler_MenuVolume(Menu menu, MenuAction action, int param1, int 
     switch (action)
     {
         case MenuAction_End:
+        {
             delete menu;
-        
+            return 0;
+        }
+
         case MenuAction_Cancel:
             if (param2 == MenuCancel_ExitBack)
                 ShowMusicMenu(param1);
-        
+            return 0;
+
         case MenuAction_Select:
         {
             int client = param1;
@@ -741,8 +764,11 @@ public int MenuHandler_MenuVolume(Menu menu, MenuAction action, int param1, int 
             StopSound(client, SNDCHAN_DEFAULT, sPath);
             EmitSoundCustom(client, sPath);
             ShowVolumeMenu(client);
+            return 0;
         }
     }
+
+    return 0;
 }
 
 stock char[] Translate(int client, const char[] format, any ...)
