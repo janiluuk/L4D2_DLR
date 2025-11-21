@@ -96,7 +96,7 @@ void BuildAdminMenu()
     ExtraMenu_AddEntry(g_iAdminMenuID, "4. God mode: _OPT_", MENU_SELECT_ONOFF, false, 1);
     ExtraMenu_AddEntry(g_iAdminMenuID, "5. Remove weapons from map", MENU_SELECT_ONLY);
     ExtraMenu_AddEntry(g_iAdminMenuID, "6. Game speed: _OPT_", MENU_SELECT_LIST);
-    ExtraMenu_AddOptions(g_iAdminMenuID, "□□□□□□□□□□|■□□□□□□□□□|■■□□□□□□□□|■■■□□□□□□□|■■■■□□□□□□|■■■■■□□□□□|■■■■■■□□□□|■■■■■■■□□□|■■■■■■■■□□|■■■■■■■■■□|■■■■■■■■■■");
+    ExtraMenu_AddOptions(g_iAdminMenuID, "----------|#---------|##--------|###-------|####------|#####-----|######----|#######---|########--|#########-|##########");
     ExtraMenu_AddEntry(g_iAdminMenuID, " ", MENU_ENTRY);
 }
 
