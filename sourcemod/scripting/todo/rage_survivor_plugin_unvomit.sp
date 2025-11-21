@@ -41,7 +41,7 @@ Handle g_hSDKVomit, g_hSDKUnVomit;
 // ====================================================================================================
 public Plugin myinfo =
 {
-	name = "删除胆汁效果",
+	name = "Remove bile effect",
 	author = "SilverShot",
 	description = "Removes the visual vomit effect from a survivor.",
 	version = PLUGIN_VERSION,
@@ -133,7 +133,7 @@ public void OnPluginStart()
 
 public Action Timer_SkillRegister(Handle timer, any unused)
 {
-	SC_CreateSkill("uv_unvomit", "防化服", 0, "沾上胆汁后不遮挡屏幕，且持续时间减半");
+	SC_CreateSkill("uv_unvomit", "Hazmat Suit", 0, "Bile does not obscure the screen and duration is halved");
 	return Plugin_Continue;
 }
 
