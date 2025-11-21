@@ -491,7 +491,7 @@ public void OnClientPutInServer(int client)
 public Action Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
 {
     if (g_rageCvarPlayRoundStart.IntValue == 0)
-        return;
+        return Plugin_Continue;
 
     for (int i = 1; i <= MaxClients; i++)
     {
@@ -503,11 +503,15 @@ public Action Event_RoundStart(Event event, const char[] name, bool dontBroadcas
             }
         }
     }
+
+    return Plugin_Continue;
 }
 
 public Action Event_RoundEnd(Event event, const char[] name, bool dontBroadcast)
 {
     ResetTimer();
+
+    return Plugin_Continue;
 }
 public void OnMapEnd()
 {
@@ -551,6 +555,8 @@ public Action Timer_PlayMusic(Handle timer, int UserId)
         }
         g_rageFirstConnect[client] = false;
     }
+
+    return Plugin_Continue;
 }
 
 void ShowMusicMenu(int client)
@@ -609,6 +615,8 @@ public int MenuHandler_MenuMusic(Menu menu, MenuAction action, int param1, int p
             ShowMusicMenu(client);
         }
     }
+
+    return 0;
 }
 
 void ShowMenuSettings(int client)
@@ -678,6 +686,8 @@ public int MenuHandler_MenuSettings(Menu menu, MenuAction action, int param1, in
             ShowMenuSettings(client);
         }
     }
+
+    return 0;
 }
 
 void StopCurrentSound(int client)
@@ -743,6 +753,8 @@ public int MenuHandler_MenuVolume(Menu menu, MenuAction action, int param1, int 
             ShowVolumeMenu(client);
         }
     }
+
+    return 0;
 }
 
 stock char[] Translate(int client, const char[] format, any ...)
