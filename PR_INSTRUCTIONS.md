@@ -1,6 +1,6 @@
-# left_4_ai — Integration into L4D2_DLR (dev)
+# left_4_ai — Integration into L4D2_Rage (dev)
 
-This PR renames **new_left_4_chat_2** → **left_4_ai** and integrates it into the DLR repo layout without changing HUD assets.
+This PR renames **new_left_4_chat_2** → **left_4_ai** and integrates it into the Rage repo layout without changing HUD assets.
 
 ## What’s included
 - `addons/sourcemod/plugins/left_4_ai.smx`
