@@ -68,6 +68,12 @@ A brutal anniversary overhaul of the infamous Rage mode for Left 4 Dead 2. L4D2 
 
 All special skills provide a corresponding `sm_` console command so abilities can be activated consistently regardless of keybinds.
 
+### Controls & Ability Cues
+- **Special action** – Middle mouse button. Fires your primary class skill; if it is cooling down or disabled, an on-screen hint explains why and when it will be ready.
+- **Secondary special action** – Hold **Use** and press the middle mouse button. Use this when your class offers an alternate ability; unavailable actions display a hint until they recharge.
+- **Build action** – Hold **Shift**. Engineers and other builders see a hint when construction is charging or locked, and a ready message when the timer completes.
+- **Team notifications** – When a player triggers a main ability or places a buildable, nearby teammates receive a chat/center cue so squads can react together.
+
 ### Adding Music
 Store 44.1 kHz MP3s on a fast‑download server and list them in `data/music_mapstart.txt` (and optionally `music_mapstart_newly.txt` for first‑time players). Players can open `!music` to adjust volume or disable all custom tracks; their choices are saved in cookies until they opt back in.
 

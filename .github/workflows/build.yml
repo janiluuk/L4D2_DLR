@@ -37,13 +37,14 @@ jobs:
         if: runner.os == 'Windows'
         run: choco install wget --no-progress
 
-      - name: Download SourceMod 1.11.0-git6453
+      - name: Download SourceMod 1.12.0-git7219
         shell: bash
         run: |
           if [ "${{ runner.os }}" = "Windows" ]; then
             wget -nv "https://sm.alliedmods.net/smdrop/1.12/sourcemod-1.12.0-git7219-windows.zip" -O sm.zip
             unzip sm.zip -d sm
           else
+
             wget -nv "https://sm.alliedmods.net/smdrop/1.12/sourcemod-1.12.0-git7219-linux.tar.gz" -O sm.tar.gz
             mkdir -p sm
             tar -xzf sm.tar.gz -C sm
@@ -65,5 +66,5 @@ jobs:
       - name: Upload package
         uses: actions/upload-artifact@v4
         with:
-          name: l4d2_dlr-sm1.11.0-git6453-${{ matrix.os_short }}-${{ env.GITHUB_SHA_SHORT }}
+          name: l4d2_rage-sm1.12.0-git7219-${{ matrix.os_short }}-${{ env.GITHUB_SHA_SHORT }}
           path: package
