@@ -24,7 +24,7 @@ static char g_sModels[2][] =
 };
 
 public Plugin myinfo = {
-	name = "降落伞",
+	name = "Parachute",
 	author = "Joshe Gatito",
 	description = "Adds support for parachutes",
 	version = "1.2",
@@ -63,7 +63,7 @@ public void OnPluginStart()
 public Action L4D2SF_OnGetPerkName(int client, const char[] name, int level, char[] result, int maxlen)
 {
 	if(!strcmp(name, "parachute"))
-		FormatEx(result, maxlen, "%T", "降落伞", client, level);
+		FormatEx(result, maxlen, "%T", "Parachute", client, level);
 	else
 		return Plugin_Continue;
 	return Plugin_Changed;
@@ -72,7 +72,7 @@ public Action L4D2SF_OnGetPerkName(int client, const char[] name, int level, cha
 public Action L4D2SF_OnGetPerkDescription(int client, const char[] name, int level, char[] result, int maxlen)
 {
 	if(!strcmp(name, "parachute"))
-		FormatEx(result, maxlen, "%T", tr("降落伞%d", IntBound(level, 1, 1)), client, level);
+		FormatEx(result, maxlen, "%T", tr("Parachute%d", IntBound(level, 1, 1)), client, level);
 	else
 		return Plugin_Continue;
 	return Plugin_Changed;

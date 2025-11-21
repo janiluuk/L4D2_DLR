@@ -71,7 +71,7 @@ public Action:HealingBallFunction(Client)
 	GetTracePosition(Client, pos);
 	pos[2] += 50.0;
 	EmitAmbientSound(HealingBall_Sound_Lanuch, pos);
-	TE_SetupBeamRingPoint(pos, Radius-0.1, Radius, g_BeamSprite, g_HaloSprite, 0, 10, 1.0, 5.0, 5.0, BlueColor, 5, 0);//固定外圈BuleColor
+	TE_SetupBeamRingPoint(pos, Radius-0.1, Radius, g_BeamSprite, g_HaloSprite, 0, 10, 1.0, 5.0, 5.0, BlueColor, 5, 0);//Fixed outer ring BlueColor
 	TE_SendToAll();
 	
 	for(new i = 1; i<5; i++)
@@ -117,7 +117,7 @@ public Action:HealingBallTimerFunction(Handle:timer, Handle:pack)
 	//new iMaxEntities = GetMaxEntities();
 	new Float:Radius=HealingBallRadius[Client];
 	
-	TE_SetupBeamRingPoint(pos, Radius-0.1, Radius, g_BeamSprite, g_HaloSprite, 0, 10, 1.0, 10.0, 5.0, BlueColor, 5, 0);//固定外圈BuleColor
+	TE_SetupBeamRingPoint(pos, Radius-0.1, Radius, g_BeamSprite, g_HaloSprite, 0, 10, 1.0, 10.0, 5.0, BlueColor, 5, 0);//Fixed outer ring BlueColor
 	TE_SendToAll();
 
 	new team = GetClientTeam(Client);
@@ -181,7 +181,7 @@ stock bool:IsPlayerIncapped(Client)
 	return false;
 }
 
-/* 读取準心位置 */
+/* Read crosshair position */
 public GetTracePosition(client, Float:TracePos[3])
 {
 	decl Float:clientPos[3], Float:clientAng[3];

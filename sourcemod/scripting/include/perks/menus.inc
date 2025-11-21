@@ -17,7 +17,7 @@ public int Insta_PlayerHandler(Menu menu, MenuAction action, int client, int par
 
 void ShowInstaSpecialChooser(int activator, int userid, int instaMode) {
 	Menu spMenu = new Menu(Insta_SpecialHandler);
-	spMenu.SetTitle("Choose a Insta-Special™");
+	spMenu.SetTitle("Choose a Insta-Special(TM)");
 	static char data[16];
 	for(int i = 1; i <= 8; i++) {
 		Format(data, sizeof(data), "%d|%d|%d", userid, instaMode, i);
@@ -45,15 +45,15 @@ public int Insta_SpecialHandler(Menu menu, MenuAction action, int client, int pa
 		SpecialType special = view_as<SpecialType>(specialInt);
 		if(inFace) {
 			if(SpawnSpecialForTarget(special, target, view_as<int>(Special_OnTarget))) {
-				LogAction(client, target, "\"%L\" spawned Insta-%s™ on \"%L\"", client, SPECIAL_NAMES[specialInt-1], target);
-				ShowActivityEx(client, "[Rage] ", "spawned Insta-%s™ on %N", SPECIAL_NAMES[specialInt-1], target);
+				LogAction(client, target, "\"%L\" spawned Insta-%s(TM) on \"%L\"", client, SPECIAL_NAMES[specialInt-1], target);
+				ShowActivityEx(client, "[Rage] ", "spawned Insta-%s(TM) on %N", SPECIAL_NAMES[specialInt-1], target);
 			} else {
 				ReplyToCommand(client, "Could not spawn special.");
 			}
 		} else {
 			if(SpawnSpecialForTarget(special, target)) {
-				LogAction(client, target, "\"%L\" spawned Insta-%s™ near \"%L\"", client, SPECIAL_NAMES[specialInt-1], target);
-				ShowActivityEx(client, "[Rage] ", "spawned Insta-%s™ near %N", SPECIAL_NAMES[specialInt-1], target);
+				LogAction(client, target, "\"%L\" spawned Insta-%s(TM) near \"%L\"", client, SPECIAL_NAMES[specialInt-1], target);
+				ShowActivityEx(client, "[Rage] ", "spawned Insta-%s(TM) near %N", SPECIAL_NAMES[specialInt-1], target);
 			} else {
 				ReplyToCommand(client, "Could not spawn special.");
 			}
@@ -551,7 +551,7 @@ void ShowSelectFlagMenu(int activator, int victimUserID, int modifiers, Perk per
 				perk.flagNames.GetString(i, name, sizeof(name));
 				// If flag is enabled, show indication (On)
 				if(prevFlags > 0 && prevFlags & a)
-					Format(name, sizeof(name), "%s ✓", name);
+					Format(name, sizeof(name), "%s [x]", name);
 				int newFlags = prevFlags ^ a; //Toggle the flag instead of setting like below, as it's toggleable here
 				Format(info, sizeof(info), "%d|%d|%d|%d|%d|0", victimUserID, perk.id, modifiers, newFlags, promptIndex);
 				flagMenu.AddItem(info, name);

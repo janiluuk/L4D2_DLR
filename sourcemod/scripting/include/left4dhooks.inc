@@ -3406,7 +3406,7 @@ native void L4D_FindRandomSpot(int NavArea, float vecPos[3]);
  * @param vecPos			The vector position of the target location
  * @param team				The team of the client, can possibly pass 0 to 3
  * @param team_target		Target point team, if it is 0, the client's angle will be considered
- * @param NavArea			NavArea of ​​the target, or 0 to automatically get with GetNearestNavArea
+ * @param NavArea			NavArea of the target, or 0 to automatically get with GetNearestNavArea
  *
  * @return					True if visible, false otherwise
  */

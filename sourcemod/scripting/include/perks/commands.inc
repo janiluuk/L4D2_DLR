@@ -52,7 +52,7 @@ public Action Command_InstaSpecial(int client, int args) {
 			int target = target_list[i];
 			if(GetClientTeam(target) == 2) {
 				if(SpawnSpecialForTarget(specialType, target)) {
-					LogAction(client, target, "\"%L\" spawned Insta-%s™ nearby \"%L\"", client, arg2, target);
+					LogAction(client, target, "\"%L\" spawned Insta-%s(TM) nearby \"%L\"", client, arg2, target);
 					successes++;
 				} else {
 					ReplyToCommand(client, "[Rage] Could not spawn %s near %s", arg2, target_name);
@@ -62,7 +62,7 @@ public Action Command_InstaSpecial(int client, int args) {
 			}
 		}
 		if(successes > 0)
-			ShowActivityEx(client, "[Rage] ", "spawned Insta-%s™ near %s", arg2, target_name);
+			ShowActivityEx(client, "[Rage] ", "spawned Insta-%s(TM) near %s", arg2, target_name);
 	}
 
 
@@ -118,7 +118,7 @@ public Action Command_InstaSpecialFace(int client, int args) {
 			int target = target_list[i];
 			if(GetClientTeam(target) == 2) {
 				if(SpawnSpecialForTarget(specialType, target, view_as<int>(Special_OnTarget))) {
-					LogAction(client, target, "\"%L\" spawned Insta-%s™ at player \"%L\"", client, arg2, target);
+					LogAction(client, target, "\"%L\" spawned Insta-%s(TM) at player \"%L\"", client, arg2, target);
 					successes++;
 				} else {
 					ReplyToCommand(client, "[Rage] Could not spawn %s on %s", arg2, target_name);
@@ -128,7 +128,7 @@ public Action Command_InstaSpecialFace(int client, int args) {
 			}
 		}
 		if(successes > 0)
-			ShowActivityEx(client, "[Rage] ", "spawned Insta-%s™ on %s", arg2, target_name);
+			ShowActivityEx(client, "[Rage] ", "spawned Insta-%s(TM) on %s", arg2, target_name);
 	}
 	return Plugin_Handled;
 }

@@ -92,7 +92,7 @@ new Float:trsPos[MAXPLAYERS+1][3];
 
 public Plugin:myinfo = 
 {
-	name = "卫星炮",
+	name = "Satellite Cannon",
 	author = "ztar",
 	description = "Three kind of vertical laser launches by shooting magnum.",
 	version = PLUGIN_VERSION,
@@ -106,20 +106,20 @@ public OnPluginStart()
 {
 	CreateTimer(1.0, Timer_SetupSpell);
 	
-	sm_satellite_enable			= CreateConVar("sm_satellite_enable","1","是否开启插件", FCVAR_NOTIFY);
-	sm_satellite_damage_01		= CreateConVar("sm_satellite_damage_01","600.0", "扫描模式伤害", FCVAR_NOTIFY);
-	sm_satellite_freeze_02		= CreateConVar("sm_satellite_freeze_02","1.0", "冰冻模式伤害", FCVAR_NOTIFY);
-	sm_satellite_damage_03		= CreateConVar("sm_satellite_damage_03","200.0", "地狱模式伤害", FCVAR_NOTIFY);
-	sm_satellite_burst_delay	= CreateConVar("sm_satellite_burst_delay","1.0", "启动延迟", FCVAR_NOTIFY);
-	sm_satellite_force			= CreateConVar("sm_satellite_force","600.0", "推力", FCVAR_NOTIFY);
-	sm_satellite_radius_01		= CreateConVar("sm_satellite_radius_01","300.0", "扫描模式范围", FCVAR_NOTIFY);
-	sm_satellite_radius_02		= CreateConVar("sm_satellite_radius_02","230.0", "冰冻模式范围", FCVAR_NOTIFY);
-	sm_satellite_radius_03		= CreateConVar("sm_satellite_radius_03","200.0", "地狱模式范围", FCVAR_NOTIFY);
-	sm_satellite_limit_01		= CreateConVar("sm_satellite_limit_01","15", "扫描模式使用限制", FCVAR_NOTIFY);
-	sm_satellite_limit_02		= CreateConVar("sm_satellite_limit_02","10", "冰冻模式使用限制", FCVAR_NOTIFY);
-	sm_satellite_limit_03		= CreateConVar("sm_satellite_limit_03","10", "地狱模式使用限制", FCVAR_NOTIFY);
-	sm_satellite_height			= CreateConVar("sm_satellite_height","650", "开始高度", FCVAR_NOTIFY);
-	sm_satellite_adminonly		= CreateConVar("sm_satellite_adminonly","1", "管理员专用", FCVAR_NOTIFY);
+	sm_satellite_enable			= CreateConVar("sm_satellite_enable","1","Enable plugin", FCVAR_NOTIFY);
+	sm_satellite_damage_01		= CreateConVar("sm_satellite_damage_01","600.0", "Scan mode damage", FCVAR_NOTIFY);
+	sm_satellite_freeze_02		= CreateConVar("sm_satellite_freeze_02","1.0", "Freeze mode damage", FCVAR_NOTIFY);
+	sm_satellite_damage_03		= CreateConVar("sm_satellite_damage_03","200.0", "Inferno mode damage", FCVAR_NOTIFY);
+	sm_satellite_burst_delay	= CreateConVar("sm_satellite_burst_delay","1.0", "Startup delay", FCVAR_NOTIFY);
+	sm_satellite_force			= CreateConVar("sm_satellite_force","600.0", "Force", FCVAR_NOTIFY);
+	sm_satellite_radius_01		= CreateConVar("sm_satellite_radius_01","300.0", "Scan mode radius", FCVAR_NOTIFY);
+	sm_satellite_radius_02		= CreateConVar("sm_satellite_radius_02","230.0", "Freeze mode radius", FCVAR_NOTIFY);
+	sm_satellite_radius_03		= CreateConVar("sm_satellite_radius_03","200.0", "Inferno mode radius", FCVAR_NOTIFY);
+	sm_satellite_limit_01		= CreateConVar("sm_satellite_limit_01","15", "Scan mode limit", FCVAR_NOTIFY);
+	sm_satellite_limit_02		= CreateConVar("sm_satellite_limit_02","10", "Freeze mode limit", FCVAR_NOTIFY);
+	sm_satellite_limit_03		= CreateConVar("sm_satellite_limit_03","10", "Inferno mode limit", FCVAR_NOTIFY);
+	sm_satellite_height			= CreateConVar("sm_satellite_height","650", "Start height", FCVAR_NOTIFY);
+	sm_satellite_adminonly		= CreateConVar("sm_satellite_adminonly","1", "Admins only", FCVAR_NOTIFY);
 	
 	HookEvent("weapon_fire", Event_Weapon_Fire);
 	HookEvent("item_pickup", Event_Item_Pickup);
@@ -133,9 +133,9 @@ public OnPluginStart()
 
 public Action:Timer_SetupSpell(Handle:timer, any:unused)
 {
-	SC_CreateSpell("ztar_satellite_judgement", "卫星炮 - 高爆", 200, 4000, "创建爆炸并对特感造成高伤害");
-	SC_CreateSpell("ztar_satellite_blizzard", "卫星炮 - 冰冻", 200, 3000, "冻结范围内特感和普感");
-	SC_CreateSpell("ztar_satellite_inferno", "卫星炮 - 燃烧", 200, 4500, "创建火焰并点燃范围内特感和普感");
+	SC_CreateSpell("ztar_satellite_judgement", "Satellite Cannon - High Blast", 200, 4000, "Create an explosion that deals high damage to specials");
+	SC_CreateSpell("ztar_satellite_blizzard", "Satellite Cannon - Freeze", 200, 3000, "Freeze specials and commons in range");
+	SC_CreateSpell("ztar_satellite_inferno", "Satellite Cannon - Inferno", 200, 4500, "Create fire and ignite specials and commons in range");
 }
 
 public void SC_OnUseSpellPost(int client, const char[] classname)
