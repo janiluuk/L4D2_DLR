@@ -1,3 +1,5 @@
+#include <l4d2_airstrike>
+
 stock Action TimerStart(Handle timer)
 {
 	ResetPlugin();

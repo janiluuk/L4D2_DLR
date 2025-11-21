@@ -38,18 +38,21 @@ public Action:CmdModel(client, args) {
 	GetCmdArg(1, sModel, sizeof(sModel));
 
 	LMC_L4D2_SetTransmit(client);
-	LMC_SetClientOverlayModel(client, arg1);
-	ReplyToCommand(client, "Changing model to %s", arg1);
-	
+	LMC_SetClientOverlayModel(client, sModel);
+	ReplyToCommand(client, "Changing model to %s", sModel);
+
+	return Plugin_Handled;
 }
 public Action:CmdClassMenu(client, args)
 {
 	if (GetClientTeam(client) != 2)
 	{
 		PrintToChat(client, "%sOnly Survivors can choose a class.", PRINT_PREFIX);
-		return;
+		return Plugin_Handled;
 	}
 	CreatePlayerClassMenu(client);
+
+	return Plugin_Handled;
 }
 
 public Action:CreatePlayerClassMenuDelay(Handle:hTimer, any:client)
