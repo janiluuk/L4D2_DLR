@@ -284,21 +284,21 @@
 bool	bLMC_Available;
 //LMC
 
-//DLR
+//Rage
 #define REQUIRE_PLUGIN
 #tryinclude <RageCore>
 
-#if !defined _DLRCore_included
-	// Optional native from DLR Talents
+#if !defined _RageCore_included
+	// Optional native from Rage Talents
 	native void OnSpecialSkillSuccess(int client, char[] skillName);
 	native void OnSpecialSkillFail(int client, char[] skillName, char[] reason);
 	native void GetPlayerSkillName(int client, char[] skillName, int size);
 	native int FindSkillIdByName(char[] skillName);
-	native int RegisterDLRSkill(char[] skillName, int type);
-    #define DLR_PLUGIN_NAME = "rage_talents"
+	native int RegisterRageSkill(char[] skillName, int type);
+    #define Rage_PLUGIN_NAME = "rage_talents"
 #endif
 
-bool	DLR_Available;
+bool	Rage_Available;
 
 
 // DEFINES
@@ -674,7 +674,7 @@ public Plugin myinfo =
 }
 
 //////////////////////7
-// DLR functions
+// Rage functions
 ///////////////////////
 
 public int OnCustomCommand(char[] name, int client, int entity, int type)
@@ -699,24 +699,24 @@ public int OnCustomCommand(char[] name, int client, int entity, int type)
 	return 1;
 }
 
-public void DLR_OnPluginState(char[] plugin, int pluginstate)
+public void Rage_OnPluginState(char[] plugin, int pluginstate)
 {
 
     if(StrEqual(plugin,"rage_talents") && pluginstate == 1)
 	{
 		SetConVarBool(g_hCvarAllow, true);
-		DLR_Available = true;	
-		g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
+		Rage_Available = true;	
+		g_iClassID = RegisterRageSkill(PLUGIN_SKILL_NAME, 0);
 
 	}
     else if(StrEqual(plugin, "rage_talents") && pluginstate == 0)
 	{
 		SetConVarBool(g_hCvarAllow, false);
-		DLR_Available = false;
+		Rage_Available = false;
 	}
 }
 
-public int DLR_OnRoundState(int roundstate)
+public int Rage_OnRoundState(int roundstate)
 {
 
 	if( roundstate == 1 && g_bMapStarted == false )
@@ -879,8 +879,8 @@ public void OnPluginStart()
 		LoadDataConfig();
 		IsAllowed();
 	}
-	if (DLR_Available == true) {
-		g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
+	if (Rage_Available == true) {
+		g_iClassID = RegisterRageSkill(PLUGIN_SKILL_NAME, 0);
 	}
 	g_iClassTank = g_bLeft4Dead2 ? 8 : 5;
 
@@ -969,10 +969,10 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	MarkNativeAsOptional("L4D_AngularVelocity");
 	MarkNativeAsOptional("F18_ShowAirstrike");
 	MarkNativeAsOptional("OnCustomCommand");	
-	MarkNativeAsOptional("DLR_OnRoundState");	
+	MarkNativeAsOptional("Rage_OnRoundState");	
 	MarkNativeAsOptional("OnSpecialSkillFail");	
 	MarkNativeAsOptional("OnSpecialSkillSuccess");	
-	MarkNativeAsOptional("DLR_OnPluginState");	
+	MarkNativeAsOptional("Rage_OnPluginState");	
 	g_bLateLoad = late;
 
 	return APLRes_Success;
@@ -981,11 +981,11 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 public void OnAllPluginsLoaded()
 {
 	bLMC_Available = LibraryExists("LMCEDeathHandler");
-    DLR_Available = LibraryExists("rage_talents");
+    Rage_Available = LibraryExists("rage_talents");
 
 	if (g_iClassID != -1) return;
 	
-	g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);	
+	g_iClassID = RegisterRageSkill(PLUGIN_SKILL_NAME, 0);	
 }
 
 public void OnLibraryAdded(const char[] sName)
@@ -995,7 +995,7 @@ public void OnLibraryAdded(const char[] sName)
 	else if( strcmp(sName, "left4dhooks") == 0 )
 		g_bLeft4DHooks = true;
     else if( strcmp(sName, "rage_talents") == 0 )
-		DLR_Available = true;	
+		Rage_Available = true;	
 	else if( g_bLeft4Dead2 && strcmp(sName, "l4d2_airstrike") == 0 )
 	{
 		g_bAirstrike = true;
@@ -1011,7 +1011,7 @@ public void OnLibraryRemoved(const char[] sName)
 	else if( strcmp(sName, "left4dhooks") == 0 )
 		g_bLeft4DHooks = false;
    else if( strcmp(sName, "rage_talents") == 0 ) {
-		DLR_Available = false;
+		Rage_Available = false;
 		g_iClassID = -1;
 	}
 	else if( g_bLeft4Dead2 && strcmp(sName, "l4d2_airstrike") == 0 )

@@ -145,19 +145,10 @@
 #define PARTICLE_FIRE		"fire_medium_01"
 #define PARTICLE_SPARKS		"fireworks_sparkshower_01e"
 #define PARTICLE_SMOKE		"rpg_smoke"
-/****************************************************/
-#tryinclude <RageCore>
-#if !defined _DLRCore_included
-	// Optional native from DLR Talents
-	native void OnSpecialSkillSuccess(int client, char[] skillName);
-	native void OnSpecialSkillFail(int client, char[] skillName, char[] reason);
-	native void GetPlayerSkillName(int client, char[] skillName, int size);
-	native int FindSkillIdByName(char[] skillName);
-	native int RegisterDLRSkill(char[] skillName, int type);
-#endif
-/****************************************************/
+#include <rage/skills>
+
 int g_iClassID = -1;
-static bool DLR_Available = false;
+bool g_bRageAvailable = false;
 
 
 ConVar g_hCvarAllow, g_hCvarDamage, g_hCvarDistance, g_hCvarHorde, g_hCvarMPGameMode, g_hCvarModes, g_hCvarModesOff, g_hCvarModesTog, g_hCvarLimit, g_hCvarScale, g_hCvarShake, g_hCvarSpread, g_hCvarStumble, g_hCvarStyle, g_hCvarVocalize;
@@ -209,23 +200,22 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 
 	g_bLateLoad = late;
 	RegPluginLibrary("l4d2_airstrike");
-	CreateNative("F18_ShowAirstrike", Native_ShowAirstrike);
-	MarkNativeAsOptional("OnSpecialSkillFail");	
-	MarkNativeAsOptional("OnSpecialSkillSuccess");		
-	MarkNativeAsOptional("OnPlayerClassChange");
-	MarkNativeAsOptional("DLR_OnPluginState");	
-	MarkNativeAsOptional("GetPlayerSkillName");	
-	MarkNativeAsOptional("RegisterDLRSkill");
+CreateNative("F18_ShowAirstrike", Native_ShowAirstrike);
+MarkNativeAsOptional("OnSpecialSkillFail");
+MarkNativeAsOptional("OnSpecialSkillSuccess");
+MarkNativeAsOptional("OnPlayerClassChange");
+MarkNativeAsOptional("Rage_OnPluginState");
+MarkNativeAsOptional("GetPlayerSkillName");
+RageSkills_MarkNativesOptional();
 
 	return APLRes_Success;
 }
 
 public void OnAllPluginsLoaded()
 {
-	if (g_iClassID != -1) return;
+if (g_iClassID != -1) return;
 
-    DLR_Available = LibraryExists("rage_talents");
-	g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
+RageSkills_Refresh(PLUGIN_SKILL_NAME, 0, g_iClassID, g_bRageAvailable);
 }
 
 public int OnSpecialSkillUsed(int iClient, int skill, int type)
@@ -295,30 +285,26 @@ public void OnPluginEnd()
 
 public void OnLibraryAdded(const char[] name)
 {
-	if( strcmp(name, "l4d2_airstrike.triggers") == 0 )
-		g_bPluginTrigger = true;
+if( strcmp(name, "l4d2_airstrike.triggers") == 0 )
+g_bPluginTrigger = true;
 
-    if(StrEqual(name, "rage_talents")) {
-		DLR_Available = true;	
-		if (g_iClassID < 0)	
-			g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
-	}
+RageSkills_OnLibraryAdded(name, PLUGIN_SKILL_NAME, 0, g_iClassID, g_bRageAvailable);
 }
 
-public void DLR_OnPluginState(char[] plugin, int pluginstate)
+public void Rage_OnPluginState(char[] plugin, int pluginstate)
 {
-	static int ragestate;
+static int ragestate;
 
-    if( StrEqual(plugin, "rage_talents") && pluginstate == 1 && ragestate == 0 )
-	{
-		SetConVarBool(g_hCvarAllow, true);
-		ragestate = 1;
-		if (g_iClassID == -1) {
-			g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
-		}
+if( StrEqual(plugin, "rage_talents") && pluginstate == 1 && ragestate == 0 )
+{
+SetConVarBool(g_hCvarAllow, true);
+ragestate = 1;
+if (g_iClassID == -1) {
+g_iClassID = RegisterRageSkill(PLUGIN_SKILL_NAME, 0);
+}
 
-	}
-    else if(StrEqual(plugin, "rage_talents") && pluginstate == 0 && ragestate == 1 )
+}
+else if(StrEqual(plugin, "rage_talents") && pluginstate == 0 && ragestate == 1 )
 	{
 		SetConVarBool(g_hCvarAllow, false);
 		ragestate = 0;

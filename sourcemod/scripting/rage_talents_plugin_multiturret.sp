@@ -107,7 +107,7 @@ public Plugin myinfo =
 	author 	= "Yani, Ernecio, SilverShot",
 	description 	= "Deploy portable turrets & gatling guns with different types of ammo. Automatic & Manual control",
 	version 	= PLUGIN_VERSION,
-	url 		= "https://steamcommunity.com/groups/DLRGaming"
+	url 		= "https://steamcommunity.com/groups/RageGaming"
 }
 
 /****************************************************/
@@ -121,14 +121,14 @@ public Plugin myinfo =
 
 /****************************************************/
 #tryinclude <RageCore>
-#if !defined _DLRCore_included
-	// Optional native from DLR Talents
+#if !defined _RageCore_included
+	// Optional native from Rage Talents
 	native void OnSpecialSkillSuccess(int client, char[] skillName);
 	native void OnSpecialSkillFail(int client, char[] skillName, char[] reason);
 	native void GetPlayerSkillName(int client, char[] skillName, int size);
 	native int FindSkillIdByName(char[] skillName);
-	native int RegisterDLRSkill(char[] skillName, int type);
-	#define DLR_PLUGIN_NAME	"rage_talents"
+	native int RegisterRageSkill(char[] skillName, int type);
+	#define Rage_PLUGIN_NAME	"rage_talents"
 #endif
 /****************************************************/
 
@@ -137,7 +137,7 @@ int MachineCount = 0;
 int g_iClassID = -1;
 
 static bool bLMC_Available = false;
-static bool DLR_Available = false;
+static bool Rage_Available = false;
 
 static bool bLeft4DeadTwo = true;
 static bool bMapStarted;
@@ -362,14 +362,14 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	MarkNativeAsOptional("OnSpecialSkillSuccess");		
 	MarkNativeAsOptional("OnPlayerClassChange");
 	MarkNativeAsOptional("GetPlayerSkillName");	
-	MarkNativeAsOptional("RegisterDLRSkill");
-	MarkNativeAsOptional("DLR_OnPluginState");	
+	MarkNativeAsOptional("RegisterRageSkill");
+	MarkNativeAsOptional("Rage_OnPluginState");	
 
 	return APLRes_Success;
 }
 
 // ====================================================================================================
-//					DLR
+//					Rage
 // ====================================================================================================
 
 public void OnSkillSelected(int iClient, int iClass)
@@ -398,19 +398,19 @@ public int OnSpecialSkillUsed(int iClient, int skill, int type)
 public void OnAllPluginsLoaded()
 {
 	bLMC_Available = LibraryExists("LMCEDeathHandler");
-	DLR_Available = LibraryExists("rage_talents");
+	Rage_Available = LibraryExists("rage_talents");
 
 	if (g_iClassID != -1) return;
-	g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
+	g_iClassID = RegisterRageSkill(PLUGIN_SKILL_NAME, 0);
  
 }
 
-public void DLR_OnPluginState(char[] plugin, int pluginstate)
+public void Rage_OnPluginState(char[] plugin, int pluginstate)
 {
 	if( pluginstate == 1)
 	{
 		SetConVarBool(hCvar_Machine_Enabled, true);
-		g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
+		g_iClassID = RegisterRageSkill(PLUGIN_SKILL_NAME, 0);
 	}
 	else if( pluginstate == 0)
 	{
@@ -426,7 +426,7 @@ public void OnLibraryAdded(const char[] sName)
 	if(StrEqual(sName, "LMCEDeathHandler"))
 		bLMC_Available = true;
 	if(StrEqual(sName, "rage_talents"))
-		DLR_Available = true;		
+		Rage_Available = true;		
 }
 
 public void OnLibraryRemoved(const char[] sName)
@@ -434,7 +434,7 @@ public void OnLibraryRemoved(const char[] sName)
 	if(StrEqual(sName, "LMCEDeathHandler"))
 		bLMC_Available = false;
 	if(StrEqual(sName, "rage_talents"))
-		DLR_Available = false;	
+		Rage_Available = false;	
 }
 
 public void OnPluginStart()
@@ -592,9 +592,9 @@ public void OnPluginStart()
 //	HookEvent("finale_vehicle_leaving", Event_FinaleVehicleLeaving, EventHookMode_PostNoCopy);
 //	HookEvent("finale_vehicle_incoming", Event_FinaleVehicleInComing, EventHookMode_PostNoCopy); // L4D2
 
-	if (DLR_Available) {
+	if (Rage_Available) {
 
-		g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
+		g_iClassID = RegisterRageSkill(PLUGIN_SKILL_NAME, 0);
 	} else {
 		g_iClassID = -1;
 	}
@@ -1950,7 +1950,7 @@ void CreateMachine(int client, int iMachineGunModel, int iSpecialType = NULL)
 	{
 		char reason[128];
 		Format(reason, sizeof(reason), "%t", "Too Many Machine Guns",	MachineCount, iCvar_MachineMaxAllowed);
-		if (DLR_Available) { 
+		if (Rage_Available) { 
 			OnSpecialSkillFail(client, PLUGIN_SKILL_NAME, reason);
 		}
 		CustomPrintToChat(client, "%s", reason);
@@ -2036,7 +2036,7 @@ void CreateMachine(int client, int iMachineGunModel, int iSpecialType = NULL)
 		}
 
 		MachineCount++;
-		if (DLR_Available)
+		if (Rage_Available)
 			OnSpecialSkillSuccess(client, PLUGIN_SKILL_NAME);
 
 		SDKUnhook(iEntity, SDKHook_OnTakeDamagePost, OnTakeDamagePost);

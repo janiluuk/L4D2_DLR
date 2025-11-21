@@ -8,7 +8,7 @@ https://developer.valvesoftware.com/wiki/L4D2_EMS/Appendix:_HUD
 // ====================================================================================================
 // Plugin Info - define
 // ====================================================================================================
-#define PLUGIN_NAME                   "[L4D2] DLR HUD - Based on Scripted HUD"
+#define PLUGIN_NAME                   "[L4D2] Rage HUD - Based on Scripted HUD"
 #define PLUGIN_AUTHOR                 "Mart & Yani"
 #define PLUGIN_DESCRIPTION            "Display text for up to 4 scripted HUD slots on the screen"
 #define PLUGIN_VERSION                "1.0.2"

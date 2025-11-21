@@ -730,21 +730,21 @@ public OnMapStart()
 	g_bIsLoading = false;
 }
 
-//DLR
+//Rage
 #define REQUIRE_PLUGIN
 #tryinclude <RageCore>
 
-#if !defined _DLRCore_included
-	// Optional native from DLR Talents
+#if !defined _RageCore_included
+	// Optional native from Rage Talents
 	native void OnSpecialSkillSuccess(int client, char[] skillName);
 	native void OnSpecialSkillFail(int client, char[] skillName, char[] reason);
 	native void GetPlayerSkillName(int client, char[] skillName, int size);
 	native int FindSkillIdByName(char[] skillName);
-	native int RegisterDLRSkill(char[] skillName, int type);
-    #define DLR_PLUGIN_NAME = "rage_talents"
+	native int RegisterRageSkill(char[] skillName, int type);
+    #define Rage_PLUGIN_NAME = "rage_talents"
 #endif
 
-bool	DLR_Available;
+bool	Rage_Available;
 
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
 {
@@ -759,8 +759,8 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	MarkNativeAsOptional("OnSpecialSkillSuccess");		
 	MarkNativeAsOptional("OnPlayerClassChange");
 	MarkNativeAsOptional("GetPlayerSkillName");	
-	MarkNativeAsOptional("RegisterDLRSkill");
-	MarkNativeAsOptional("DLR_OnPluginState");	
+	MarkNativeAsOptional("RegisterRageSkill");
+	MarkNativeAsOptional("Rage_OnPluginState");	
 
 	return APLRes_Success;
 }
@@ -792,17 +792,17 @@ public int OnSpecialSkillUsed(int iClient, int skill, int type)
 
 public void OnAllPluginsLoaded()
 {
-    DLR_Available = LibraryExists("rage_talents");
-	if (DLR_Available && g_iClassID == -1) {
-		g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
+    Rage_Available = LibraryExists("rage_talents");
+	if (Rage_Available && g_iClassID == -1) {
+		g_iClassID = RegisterRageSkill(PLUGIN_SKILL_NAME, 0);
 	}
 }
 
-public void DLR_OnPluginState(char[] plugin, int pluginstate)
+public void Rage_OnPluginState(char[] plugin, int pluginstate)
 {
 	if( pluginstate == 1)
 	{
-		g_iClassID = RegisterDLRSkill(PLUGIN_SKILL_NAME, 0);
+		g_iClassID = RegisterRageSkill(PLUGIN_SKILL_NAME, 0);
 	}
 	else if( pluginstate == 0)
 	{

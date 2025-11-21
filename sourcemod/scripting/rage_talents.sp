@@ -1,13 +1,13 @@
 /**
 * =============================================================================
-* Talents Plugin by DLR / Neil / Spirit / panxiaohai / Yani
+* Talents Plugin by Rage / Neil / Spirit / panxiaohai / Yani
 * Incorporates Survivor classes.
 *
 * (C)2023 DeadLandRape / Neil / Yani.  All rights reserved.
 * =============================================================================
 *
-*	Developed for DeadLandRape Gaming. This plugin is DLR proprietary software.
-*	DLR claims complete rights to this plugin, including, but not limited to:
+*	Developed for DeadLandRape Gaming. This plugin is Rage proprietary software.
+*	Rage claims complete rights to this plugin, including, but not limited to:
 *
 *		- The right to use this plugin in their servers
 *		- The right to modify this plugin
@@ -27,7 +27,7 @@ stock int DEBUG_MODE = 0;
 public Plugin:myinfo =
 {
 	name = PLUGIN_NAME,
-	author = "DLR / Ken / Neil / Spirit / panxiaohai / Yani",
+	author = "Rage / Ken / Neil / Spirit / panxiaohai / Yani",
 	description = "Incorporates Survivor Classes",
 	version = PLUGIN_VERSION,
 	url = "https://forums.alliedmods.net/showthread.php?t=273312"
@@ -89,14 +89,14 @@ public OnPluginStart( )
 	g_hfwdOnCustomCommand = CreateGlobalForward("OnCustomCommand", ET_Ignore, Param_String, Param_Cell, Param_Cell, Param_Cell);
 	//Create a Class Selection forward
 	g_hOnSkillSelected = CreateGlobalForward("OnSkillSelected", ET_Event, Param_Cell, Param_Cell);	
-	g_hForwardPluginState = CreateGlobalForward("DLR_OnPluginState", ET_Ignore, Param_String, Param_Cell);
-	g_hForwardRoundState = CreateGlobalForward("DLR_OnRoundState", ET_Ignore, Param_Cell);
-	g_fwPerkPre = CreateGlobalForward("DLR_OnPerkPre", ET_Hook, Param_Cell, Param_Cell, Param_String, Param_Cell);
-	g_fwPerkPost = CreateGlobalForward("DLR_OnPerkPost", ET_Ignore, Param_Cell, Param_Cell, Param_String);
-	g_fwCanAccessPerk = CreateGlobalForward("DLR_CanAccessPerk", ET_Event, Param_Cell, Param_Cell, Param_String, Param_CellByRef);
-	g_fwSlotName = CreateGlobalForward("DLR_OnGetSlotName", ET_Event, Param_Cell, Param_Cell, Param_String, Param_Cell);
+	g_hForwardPluginState = CreateGlobalForward("Rage_OnPluginState", ET_Ignore, Param_String, Param_Cell);
+	g_hForwardRoundState = CreateGlobalForward("Rage_OnRoundState", ET_Ignore, Param_Cell);
+	g_fwPerkPre = CreateGlobalForward("Rage_OnPerkPre", ET_Hook, Param_Cell, Param_Cell, Param_String, Param_Cell);
+	g_fwPerkPost = CreateGlobalForward("Rage_OnPerkPost", ET_Ignore, Param_Cell, Param_Cell, Param_String);
+	g_fwCanAccessPerk = CreateGlobalForward("Rage_CanAccessPerk", ET_Event, Param_Cell, Param_Cell, Param_String, Param_CellByRef);
+	g_fwSlotName = CreateGlobalForward("Rage_OnGetSlotName", ET_Event, Param_Cell, Param_Cell, Param_String, Param_Cell);
 
-	// void DLR_OnLoad(int client);
+	// void Rage_OnLoad(int client);
 	//Create menu and set properties
         g_hSkillMenu = CreateMenu(RageSkillMenuHandler);
 	SetMenuTitle(g_hSkillMenu, "Registered plugins");
@@ -481,8 +481,8 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	}
 	RegPluginLibrary(PLUGIN_IDENTIFIER);
 	CreateNative("GetPlayerClassName", Native_GetPlayerClassName);
-	CreateNative("RegisterDLRSkill", Native_RegisterSkill);
-	CreateNative("UnregisterDLRSkill", Native_UnregisterSkill);	
+	CreateNative("RegisterRageSkill", Native_RegisterSkill);
+	CreateNative("UnregisterRageSkill", Native_UnregisterSkill);	
 	CreateNative("OnSpecialSkillSuccess", Native_OnSpecialSkillSuccess);
 	CreateNative("OnSpecialSkillFail", Native_OnSpecialSkillFail);
 	CreateNative("GetPlayerSkillID", Native_GetPlayerSkillID);
@@ -490,10 +490,10 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	CreateNative("FindSkillIdByName", Native_FindSkillIdByName);
 	CreateNative("GetPlayerSkillName", Native_GetPlayerSkillName);
 	
-	CreateNative("DLR_GetAllPerks", Native_GetAllPerks);
-	CreateNative("DLR_GetPlayerPerk", Native_GetPlayerPerk);
-	CreateNative("DLR_RegPerk", Native_RegPerk);
-	CreateNative("DLR_FindPerk", Native_FindPerk);
+	CreateNative("Rage_GetAllPerks", Native_GetAllPerks);
+	CreateNative("Rage_GetPlayerPerk", Native_GetPlayerPerk);
+	CreateNative("Rage_RegPerk", Native_RegPerk);
+	CreateNative("Rage_FindPerk", Native_FindPerk);
 
 	MarkNativeAsOptional("LMC_GetEntityOverlayModel"); // LMC
 	MarkNativeAsOptional("OnCustomCommand");
@@ -546,7 +546,7 @@ public Native_RegisterSkill(Handle:plugin, numParams)
 {
 	if (g_hPluginEnabled == INVALID_HANDLE) 
 	{
-		PrintDebugAll("DLR plugin is not yet loading, queueing");
+		PrintDebugAll("Rage plugin is not yet loading, queueing");
 	}
 	char szItemInfo[3];
 	int type;
