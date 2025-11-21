@@ -40,22 +40,6 @@ public Plugin:myinfo =
 #include <jutils>
 #include <l4d2>
 
-#undef REQUIRE_PLUGIN
-#tryinclude <LMCCore>
-#define REQUIRE_PLUGIN
-
-#if !defined _LMCCore_included
-	native int LMC_SetClientOverlayModel(int iEntity, const char[] sModel);
-#endif
-
-#undef REQUIRE_PLUGIN
-#tryinclude <LMCL4D2SetTransmit>
-#define REQUIRE_PLUGIN
-
-#if !defined _LMCL4D2SetTransmit_included
-	native int LMC_L4D2_SetTransmit(int iEntity, int client);
-#endif
-
 /**
 * PLUGIN LOGIC
 */
@@ -313,18 +297,13 @@ public void SetupClasses(client, class)
 	return;
 	
 	ClientData[client].ChosenClass = view_as<ClassTypes>(class);
-	ClientData[client].SpecialDropInterval = GetConVarInt(MINIMUM_DROP_INTERVAL);	
-	ClientData[client].SpecialLimit = GetConVarInt(SPECIAL_SKILL_LIMIT);
-	new MaxPossibleHP = GetConVarInt(NONE_HEALTH);
-	DisableAllUpgrades(client);
-	bool useCustomModel = false;
+ClientData[client].SpecialDropInterval = GetConVarInt(MINIMUM_DROP_INTERVAL);
+ClientData[client].SpecialLimit = GetConVarInt(SPECIAL_SKILL_LIMIT);
+new MaxPossibleHP = GetConVarInt(NONE_HEALTH);
+DisableAllUpgrades(client);
 
-	#if defined _LMCL4D2SetTransmit_included
-	useCustomModel = true;
-	#endif
-
-	switch (view_as<ClassTypes>(class))
-	{
+switch (view_as<ClassTypes>(class))
+{
 
 		case soldier:	
 		{
@@ -495,8 +474,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	CreateNative("Rage_RegPerk", Native_RegPerk);
 	CreateNative("Rage_FindPerk", Native_FindPerk);
 
-	MarkNativeAsOptional("LMC_GetEntityOverlayModel"); // LMC
-	MarkNativeAsOptional("OnCustomCommand");
+MarkNativeAsOptional("OnCustomCommand");
 
 	return APLRes_Success;
 }
