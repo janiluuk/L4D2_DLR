@@ -1,5 +1,17 @@
 #include <l4d2_airstrike>
 
+#if !defined _f18airstrike_included
+native void F18_ShowAirstrike(float origin[3], float direction);
+#endif
+
+static void TryShowAirstrike(float origin[3])
+{
+        if (GetFeatureStatus(FeatureType_Native, "F18_ShowAirstrike") == FeatureStatus_Available)
+        {
+                F18_ShowAirstrike(origin, GetRandomFloat(0.0, 180.0));
+        }
+}
+
 stock Action TimerStart(Handle timer)
 {
 	ResetPlugin();
@@ -411,9 +423,9 @@ public Action:TimerAirstrike(Handle timer, Handle:hPack)
 	} else {
 
 		g_bAirstrikeValid = true;
-		PrintHintTextToAll("Airstrike completed!");
-		ClientData[client].SpecialsUsed++;
-		F18_ShowAirstrike(pos, GetRandomFloat(0.0, 180.0));
+                PrintHintTextToAll("Airstrike completed!");
+                ClientData[client].SpecialsUsed++;
+                TryShowAirstrike(pos);
 
 		if(IsValidEntity(entity))
 		{

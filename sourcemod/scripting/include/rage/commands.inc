@@ -33,14 +33,19 @@ public Action:CmdClassInfo(client, args)
 	PrintToChat(client,"\x05Brawler\x01 = Has Lots of health");	
 }
 public Action:CmdModel(client, args) {
+        if (args < 1)
+        {
+                ReplyToCommand(client, "\x03[Rage]\x01 Usage: \x04sm_model\x01 <model path>");
+                return Plugin_Handled;
+        }
 
-char sModel[128];
-GetCmdArg(1, sModel, sizeof(sModel));
+        char sModel[PLATFORM_MAX_PATH];
+        GetCmdArg(1, sModel, sizeof(sModel));
 
-SetEntityModel(client, sModel);
-ReplyToCommand(client, "Changing model to %s", sModel);
+        SetEntityModel(client, sModel);
+        ReplyToCommand(client, "Changing model to %s", sModel);
 
-return Plugin_Handled;
+        return Plugin_Handled;
 
 }
 public Action:CmdClassMenu(client, args)
