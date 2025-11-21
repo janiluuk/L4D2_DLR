@@ -112,7 +112,7 @@
 #include <sourcemod>
 #include <sdktools>
 #include <sdkhooks>
-// #include <l4d2_airstrike>
+#include <l4d2_airstrike>
 #define PLUGIN_SKILL_NAME	"Airstrike"
 #define CVAR_FLAGS			FCVAR_NOTIFY
 #define CHAT_TAG			"\x03[Airstrike] \x05"
