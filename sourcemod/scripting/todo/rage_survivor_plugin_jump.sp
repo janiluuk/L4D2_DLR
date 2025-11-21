@@ -50,12 +50,12 @@ public OnPluginStart()
 	HookEvent("player_jump", Event_PlayerJump);
 	HookEvent("player_jump_apex", Event_PlayerJumpApex);
 	
-	g_iSlotAbility = DLR_RegSlot("ability");
-	DLR_RegPerk(g_iSlotAbility, "bunnyhop", 5, 70, 5, 0.1);
-	DLR_RegPerk(g_iSlotAbility, "doublejump", 2, 80, 5, 0.1);
-	DLR_RegPerk(g_iSlotAbility, "highjump", 4, 50, 5, 0.1);
-	DLR_RegPerk(g_iSlotAbility, "longjump", 4, 60, 5, 0.1);
-	DLR_RegPerk(g_iSlotAbility, "movespeed", 5, 90, 5, 0.1);
+	g_iSlotAbility = Rage_RegSlot("ability");
+	Rage_RegPerk(g_iSlotAbility, "bunnyhop", 5, 70, 5, 0.1);
+	Rage_RegPerk(g_iSlotAbility, "doublejump", 2, 80, 5, 0.1);
+	Rage_RegPerk(g_iSlotAbility, "highjump", 4, 50, 5, 0.1);
+	Rage_RegPerk(g_iSlotAbility, "longjump", 4, 60, 5, 0.1);
+	Rage_RegPerk(g_iSlotAbility, "movespeed", 5, 90, 5, 0.1);
 }
 
 float g_fGravity, g_fJumpHeight, g_fDuckHeight, g_fCalmTime;
@@ -68,7 +68,7 @@ public void UpdateCache(ConVar cvar, const char[] oldValue, const char[] newValu
 	g_fCalmTime = g_pCvarCalmTime.FloatValue;
 }
 
-public Action DLR_OnGetPerkName(int client, const char[] name, int level, char[] result, int maxlen)
+public Action Rage_OnGetPerkName(int client, const char[] name, int level, char[] result, int maxlen)
 {
 	if(!strcmp(name, "bunnyhop"))
 		FormatEx(result, maxlen, "Bunnyhop");
@@ -86,7 +86,7 @@ public Action DLR_OnGetPerkName(int client, const char[] name, int level, char[]
 	return Plugin_Changed;
 }
 
-public Action DLR_OnGetPerkDescription(int client, const char[] name, int level, char[] result, int maxlen)
+public Action Rage_OnGetPerkDescription(int client, const char[] name, int level, char[] result, int maxlen)
 {
 	if(!strcmp(name, "bunnyhop"))
 		FormatEx(result, maxlen, "Hold space to bunnyhop");
@@ -102,7 +102,7 @@ public Action DLR_OnGetPerkDescription(int client, const char[] name, int level,
 	return Plugin_Changed;
 }
 
-public void DLR_OnPerkPost(int client, int level, const char[] perk)
+public void Rage_OnPerkPost(int client, int level, const char[] perk)
 {
 	if(!strcmp(perk, "bunnyhop"))
 		g_iLevelBHop[client] = level;
@@ -119,13 +119,13 @@ public void DLR_OnPerkPost(int client, int level, const char[] perk)
 bool g_bJumpReleased[MAXPLAYERS+1], g_bFirstJump[MAXPLAYERS+1];
 int g_iCountBHop[MAXPLAYERS+1], g_iCountMulJmp[MAXPLAYERS+1];
 
-public void DLR_OnLoad(int client)
+public void Rage_OnLoad(int client)
 {
-	g_iLevelBHop[client] = DLR_GetClientPerk(client, "bunnyhop");
-	g_iLevelDouble[client] = DLR_GetClientPerk(client, "doublejump");
-	g_iLevelHigh[client] = DLR_GetClientPerk(client, "highjump");
-	g_iLevelFar[client] = DLR_GetClientPerk(client, "longjump");
-	g_iLevelSpeed[client] = DLR_GetClientPerk(client, "movespeed");
+	g_iLevelBHop[client] = Rage_GetClientPerk(client, "bunnyhop");
+	g_iLevelDouble[client] = Rage_GetClientPerk(client, "doublejump");
+	g_iLevelHigh[client] = Rage_GetClientPerk(client, "highjump");
+	g_iLevelFar[client] = Rage_GetClientPerk(client, "longjump");
+	g_iLevelSpeed[client] = Rage_GetClientPerk(client, "movespeed");
 }
 
 public void Event_PlayerSpawn(Event event, const char[] eventName, bool dontBroadcast)
@@ -134,11 +134,11 @@ public void Event_PlayerSpawn(Event event, const char[] eventName, bool dontBroa
 	if(!IsValidClient(client))
 		return;
 	
-	g_iLevelBHop[client] = DLR_GetClientPerk(client, "bunnyhop");
-	g_iLevelDouble[client] = DLR_GetClientPerk(client, "doublejump");
-	g_iLevelHigh[client] = DLR_GetClientPerk(client, "highjump");
-	g_iLevelFar[client] = DLR_GetClientPerk(client, "longjump");
-	g_iLevelSpeed[client] = DLR_GetClientPerk(client, "movespeed");
+	g_iLevelBHop[client] = Rage_GetClientPerk(client, "bunnyhop");
+	g_iLevelDouble[client] = Rage_GetClientPerk(client, "doublejump");
+	g_iLevelHigh[client] = Rage_GetClientPerk(client, "highjump");
+	g_iLevelFar[client] = Rage_GetClientPerk(client, "longjump");
+	g_iLevelSpeed[client] = Rage_GetClientPerk(client, "movespeed");
 	
 	// SDKUnhook(client, SDKHook_PreThinkPost, EntHook_PreThinkPost);
 	// SDKHook(client, SDKHook_PreThinkPost, EntHook_PreThinkPost);
