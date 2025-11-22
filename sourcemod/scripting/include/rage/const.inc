@@ -187,7 +187,7 @@ stock String:SpecialReadyTips[][] =
 	"You can plant mines or use cloak again",
 	"Berzerk mode is ready!",
 	"You can deploy or throw armoring grenades again",
-	""
+	"Brute force is ready to unleash again"
 };
 
 enum BombType {

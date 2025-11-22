@@ -3,23 +3,13 @@
 
 #include <sourcemod>
 #include <sdktools>
+#include <rage/skills>
 
 #define PLUGIN_VERSION "1.0"
 #define PLUGIN_SKILL_NAME "Nightvision"
 #define PLUGIN_DESCRIPTION "Toggle nightvision goggles"
 
 /****************************************************/
-#tryinclude <RageCore>
-#if !defined _RageCore_included
-    // Optional native from Rage Survivor
-    native void OnSpecialSkillSuccess(int client, char[] skillName);
-    native void OnSpecialSkillFail(int client, char[] skillName, char[] reason);
-    native void GetPlayerSkillName(int client, char[] skillName, int size);
-    native int RegisterRageSkill(char[] skillName, int type);
-    native int GetPlayerClassName(int client, char[] className, int size);
-#endif
-/****************************************************/
-
 public Plugin myinfo =
 {
     name = "[Rage] Nightvision",
@@ -30,7 +20,7 @@ public Plugin myinfo =
 };
 
 int g_iClassID = -1;
-bool g_bRage;
+bool g_bRageAvailable = false;
 
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
 {
@@ -47,6 +37,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
     MarkNativeAsOptional("GetPlayerClassName");
     MarkNativeAsOptional("RegisterRageSkill");
     MarkNativeAsOptional("Rage_OnPluginState");
+    RageSkills_MarkNativesOptional();
 
     return APLRes_Success;
 }
@@ -59,25 +50,41 @@ public void OnPluginStart()
 
 public void OnAllPluginsLoaded()
 {
-    g_bRage = LibraryExists("rage_survivor");
-    if (g_bRage && g_iClassID == -1)
+    RageSkills_Refresh(PLUGIN_SKILL_NAME, 0, g_iClassID, g_bRageAvailable);
+}
+
+public void OnLibraryAdded(const char[] name)
+{
+    RageSkills_OnLibraryAdded(name, PLUGIN_SKILL_NAME, 0, g_iClassID, g_bRageAvailable);
+}
+
+public void OnLibraryRemoved(const char[] name)
+{
+    if (StrEqual(name, RAGE_PLUGIN_NAME, false))
     {
-        g_iClassID = RegisterRageSkill(PLUGIN_SKILL_NAME, 0);
+        g_iClassID = -1;
     }
+
+    RageSkills_OnLibraryRemoved(name, g_bRageAvailable);
 }
 
 public void Rage_OnPluginState(char[] plugin, int state)
 {
-    if (StrEqual(plugin, "rage_survivor"))
+    if (!StrEqual(plugin, RAGE_PLUGIN_NAME, false))
+        return;
+
+    if (state == 1)
     {
-        if (state == 1 && g_iClassID == -1)
+        g_bRageAvailable = true;
+        if (g_iClassID == -1)
         {
             g_iClassID = RegisterRageSkill(PLUGIN_SKILL_NAME, 0);
         }
-        else if (state == 0)
-        {
-            g_iClassID = -1;
-        }
+    }
+    else
+    {
+        g_bRageAvailable = false;
+        g_iClassID = -1;
     }
 }
 

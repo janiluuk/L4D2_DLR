@@ -268,26 +268,8 @@
 #include <clientprefs>
 #include <sdktools>
 #include <sdkhooks>
+#include <rage/skills>
 
-
-
-//Rage
-#if !defined REQUIRE_PLUGIN
-#define REQUIRE_PLUGIN
-#endif
-#tryinclude <RageCore>
-
-#if !defined _RageCore_included
-	// Optional native from Rage Survivor
-	native void OnSpecialSkillSuccess(int client, char[] skillName);
-	native void OnSpecialSkillFail(int client, char[] skillName, char[] reason);
-	native void GetPlayerSkillName(int client, char[] skillName, int size);
-	native int FindSkillIdByName(char[] skillName);
-	native int RegisterRageSkill(char[] skillName, int type);
-    #define Rage_PLUGIN_NAME = "rage_survivor"
-#endif
-
-bool	Rage_Available;
 
 
 // DEFINES
@@ -593,6 +575,7 @@ Handle g_hCookie;
 ArrayList g_hAlAcid;
 bool g_bAcidSpawn;
 int g_iClassID = -1;
+bool g_bRageAvailable = false;
 
 enum
 {
@@ -688,20 +671,51 @@ public int OnCustomCommand(char[] name, int client, int entity, int type)
 	return 1;
 }
 
+public int OnSpecialSkillUsed(int client, int skill, int type)
+{
+	char skillName[32];
+	GetPlayerSkillName(client, skillName, sizeof(skillName));
+	if (!StrEqual(skillName, PLUGIN_SKILL_NAME))
+	{
+		return 0;
+	}
+
+	if (!client || !IsClientInGame(client) || !IsPlayerAlive(client))
+	{
+		return 0;
+	}
+
+	int medicIndex = INDEX_MEDIC + 1;
+	if (DoSpawn(client, medicIndex, true) > 0)
+	{
+		OnSpecialSkillSuccess(client, PLUGIN_SKILL_NAME);
+		return 1;
+	}
+
+	OnSpecialSkillFail(client, PLUGIN_SKILL_NAME, "spawn_failed");
+	return 0;
+}
+
 public void Rage_OnPluginState(char[] plugin, int pluginstate)
 {
+	if( !StrEqual(plugin, RAGE_PLUGIN_NAME, false) )
+		return;
 
-    if(StrEqual(plugin,"rage_survivor") && pluginstate == 1)
+	if( pluginstate == 1 )
 	{
 		SetConVarBool(g_hCvarAllow, true);
-		Rage_Available = true;	
-		g_iClassID = RegisterRageSkill(PLUGIN_SKILL_NAME, 0);
+		g_bRageAvailable = true;
 
+		if( g_iClassID == -1 )
+		{
+			g_iClassID = RegisterRageSkill(PLUGIN_SKILL_NAME, 0);
+		}
 	}
-    else if(StrEqual(plugin, "rage_survivor") && pluginstate == 0)
+	else
 	{
 		SetConVarBool(g_hCvarAllow, false);
-		Rage_Available = false;
+		g_bRageAvailable = false;
+		g_iClassID = -1;
 	}
 }
 
@@ -868,9 +882,7 @@ public void OnPluginStart()
 		LoadDataConfig();
 		IsAllowed();
 	}
-	if (Rage_Available == true) {
-		g_iClassID = RegisterRageSkill(PLUGIN_SKILL_NAME, 0);
-	}
+	RageSkills_Refresh(PLUGIN_SKILL_NAME, 0, g_iClassID, g_bRageAvailable);
 	g_iClassTank = g_bLeft4Dead2 ? 8 : 5;
 
 	if( g_bLeft4Dead2 )
@@ -961,6 +973,7 @@ MarkNativeAsOptional("L4D_AngularVelocity");
 	MarkNativeAsOptional("OnSpecialSkillFail");	
 	MarkNativeAsOptional("OnSpecialSkillSuccess");	
 	MarkNativeAsOptional("Rage_OnPluginState");	
+	RageSkills_MarkNativesOptional();
 	g_bLateLoad = late;
 
 	return APLRes_Success;
@@ -968,11 +981,7 @@ MarkNativeAsOptional("L4D_AngularVelocity");
 
 public void OnAllPluginsLoaded()
 {
-        Rage_Available = LibraryExists("rage_survivor");
-
-        if (g_iClassID != -1) return;
-
-        g_iClassID = RegisterRageSkill(PLUGIN_SKILL_NAME, 0);
+	RageSkills_Refresh(PLUGIN_SKILL_NAME, 0, g_iClassID, g_bRageAvailable);
 }
 
 public void OnLibraryAdded(const char[] sName)
@@ -981,10 +990,6 @@ public void OnLibraryAdded(const char[] sName)
         {
                 g_bLeft4DHooks = true;
         }
-        else if( strcmp(sName, "rage_survivor") == 0 )
-        {
-                Rage_Available = true;
-        }
         else if( g_bLeft4Dead2 && strcmp(sName, "l4d2_airstrike") == 0 )
         {
                 g_bAirstrike = true;
@@ -992,6 +997,7 @@ public void OnLibraryAdded(const char[] sName)
                 if( g_bLateLoad )
                         g_bAirstrikeValid = true;
         }
+	RageSkills_OnLibraryAdded(sName, PLUGIN_SKILL_NAME, 0, g_iClassID, g_bRageAvailable);
 }
 public void OnLibraryRemoved(const char[] sName)
 {
@@ -999,12 +1005,13 @@ public void OnLibraryRemoved(const char[] sName)
         {
                 g_bLeft4DHooks = false;
         }
-        else if( strcmp(sName, "rage_survivor") == 0 ) {
-                Rage_Available = false;
-                g_iClassID = -1;
-        }
         else if( g_bLeft4Dead2 && strcmp(sName, "l4d2_airstrike") == 0 )
                 g_bAirstrike = true;
+	if( StrEqual(sName, RAGE_PLUGIN_NAME, false) )
+	{
+		g_iClassID = -1;
+	}
+	RageSkills_OnLibraryRemoved(sName, g_bRageAvailable);
 }
 
 public void OnPluginEnd()

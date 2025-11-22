@@ -5,6 +5,7 @@
 #include <sdktools>
 #include <sdktools_functions>
 #include <sdkhooks>
+#include <rage/skills>
 #define PLUGIN_NAME "[Rage Plugin] Portable turret & gatling guns."
 #define PLUGIN_VERSION "4.5"
 
@@ -110,26 +111,11 @@ public Plugin myinfo =
 	url 		= "https://steamcommunity.com/groups/RageGaming"
 }
 
-/****************************************************/
-#undef REQUIRE_PLUGIN
-/****************************************************/
-#tryinclude <RageCore>
-#if !defined _RageCore_included
-	// Optional native from Rage Survivor
-	native void OnSpecialSkillSuccess(int client, char[] skillName);
-	native void OnSpecialSkillFail(int client, char[] skillName, char[] reason);
-	native void GetPlayerSkillName(int client, char[] skillName, int size);
-	native int FindSkillIdByName(char[] skillName);
-	native int RegisterRageSkill(char[] skillName, int type);
-	#define Rage_PLUGIN_NAME	"rage_survivor"
-#endif
-/****************************************************/
-
 int MachineCount = 0;
 
 int g_iClassID = -1;
 
-static bool Rage_Available = false;
+bool g_bRageAvailable = false;
 
 static bool bLeft4DeadTwo = true;
 static bool bMapStarted;
@@ -356,6 +342,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	MarkNativeAsOptional("GetPlayerSkillName");	
 	MarkNativeAsOptional("RegisterRageSkill");
 	MarkNativeAsOptional("Rage_OnPluginState");	
+	RageSkills_MarkNativesOptional();
 
 	return APLRes_Success;
 }
@@ -389,39 +376,45 @@ public int OnSpecialSkillUsed(int iClient, int skill, int type)
 
 public void OnAllPluginsLoaded()
 {
-Rage_Available = LibraryExists("rage_survivor");
-
-	if (g_iClassID != -1) return;
-	g_iClassID = RegisterRageSkill(PLUGIN_SKILL_NAME, 0);
- 
+	RageSkills_Refresh(PLUGIN_SKILL_NAME, 0, g_iClassID, g_bRageAvailable);
 }
 
 public void Rage_OnPluginState(char[] plugin, int pluginstate)
 {
+	if( !StrEqual(plugin, RAGE_PLUGIN_NAME, false) )
+		return;
+
 	if( pluginstate == 1)
 	{
 		SetConVarBool(hCvar_Machine_Enabled, true);
-		g_iClassID = RegisterRageSkill(PLUGIN_SKILL_NAME, 0);
+		g_bRageAvailable = true;
+
+		if( g_iClassID == -1 )
+		{
+			g_iClassID = RegisterRageSkill(PLUGIN_SKILL_NAME, 0);
+		}
 	}
 	else if( pluginstate == 0)
 	{
 		SetConVarBool(hCvar_Machine_Enabled, false);
-		if (g_iClassID > -1) {
-			g_iClassID = -1;
-		}
+		g_bRageAvailable = false;
+		g_iClassID = -1;
 	}
 }
 
 public void OnLibraryAdded(const char[] sName)
 {
-if(StrEqual(sName, "rage_survivor"))
-Rage_Available = true;
+	RageSkills_OnLibraryAdded(sName, PLUGIN_SKILL_NAME, 0, g_iClassID, g_bRageAvailable);
 }
 
 public void OnLibraryRemoved(const char[] sName)
 {
-if(StrEqual(sName, "rage_survivor"))
-Rage_Available = false;
+	if( StrEqual(sName, RAGE_PLUGIN_NAME, false) )
+	{
+		g_iClassID = -1;
+	}
+
+	RageSkills_OnLibraryRemoved(sName, g_bRageAvailable);
 }
 
 public void OnPluginStart()
@@ -579,12 +572,7 @@ public void OnPluginStart()
 //	HookEvent("finale_vehicle_leaving", Event_FinaleVehicleLeaving, EventHookMode_PostNoCopy);
 //	HookEvent("finale_vehicle_incoming", Event_FinaleVehicleInComing, EventHookMode_PostNoCopy); // L4D2
 
-	if (Rage_Available) {
-
-		g_iClassID = RegisterRageSkill(PLUGIN_SKILL_NAME, 0);
-	} else {
-		g_iClassID = -1;
-	}
+	RageSkills_Refresh(PLUGIN_SKILL_NAME, 0, g_iClassID, g_bRageAvailable);
 	if (g_iClassID < 0) { 
 		RegAdminCmd("sm_machine", CMD_SpawnMachine, ADMFLAG_ROOT, "Creates a machine gun in front of the player.");
 		RegConsoleCmd("sm_removemachine", CMD_RemoveMachine, "Removes the machine gun in the crosshairs.");
@@ -1937,7 +1925,7 @@ void CreateMachine(int client, int iMachineGunModel, int iSpecialType = NULL)
 	{
 		char reason[128];
 		Format(reason, sizeof(reason), "%t", "Too Many Machine Guns",	MachineCount, iCvar_MachineMaxAllowed);
-		if (Rage_Available) { 
+		if (g_bRageAvailable) { 
 			OnSpecialSkillFail(client, PLUGIN_SKILL_NAME, reason);
 		}
 		CustomPrintToChat(client, "%s", reason);
@@ -2023,7 +2011,7 @@ void CreateMachine(int client, int iMachineGunModel, int iSpecialType = NULL)
 		}
 
 		MachineCount++;
-		if (Rage_Available)
+		if (g_bRageAvailable)
 			OnSpecialSkillSuccess(client, PLUGIN_SKILL_NAME);
 
 		SDKUnhook(iEntity, SDKHook_OnTakeDamagePost, OnTakeDamagePost);

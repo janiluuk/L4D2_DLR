@@ -14,6 +14,7 @@
 #include <sourcemod>
 #include <sdktools>
 #include <sdkhooks>
+#include <rage/skills>
 //#include <sendproxy>
 //https://forums.alliedmods.net/showpost.php?p=2210301&postcount=270
 //#include <sceneprocessor>
@@ -59,6 +60,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 int g_iClassID = -1;
+bool g_bRageAvailable = false;
 
 int g_Ragdoll[MAXPLAYERS+1] = {-1, ...};
 int g_BloodPool[MAXPLAYERS+1] = {-1, ...};
@@ -109,18 +111,6 @@ Handle hOnRideEnded = null;
 #define SIG_STARTACTIVATIONTIMER_WINDOWS "\\x55\\x8B\\xEC\\xF3\\x0F\\x10\\x4D\\x0C\\x0F\\x57\\xC0"
 
 ConVar version_cvar;
-/****************************************************/
-#tryinclude <RageCore>
-#if !defined _RageCore_included
-	// Optional native from Rage Survivor
-	native void OnSpecialSkillSuccess(int client, char[] skillName);
-	native void OnSpecialSkillFail(int client, char[] skillName, char[] reason);
-	native void GetPlayerSkillName(int client, char[] skillName, int size);
-	native int FindSkillIdByName(char[] skillName);
-	native int RegisterRageSkill(char[] skillName, int type);
-	#define Rage_PLUGIN_NAME	"rage_survivor"
-#endif
-/****************************************************/
 
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
 {
@@ -137,6 +127,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	MarkNativeAsOptional("GetPlayerSkillName");	
 	MarkNativeAsOptional("RegisterRageSkill");
 	MarkNativeAsOptional("Rage_OnPluginState");	
+	RageSkills_MarkNativesOptional();
 	return APLRes_Success;
 
 }
@@ -247,28 +238,44 @@ public void OnPluginStart()
 
 public void OnAllPluginsLoaded()
 {
-	
-	if (g_iClassID != -1) return;
-	if (LibraryExists("rage_survivor")) {
-		g_iClassID = RegisterRageSkill(PLUGIN_SKILL_NAME, 0);
+	RageSkills_Refresh(PLUGIN_SKILL_NAME, 0, g_iClassID, g_bRageAvailable);
+}
+
+public void OnLibraryAdded(const char[] name)
+{
+	RageSkills_OnLibraryAdded(name, PLUGIN_SKILL_NAME, 0, g_iClassID, g_bRageAvailable);
+}
+
+public void OnLibraryRemoved(const char[] name)
+{
+	if( StrEqual(name, RAGE_PLUGIN_NAME, false) )
+	{
+		g_iClassID = -1;
 	}
- 
+
+	RageSkills_OnLibraryRemoved(name, g_bRageAvailable);
 }
 
 public void Rage_OnPluginState(char[] plugin, int pluginstate)
 {
-	if( pluginstate == 1)
+	if( !StrEqual(plugin, RAGE_PLUGIN_NAME, false) )
+		return;
+
+	bool enabled = (pluginstate == 1);
+	SetConVarBool(DeadRinger_EnableComm, enabled);
+
+	if( enabled )
 	{
-		SetConVarBool(DeadRinger_EnableComm, true);
+		g_bRageAvailable = true;
 		if (g_iClassID == -1)
-		g_iClassID = RegisterRageSkill(PLUGIN_SKILL_NAME, 0);
-	}
-	else if( pluginstate == 0)
-	{
-		SetConVarBool(DeadRinger_EnableComm, false);
-		if (g_iClassID > -1) {
-			g_iClassID = -1;
+		{
+			g_iClassID = RegisterRageSkill(PLUGIN_SKILL_NAME, 0);
 		}
+	}
+	else
+	{
+		g_bRageAvailable = false;
+		g_iClassID = -1;
 	}
 }
 

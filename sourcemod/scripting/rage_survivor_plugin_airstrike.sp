@@ -318,6 +318,13 @@ public void OnLibraryRemoved(const char[] name)
 {
 	if( strcmp(name, "l4d2_airstrike.triggers") == 0 )
 		g_bPluginTrigger = false;
+
+	if( StrEqual(name, RAGE_PLUGIN_NAME, false) )
+	{
+		g_iClassID = -1;
+	}
+
+	RageSkills_OnLibraryRemoved(name, g_bRageAvailable);
 }
 
 public void OnMapStart()
