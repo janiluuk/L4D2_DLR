@@ -1,6 +1,6 @@
-# L4D2 Rage edition
+# L4D2: Rage Edition
 
-A brutal anniversary overhaul of the infamous DLR mode for Left 4 Dead 2. L4D2 Rage edition resurrects the 2013 classic with modular perks, class-based abilities and a plugin-friendly core that lets you sculpt chaotic co-op sessions.
+A celebratory remix of Left 4 Dead 2 that turns every round into a playable action movie. Rage Edition keeps the co-op chaos you love and layers on bold classes, dramatic abilities, and a stack of quality-of-life touches that make the whole server feel alive.
 
 ## Core Features
 - Sourcemod 1.21 compatible
@@ -13,22 +13,20 @@ A brutal anniversary overhaul of the infamous DLR mode for Left 4 Dead 2. L4D2 R
 - Rewritten invisibility and fixed gun reload glitches
 - Debug modes, admin menu and useful tools
 
-## Class Highlights
-### Soldier
-- Faster movement and reduced damage
-- Ninja-level melee rate
-- Aim and press `!skill` to call in an airstrike
-- **Toggleable night vision**
+## Play your way
 
-### Athlete
-- Faster movement and a parachute
-- Mobility perks: bunnyhop, double-jump, high-jump and long-jump
-- Jump karate kicks that knock enemies down
+### Soldierboy
+- Moves faster, shrugs off more hits, and slashes like a blender.
+- Aims and taps `!skill` to rain down an airstrike.
+- Flips night vision on or off whenever the fight slips into darkness.
 
-### Commando
-- Configurable weapon-specific damage modifiers
-- Build rage and press `!skill` to trigger Berserk; immune to tank knockdowns
-- Stomps downed infected and reloads faster
+### Ninja
+- Built for motion: sprint boosts, double jumps, and mid-air karate kicks.
+- Deploys a parachute to float over chaos or escape a wipe.
+
+### Trooper
+- Tunes damage per weapon, reloads on instinct, and shrugs off tank knockdowns.
+- Builds rage meter to unleash a Berserk rush that melts specials.
 
 ### Medic
 - Expanded spawn options
@@ -64,42 +62,21 @@ A brutal anniversary overhaul of the infamous DLR mode for Left 4 Dead 2. L4D2 R
 - **Airstrike** – Soldier aims and hits `!skill` to mark a target for a missile barrage.
 - **3rd Person Mode** – Switch to shoulder cam via the Game Options menu (`!rage`); modes include Off, Melee-only, and Always, your selection is remembered per-player, and you can bind a key (e.g., Alt) to `+rage_menu` to hold the menu open while choosing.
 
-All special skills provide a corresponding `sm_` console command so abilities can be activated consistently regardless of keybinds.
+## Toys, tricks, and server spice
+- **Prototype grenades** – Equip one and experiment with gravity wells, lightning storms, medic clouds, and more just by cycling the throw style.
+- **Music player** – Type `!music` to choose the soundtrack, skip songs, or go silent. Preferences stick with you between maps.
+- **Away toggle** – Need a breather? Mark yourself AFK directly from the menu and hop back in when ready.
+- **Multiple equipment mode** – Pick how forgiving pickups are, from classic single-use kits to double-tap weapon swaps.
+- **Voting hub** – Launch game mode and map votes without fumbling chat commands.
+- **Command parity** – Every feature also has an `sm_` console command so you can bind keys or build macros exactly how you like.
 
-### Adding Music
-Store 44.1 kHz MP3s on a fast‑download server and list them in `data/music_mapstart.txt` (and optionally `music_mapstart_newly.txt` for first‑time players). Players can open `!music` to adjust volume or disable all custom tracks; their choices are saved in cookies until they opt back in.
+## Soundtrack corner
+Drop a list of 44.1 kHz MP3s into the supplied music text files, point your fast-download host at them, and the plugin does the rest. First-time players can even hear a special welcome track if you enable the option.
 
-## Game Menu & Guide
-A full-screen menu replaces tiny SourceMod popups. Navigate with **W/S** and **A/D**. Admins open the game menu with `sm_rage` and can launch the guide with `sm_guide` or `sm_ragetutorial`; players see the same overlay when using options like the music player.
+## Admin corner
+Need to tidy the battlefield? `!adm` opens a dedicated panel with spawn helpers, restart controls, god mode, and slow-motion toggles. Everything is grouped for quick decisions mid-round.
 
-## Roadmap
-- Cleaner UI with unified hint system and game instructor integration
-- Random game modes (melee-only rounds, jockey race, horror mode, etc.)
-- Class indicators above players and expanded infected skills
-- Reworked missile plugin and turret configuration
-- Docker image with integrated RCON web admin
-- Skill editor for generating new perks/classes
-- Additional co-op mechanics (struggles, transformations, etc.)
-
-## Developing Plugins
-Include `RageCore.sp` and implement the required callbacks:
-
-```sourcepawn
-forward OnSpecialSkillUsed(int client, const char[] skillName);
-native void OnSpecialSkillSuccess(int client, const char[] skillName);
-native void OnSpecialSkillFail(int client, const char[] skillName, const char[] reason);
-native int RegisterRageSkill(char[] skillName);
-```
-
-Helper natives:
-
-```sourcepawn
-forward FindSkillIdByName(const char[] skillName, int &skillId);
-native int GetPlayerClassName(int client);
-```
-
-Add `RageCore.sp` to your include folder and register your skill during `OnPluginStart` or `Rage_OnPluginState`. See the multiturret plugin for a complete example.
-
-See https://forums.alliedmods.net/showthread.php?t=273312 for more info.
+## Ready to tinker?
+Rage Edition is built from modular SourceMod plugins, so you can add new talents, swap out effects, or write your own class packs without touching the core. Check the `sourcemod/scripting` folder for clean, well-documented examples.
 
 Grab the files, drop them on your server, tweak `configs/rage_class_skills.cfg` to taste, and let the rage weekend begin.
