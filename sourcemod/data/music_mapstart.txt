@@ -1,0 +1,4 @@
+# Each non-empty line should contain a relative sound path that SourceMod can precache.
+# Prefix custom files with "sound/" when packing them into the VPK/fastDL.
+ui/l4d_music/kate/kate_hopeful.wav
+music/stingers/battle_chatter.wav

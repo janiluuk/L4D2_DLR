@@ -1,6 +1,9 @@
 
 #define PLUGIN_VERSION "0.3"
 #include <sourcemod>
+#include <sdktools>
+#include <sdkhooks>
+#include <clientprefs>
 #include <extra_menu>
 #include <rage_survivor_guide>
 
@@ -73,14 +76,61 @@ int g_iMenuID;
 int g_iGuideOptionIndex = -1;
 int g_iSelectableEntryCount = 0;
 bool g_bGuideNativeAvailable = false;
+bool g_bExtraMenuLoaded = false;
+bool g_bMenuHeld[MAXPLAYERS + 1];
+
+enum ThirdPersonMode
+{
+    TP_Off = 0,
+    TP_MeleeOnly,
+    TP_Always
+};
+
+ThirdPersonMode g_ThirdPersonMode[MAXPLAYERS + 1];
+bool g_ThirdPersonActive[MAXPLAYERS + 1];
+Handle g_hThirdPersonCookie = INVALID_HANDLE;
 
 ConVar g_hCvarMPGameMode;
 ConVar g_hGameModeCvars[GAMEMODE_OPTION_COUNT];
+
+enum RageMenuOption
+{
+    Menu_GetKit = 0,
+    Menu_SetAway,
+    Menu_SelectTeam,
+    Menu_ChangeClass,
+    Menu_ViewRank,
+    Menu_VoteCustomMap,
+    Menu_VoteGameMode,
+    Menu_ThirdPerson,
+    Menu_MultiEquip,
+    Menu_HudToggle,
+    Menu_MusicToggle,
+    Menu_MusicVolume,
+    Menu_ChangeCharacter,
+    Menu_SpawnItems,
+    Menu_Reload,
+    Menu_ManageSkills,
+    Menu_ManagePerks,
+    Menu_ApplyEffect,
+    Menu_DebugMode,
+    Menu_HaltGame,
+    Menu_InfectedSpawn,
+    Menu_GodMode,
+    Menu_RemoveWeapons,
+    Menu_GameSpeed,
+    Menu_Guide
+};
 
 void AddGameModeOptions(int menu_id);
 void TrackSelectableEntry(EXTRA_MENU_TYPE type);
 void RefreshGuideLibraryStatus();
 bool TryShowGuideMenu(int client);
+bool DisplayRageMenu(int client, bool showHint);
+bool HasRageMenuAccess(int client);
+void ApplyThirdPersonMode(int client);
+void PersistThirdPersonMode(int client);
+bool IsMeleeWeapon(int weapon);
 
 // ====================================================================================================
 //					PLUGIN INFO
@@ -98,12 +148,23 @@ public void OnPluginStart()
 {
     RegAdminCmd("sm_rage", CmdRageMenu, ADMFLAG_ROOT);
     RegConsoleCmd("sm_guide", CmdRageGuideMenu, "Open the Rage tutorial guide");
+    RegConsoleCmd("+rage_menu", CmdRageMenuHoldStart, "Hold to open Rage menu");
+    RegConsoleCmd("-rage_menu", CmdRageMenuHoldEnd, "Release to close Rage menu");
+    HookEvent("player_spawn", Event_PlayerSpawn, EventHookMode_Post);
 
     g_hCvarMPGameMode = FindConVar("mp_gamemode");
 
     for (int i = 0; i < GAMEMODE_OPTION_COUNT; i++)
     {
         g_hGameModeCvars[i] = CreateConVar(g_sGameModeCvarNames[i], g_sGameModeDefaults[i], g_sGameModeDescriptions[i], FCVAR_NONE);
+    }
+
+    g_hThirdPersonCookie = RegClientCookie("rage_tp_mode", "Rage third person preference", CookieAccess_Public);
+
+    g_bExtraMenuLoaded = LibraryExists("extra_menu");
+    if (g_bExtraMenuLoaded)
+    {
+        OnLibraryAdded("extra_menu");
     }
 
     RefreshGuideLibraryStatus();
@@ -114,10 +175,65 @@ public void OnAllPluginsLoaded()
     RefreshGuideLibraryStatus();
 }
 
+public void OnClientPutInServer(int client)
+{
+    g_bMenuHeld[client] = false;
+    g_ThirdPersonActive[client] = false;
+    g_ThirdPersonMode[client] = TP_Off;
+    SDKHook(client, SDKHook_WeaponSwitchPost, OnWeaponSwitchPost);
+}
+
+public void OnClientDisconnect(int client)
+{
+    g_bMenuHeld[client] = false;
+    g_ThirdPersonActive[client] = false;
+    g_ThirdPersonMode[client] = TP_Off;
+}
+
+public void OnClientCookiesCached(int client)
+{
+    if (g_hThirdPersonCookie == INVALID_HANDLE || !IsClientInGame(client))
+    {
+        return;
+    }
+
+    char buffer[8];
+    GetClientCookie(client, g_hThirdPersonCookie, buffer, sizeof(buffer));
+    if (buffer[0] != '\0')
+    {
+        g_ThirdPersonMode[client] = view_as<ThirdPersonMode>(StringToInt(buffer));
+    }
+
+    ApplyThirdPersonMode(client);
+}
+
+public void Event_PlayerSpawn(Event event, const char[] name, bool dontBroadcast)
+{
+    int client = GetClientOfUserId(event.GetInt("userid"));
+    if (client <= 0 || !IsClientInGame(client))
+    {
+        return;
+    }
+
+    ApplyThirdPersonMode(client);
+}
+
+public Action OnWeaponSwitchPost(int client, int weapon)
+{
+    if (client <= 0 || !IsClientInGame(client))
+    {
+        return Plugin_Continue;
+    }
+
+    ApplyThirdPersonMode(client);
+    return Plugin_Continue;
+}
+
 public void OnLibraryAdded(const char[] name)
 {
     if (strcmp(name, "extra_menu") == 0)
     {
+        g_bExtraMenuLoaded = true;
         bool buttons_nums = false;
 
         g_iSelectableEntryCount = 0;
@@ -225,6 +341,7 @@ public void OnLibraryRemoved(const char[] name)
 {
     if (strcmp(name, "extra_menu") == 0)
     {
+        g_bExtraMenuLoaded = false;
         OnPluginEnd();
     }
 
@@ -245,15 +362,7 @@ public void OnPluginEnd()
 
 Action CmdRageMenu(int client, int args)
 {
-    if (client <= 0 || !IsClientInGame(client))
-    {
-        PrintToServer("[Rage] This command can only be used in-game.");
-        return Plugin_Handled;
-    }
-
-    PrintHintText(client, "Use W/S to move and A/D to select options.");
-    ExtraMenu_Display(client, g_iMenuID, MENU_TIME_FOREVER);
-
+    DisplayRageMenu(client, true);
     return Plugin_Handled;
 }
 
@@ -273,11 +382,47 @@ Action CmdRageGuideMenu(int client, int args)
     return Plugin_Handled;
 }
 
+Action CmdRageMenuHoldStart(int client, int args)
+{
+    if (client <= 0 || !IsClientInGame(client))
+    {
+        return Plugin_Handled;
+    }
+
+    if (g_bMenuHeld[client])
+    {
+        return Plugin_Handled;
+    }
+
+    if (DisplayRageMenu(client, false))
+    {
+        g_bMenuHeld[client] = true;
+    }
+
+    return Plugin_Handled;
+}
+
+Action CmdRageMenuHoldEnd(int client, int args)
+{
+    if (client <= 0 || !IsClientInGame(client))
+    {
+        return Plugin_Handled;
+    }
+
+    if (g_bMenuHeld[client])
+    {
+        CancelClientMenu(client, true);
+        g_bMenuHeld[client] = false;
+    }
+
+    return Plugin_Handled;
+}
+
 public void RageMenu_OnSelect(int client, int menu_id, int option, int value)
 {
     if (menu_id == g_iMenuID)
     {
-        PrintToChatAll("SELECTED %N Option: %d Value: %d", client, option, value);
+        // Option indexes are 0-based, matching the order entries are added.
 
         if (option == g_iGuideOptionIndex && g_iGuideOptionIndex != -1)
         {
@@ -290,17 +435,145 @@ public void RageMenu_OnSelect(int client, int menu_id, int option, int value)
 
         switch (option)
         {
-            case 0: ClientCommand(client, "sm_godmode @me");
-            case 1: ClientCommand(client, "sm_noclip @me");
-            case 2: ClientCommand(client, "sm_beacon @me");
-            case 3: PrintToChat(client, "Speed changed to %d", value);
-            case 4: PrintToChat(client, "Difficulty to %d", value);
-            case 5: PrintToChat(client, "Tester to %d", value);
-            case 6: ChangeGameModeByIndex(client, value);
-            case 7: PrintToChat(client, "Default value changed to %d", value);
-            case 8: PrintToChat(client, "Close after use %d", value);
-            case 9: PrintToChat(client, "Meter value %d", value);
-            case 10, 11, 12: PrintToChat(client, "Second page option %d", option - 9);
+            case Menu_GetKit:
+            {
+                PrintHintText(client, "Kit presets are not available yet.");
+            }
+            case Menu_SetAway:
+            {
+                PrintHintText(client, "Away mode is not available here.");
+            }
+            case Menu_SelectTeam:
+            {
+                PrintHintText(client, "Team selection is not available in this menu.");
+            }
+            case Menu_ChangeClass:
+            {
+                ClientCommand(client, "sm_class");
+            }
+            case Menu_ViewRank:
+            {
+                PrintHintText(client, "Ranking view is not available.");
+            }
+            case Menu_VoteCustomMap:
+            {
+                PrintHintText(client, "Custom map voting is not configured.");
+            }
+            case Menu_VoteGameMode:
+            {
+                ChangeGameModeByIndex(client, value);
+            }
+            case Menu_ThirdPerson:
+            {
+                if (value < 0 || value > 2)
+                {
+                    PrintHintText(client, "Invalid camera selection.");
+                    return;
+                }
+
+                ThirdPersonMode newMode = view_as<ThirdPersonMode>(value);
+                g_ThirdPersonMode[client] = newMode;
+                PersistThirdPersonMode(client);
+                ApplyThirdPersonMode(client);
+                PrintHintText(client, "Camera mode set to %s.", (newMode == TP_Always) ? "Always" : (newMode == TP_MeleeOnly) ? "Melee only" : "Off");
+            }
+            case Menu_MultiEquip:
+            {
+                PrintHintText(client, "Multiple equipment mode is not configured.");
+            }
+            case Menu_HudToggle:
+            {
+                PrintHintText(client, "HUD toggle is not configured.");
+            }
+            case Menu_MusicToggle:
+            {
+                if (value == 0)
+                {
+                    FakeClientCommand(client, "sm_music_pause");
+                    PrintHintText(client, "Music paused.");
+                }
+                else
+                {
+                    FakeClientCommand(client, "sm_music_play");
+                    FakeClientCommand(client, "sm_music"); // open menu for quick control
+                    PrintHintText(client, "Music playing. Use menu to change track.");
+                }
+            }
+            case Menu_MusicVolume:
+            {
+                // Value from ExtraMenu list index (0-10). Clamp defensively.
+                int vol = value;
+                if (vol < 0)
+                {
+                    vol = 0;
+                }
+                else if (vol > 10)
+                {
+                    vol = 10;
+                }
+
+                FakeClientCommand(client, "sm_music_volume %d", vol);
+                PrintHintText(client, "Music volume set to %d%%", vol * 10);
+            }
+            case Menu_ChangeCharacter:
+            {
+                PrintHintText(client, "Character change is not configured.");
+            }
+            case Menu_SpawnItems:
+            {
+                PrintHintText(client, "Item spawning is not available.");
+            }
+            case Menu_Reload:
+            {
+                PrintHintText(client, "Reload options are not available.");
+            }
+            case Menu_ManageSkills:
+            {
+                PrintHintText(client, "Skill management is not available.");
+            }
+            case Menu_ManagePerks:
+            {
+                PrintHintText(client, "Perk management is not available.");
+            }
+            case Menu_ApplyEffect:
+            {
+                PrintHintText(client, "Apply-effect option is not available.");
+            }
+            case Menu_DebugMode:
+            {
+                PrintHintText(client, "Debug mode toggle is not wired here.");
+            }
+            case Menu_HaltGame:
+            {
+                PrintHintText(client, "Halt game is not available.");
+            }
+            case Menu_InfectedSpawn:
+            {
+                PrintHintText(client, "Infected spawn toggle is not available.");
+            }
+            case Menu_GodMode:
+            {
+                PrintHintText(client, "God mode toggle is not available.");
+            }
+            case Menu_RemoveWeapons:
+            {
+                PrintHintText(client, "Remove weapons option is not available.");
+            }
+            case Menu_GameSpeed:
+            {
+                PrintHintText(client, "Game speed control is not available.");
+            }
+            case Menu_Guide:
+            {
+                if (!TryShowGuideMenu(client))
+                {
+                    PrintToChat(client, "[Rage] Tutorial plugin is not available right now.");
+                }
+            }
+            default:
+            {
+                PrintHintText(client, "This menu option is not configured.");
+            }
         }
     }
 }
@@ -310,7 +583,7 @@ public void ExtraMenu_OnSelect(int client, int menu_id, int option, int value)
     RageMenu_OnSelect(client, menu_id, option, value);
 }
 
-void TrackSelectableEntry(EXTRA_MENU_TYPE type)
+public void TrackSelectableEntry(EXTRA_MENU_TYPE type)
 {
     if (type != MENU_ENTRY)
     {
@@ -318,12 +591,12 @@ void TrackSelectableEntry(EXTRA_MENU_TYPE type)
     }
 }
 
-void RefreshGuideLibraryStatus()
+public void RefreshGuideLibraryStatus()
 {
     g_bGuideNativeAvailable = (GetFeatureStatus(FeatureType_Native, "RageGuide_ShowMainMenu") == FeatureStatus_Available);
 }
 
-bool TryShowGuideMenu(int client)
+public bool TryShowGuideMenu(int client)
 {
     if (!g_bGuideNativeAvailable || client <= 0 || !IsClientInGame(client))
     {
@@ -396,4 +669,94 @@ void ChangeGameModeByIndex(int client, int modeIndex)
     LogAction(client, -1, "\"%L\" changed game mode to \"%s\"", client, targetMode);
     ShowActivity2(client, "[Rage] ", "changed game mode to %s.", g_sGameModeNames[modeIndex]);
     PrintToChatAll("[Rage] %N switched the game mode to %s (\"%s\").", client, g_sGameModeNames[modeIndex], targetMode);
+}
+
+public bool HasRageMenuAccess(int client)
+{
+    return client > 0 && IsClientInGame(client) && CheckCommandAccess(client, "sm_rage", ADMFLAG_ROOT);
+}
+
+public bool DisplayRageMenu(int client, bool showHint)
+{
+    if (!HasRageMenuAccess(client))
+    {
+        PrintToChat(client, "[Rage] You do not have access to this menu.");
+        return false;
+    }
+
+    if (!g_bExtraMenuLoaded || g_iMenuID == 0)
+    {
+        PrintToChat(client, "[Rage] Menu system is not ready yet.");
+        return false;
+    }
+
+    if (showHint)
+    {
+        PrintHintText(client, "Hold ALT (bind \"+rage_menu\") and use W/S/A/D to navigate.");
+    }
+
+    ExtraMenu_Display(client, g_iMenuID, MENU_TIME_FOREVER);
+    return true;
+}
+
+public bool IsMeleeWeapon(int weapon)
+{
+    if (weapon <= 0 || !IsValidEntity(weapon))
+    {
+        return false;
+    }
+
+    char cls[64];
+    GetEntityClassname(weapon, cls, sizeof(cls));
+    return StrContains(cls, "melee", false) != -1 || StrEqual(cls, "weapon_chainsaw", false);
+}
+
+public void PersistThirdPersonMode(int client)
+{
+    if (g_hThirdPersonCookie == INVALID_HANDLE || IsFakeClient(client))
+    {
+        return;
+    }
+
+    char buffer[8];
+    IntToString(view_as<int>(g_ThirdPersonMode[client]), buffer, sizeof(buffer));
+    SetClientCookie(client, g_hThirdPersonCookie, buffer);
+}
+
+public void ApplyThirdPersonMode(int client)
+{
+    if (client <= 0 || !IsClientInGame(client) || !IsPlayerAlive(client))
+    {
+        return;
+    }
+
+    bool shouldThird = false;
+    switch (g_ThirdPersonMode[client])
+    {
+        case TP_MeleeOnly:
+        {
+            int weapon = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
+            shouldThird = IsMeleeWeapon(weapon);
+        }
+        case TP_Always:
+        {
+            shouldThird = true;
+        }
+    }
+
+    if (shouldThird == g_ThirdPersonActive[client])
+    {
+        return;
+    }
+
+    g_ThirdPersonActive[client] = shouldThird;
+
+    if (shouldThird)
+    {
+        ClientCommand(client, "thirdpersonshoulder");
+    }
+    else
+    {
+        ClientCommand(client, "firstperson");
+    }
 }

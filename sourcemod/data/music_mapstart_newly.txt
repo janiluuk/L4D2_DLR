@@ -1,0 +1,3 @@
+# This file is used when "l4d_music_mapstart_use_firstconnect_list 1" is enabled.
+# Keep the format identical to data/music_mapstart.txt.
+ui/l4d_music/kate/kate_hopeful.wav

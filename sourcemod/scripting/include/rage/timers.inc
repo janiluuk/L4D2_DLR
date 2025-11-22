@@ -12,6 +12,34 @@ static void TryShowAirstrike(float origin[3])
         }
 }
 
+static bool PressedSpecialSkillButton(int client, int buttons)
+{
+	bool pressed = (buttons & IN_ZOOM) != 0;
+	bool wasPressed = (ClientData[client].LastButtons & IN_ZOOM) != 0;
+	return pressed && !wasPressed;
+}
+
+static bool PressedSecondarySkillButton(int client, int buttons)
+{
+	bool pressed = (buttons & IN_USE) != 0 && (buttons & IN_ATTACK) != 0;
+	bool wasPressed = (ClientData[client].LastButtons & IN_USE) != 0 && (ClientData[client].LastButtons & IN_ATTACK) != 0;
+	return pressed && !wasPressed;
+}
+
+static bool PressedPlantModifier(int client, int buttons)
+{
+	bool pressed = (buttons & IN_SPEED) != 0;
+	bool wasPressed = (ClientData[client].LastButtons & IN_SPEED) != 0;
+	return pressed && !wasPressed;
+}
+
+static bool IsLookingDown(int client, float minPitch = 30.0)
+{
+	float ang[3];
+	GetClientEyeAngles(client, ang);
+	return ang[0] >= minPitch;
+}
+
 stock Action TimerStart(Handle timer)
 {
 	ResetPlugin();
@@ -35,96 +63,71 @@ public Action:TimerThink(Handle:hTimer, any:userid)
 	decl Float:pos[3];
 	GetClientAbsOrigin(client, pos);
 	int iDropTime = RoundToFloor(fCanDropTime);
+	bool pressedSpecial = PressedSpecialSkillButton(client, buttons);
+	bool pressedSecondary = PressedSecondarySkillButton(client, buttons);
+	bool pressedPlant = PressedPlantModifier(client, buttons);
+	int entityFlags = GetEntityFlags(client);
+	bool onGround = (entityFlags & FL_ONGROUND) != 0;
+	bool holdingShift = (buttons & IN_SPEED) != 0;
+	bool lookingDown = IsLookingDown(client);
 
-	switch (ClientData[client].ChosenClass)
+	ClassTypes classType = ClientData[client].ChosenClass;
+
+	if (pressedSpecial)
+	{
+		TryTriggerClassSkillAction(client, classType, ClassSkill_Special);
+	}
+
+	if (pressedSecondary)
+	{
+		TryTriggerClassSkillAction(client, classType, ClassSkill_Secondary);
+	}
+
+	switch (classType)
 	{
 		case athlete:
-		{	
+		{
 			SetEntDataFloat(client, g_flLaggedMovementValue, GetConVarFloat(ATHLETE_SPEED), true);
-			if (buttons & IN_ZOOM) {
-
-				char pendingMessage[128] = "Wait %i seconds to use anti-gravity grenade again";
-				
-				if (canUseSpecialSkill(client, pendingMessage)) {
-					//useSpecialSkill(client, 11);
-					useCustomCommand("Grenades", client, -1, 15);
-					ClientData[client].LastDropTime = GetGameTime();
-				}
-
-			}
 		}
-		
 		case saboteur:
 		{
-			if (BombActive == true) {
-
-				if (iDropTime > 0 && iDropTime < GetConVarInt(SABOTEUR_BOMB_ACTIVATE)) {
-
-						PrintHintText(client, "Mine is arming in %i seconds", client, GetConVarInt(SABOTEUR_BOMB_ACTIVATE) - iDropTime);
-					
+			if (BombActive == true)
+			{
+				if (iDropTime > 0 && iDropTime < GetConVarInt(SABOTEUR_BOMB_ACTIVATE))
+				{
+					PrintHintText(client, "Mine is arming in %i seconds", GetConVarInt(SABOTEUR_BOMB_ACTIVATE) - iDropTime);
 				}
-				else if (iDropTime == GetConVarInt(SABOTEUR_BOMB_ACTIVATE)) {
-										
-					if (BombHintTimestamp != iDropTime) {
+				else if (iDropTime == GetConVarInt(SABOTEUR_BOMB_ACTIVATE))
+				{
+					if (BombHintTimestamp != iDropTime)
+					{
 						PrintHintTextToAll("%N's mine is now armed!", client);
 						BombHintTimestamp = iDropTime;
 					}
 				}
 			}
-			if (buttons & IN_ZOOM) {
-					char pendingMessage[128] = "Wait for %i seconds to activate cloak again";
-					if (canUseSpecialSkill(client, pendingMessage)) {
-						useSpecialSkill(client, 1);						
-						ClientData[client].LastDropTime = GetGameTime();
-					}
-
-			}
 			if (buttons & IN_DUCK)
 			{
 				int hidingTime = RoundToFloor(GetGameTime() - ClientData[client].HideStartTime);
-				if (hidingTime >= GetConVarInt(SABOTEUR_INVISIBLE_TIME)) {
-					if (InvisibilityTimestamp != hidingTime && InvisibilityHint == false) 
+				if (hidingTime >= GetConVarInt(SABOTEUR_INVISIBLE_TIME))
+				{
+					if (InvisibilityTimestamp != hidingTime && InvisibilityHint == false)
 					{
 						SetRenderProperties(client);
-
-                                                FakeClientCommand(client, "sm_nap_apply 7");
-                                                FakeClientCommand(client, "sm_extendedsight");
-
-						//HidePlayer(client);
-
-						//SetEntityRenderFx(client, RENDERFX_PULSE_SLOW);
+						FakeClientCommand(client, "sm_nap_apply 7");
+						FakeClientCommand(client, "sm_extendedsight");
 						InvisibilityTimestamp = hidingTime;
 						InvisibilityHint = true;
-
 					}
 				}
-				if (hidingTime < GetConVarInt(SABOTEUR_INVISIBLE_TIME) && (hidingTime > 2)){
+				if (hidingTime < GetConVarInt(SABOTEUR_INVISIBLE_TIME) && (hidingTime > 2))
+				{
 					GlowPlayer(client, "Blue", FX:FxHologram);
 
-					if (InvisibilityTimestamp != hidingTime) {
+					if (InvisibilityTimestamp != hidingTime)
+					{
 						PrintHintText(client,"Becoming invisible in %i seconds", GetConVarInt(SABOTEUR_INVISIBLE_TIME) - hidingTime);
 						InvisibilityTimestamp = hidingTime;
-					}
-				}
-			}
-			
-			else if (buttons & IN_SPEED)
-			{
-				if(!(GetEntityFlags(client) & FL_ONGROUND)) {
-				} else {
-					if (CanDrop == false && (iDropTime > 0 && iDropTime < GetConVarInt(MINIMUM_DROP_INTERVAL))) 
-					{
-							PrintHintText(client ,"Wait %i seconds to another mine", (GetConVarInt(MINIMUM_DROP_INTERVAL) - iDropTime));
-					} else {
-
-						if (CanDrop == true && !IsPlayerInSaferoom(client) && !IsInEndingSaferoom(client))
-						{
-							if (ClientData[client].SpecialsUsed >= GetConVarInt(SABOTEUR_MAX_BOMBS)) {
-								PrintHintText(client ,"You're out of mines");
-							} else {
-								CreatePlayerSaboteurMenu(client);
-							}
-						}
 					}
 				}
 			}
@@ -132,114 +135,35 @@ public Action:TimerThink(Handle:hTimer, any:userid)
 			{
 				InvisibilityHint = false;
 			}
-
-		}
-		case commando:
-		{
-			if (buttons & IN_ZOOM) {
-
-					char pendingMessage[128] = "Wait for %i seconds to activate berzerk mode again";
-					if (canUseSpecialSkill(client, pendingMessage)) {
-						useSpecialSkill(client, 1);
-						PrintHintText(client, "You activated berzerk mode!");
-					}
-			}
 		}
 		case medic:
 		{
-			if (buttons & IN_SPEED)
-			{
-				if (CanDrop) 
-				{	
-					if (ClientData[client].SpecialsUsed > GetConVarInt(MEDIC_MAX_ITEMS)) {
-						PrintHintText(client ,"You're out of items (Max %i)", GetConVarInt(MEDIC_MAX_ITEMS));
-					}
-					if (ClientData[client].SpecialsUsed < GetConVarInt(MEDIC_MAX_ITEMS))
-					{	
-						CreatePlayerMedicMenu(client);	
-					}
-				}
-				else if (CanDrop == false && (iDropTime < GetConVarInt(MINIMUM_DROP_INTERVAL))) {
-					if (!(ClientData[client].LastButtons & IN_SPEED))					
-					PrintHintText(client ,"Wait %i seconds to deploy", (GetConVarInt(MINIMUM_DROP_INTERVAL) - iDropTime));
-				}
-
-			}
-
-			if (buttons & IN_ZOOM) {
-
-				char pendingMessage[128] = "Wait %i seconds to use healing orb again";
-				
-				if (canUseSpecialSkill(client, pendingMessage)) {
-					//useSpecialSkill(client, 11);
-					useCustomCommand("Grenades", client, -1, 11);
-					ClientData[client].LastDropTime = GetGameTime();
-				}
-
-			}
-
-			if (buttons & IN_DUCK) 
+			if (buttons & IN_DUCK)
 			{
 				SetEntDataFloat(client, g_flLaggedMovementValue, 1.7, true);
 
-				if ((GetGameTime() - ClientData[client].HealStartTime) >= 3.0) {
-					if (MedicHint == false) {
+				if ((GetGameTime() - ClientData[client].HealStartTime) >= 3.0)
+				{
+					if (MedicHint == false)
+					{
 						PrintHintTextToAll("%N is healing everyone around him!", client);
 						MedicHint = true;
 					}
 				}
-			} else {
-				SetEntDataFloat(client, g_flLaggedMovementValue, 1.0, true);					
+			}
+			else
+			{
+				SetEntDataFloat(client, g_flLaggedMovementValue, 1.0, true);
 				MedicHint = false;
-			}
-		}
-			
-		case engineer:
-		{
-			if (buttons & IN_SPEED && RoundStarted == true)// && ClientData[client].SpecialsUsed < GetConVarInt(ENGINEER_MAX_BUILDS)) 
-			{	
-				if (CanDrop == false && (iDropTime < GetConVarInt(MINIMUM_DROP_INTERVAL))) {
-					PrintHintText(client ,"Wait %i seconds to deploy again", (GetConVarInt(MINIMUM_DROP_INTERVAL) - iDropTime));
-				}
-				if (CanDrop == true) {
-					if(ClientData[client].SpecialsUsed < GetConVarInt(ENGINEER_MAX_BUILDS))
-					{
-						CreatePlayerEngineerMenu(client);
-					}
-					else
-					{
-						PrintHintText(client ,"You're out of items (Max %i)", GetConVarInt(ENGINEER_MAX_BUILDS));
-					}
-				}					
-			}
-			else if (buttons & IN_ZOOM) {
-
-				char pendingMessage[128] = "Wait %i seconds to activate shield again";
-				
-				if (canUseSpecialSkill(client, pendingMessage)) {
-					useCustomCommand("Grenades", client, -1, 7);
-					PrintHintText(client ,"You threw a protective shield (Max %i)", GetConVarInt(ENGINEER_MAX_BUILDS));
-
-					ClientData[client].LastDropTime = GetGameTime();
-				}
-
 			}
 		}
 		case soldier:
 		{
 			SetEntDataFloat(client, g_flLaggedMovementValue, GetConVarFloat(SOLDIER_SPEED), true);
-
-			if (buttons & IN_ZOOM)
-			{
-				char pendingMessage[128] = "Wait %d seconds to order new airstrike.";
-				
-				if (canUseSpecialSkill(client, pendingMessage)) {
-					useCustomCommand("Grenades", client, -1, 19);
-					ClientData[client].LastDropTime = GetGameTime();
-				}
-			}
 		}
 	}
+
+	HandleDeployInput(client, classType, holdingShift, pressedPlant, lookingDown, onGround, CanDrop, iDropTime);
 
 	ClientData[client].LastButtons = buttons;
 	return Plugin_Continue;

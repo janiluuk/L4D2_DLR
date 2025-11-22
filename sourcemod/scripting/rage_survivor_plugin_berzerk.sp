@@ -45,10 +45,12 @@
 #define PLUGIN_SKILL_NAME "Berzerk"
 #define DEBUG 0
 int g_iClassID = -1;
+bool g_bRageAvailable = false;
 
 //Includes
 #include <sourcemod>
 #include <sdktools>
+#include <rage/skills>
 #pragma semicolon 2 //Who doesn't like semicolons? :)
 
 //Definitions
@@ -730,22 +732,6 @@ public OnMapStart()
 	g_bIsLoading = false;
 }
 
-//Rage
-#define REQUIRE_PLUGIN
-#tryinclude <RageCore>
-
-#if !defined _RageCore_included
-	// Optional native from Rage Survivor
-	native void OnSpecialSkillSuccess(int client, char[] skillName);
-	native void OnSpecialSkillFail(int client, char[] skillName, char[] reason);
-	native void GetPlayerSkillName(int client, char[] skillName, int size);
-	native int FindSkillIdByName(char[] skillName);
-	native int RegisterRageSkill(char[] skillName, int type);
-    #define Rage_PLUGIN_NAME = "rage_survivor"
-#endif
-
-bool	Rage_Available;
-
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
 {
 	EngineVersion test = GetEngineVersion();
@@ -761,6 +747,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	MarkNativeAsOptional("GetPlayerSkillName");	
 	MarkNativeAsOptional("RegisterRageSkill");
 	MarkNativeAsOptional("Rage_OnPluginState");	
+	RageSkills_MarkNativesOptional();
 
 	return APLRes_Success;
 }
@@ -792,23 +779,41 @@ public int OnSpecialSkillUsed(int iClient, int skill, int type)
 
 public void OnAllPluginsLoaded()
 {
-    Rage_Available = LibraryExists("rage_survivor");
-	if (Rage_Available && g_iClassID == -1) {
-		g_iClassID = RegisterRageSkill(PLUGIN_SKILL_NAME, 0);
+	RageSkills_Refresh(PLUGIN_SKILL_NAME, 0, g_iClassID, g_bRageAvailable);
+}
+
+public void OnLibraryAdded(const char[] name)
+{
+	RageSkills_OnLibraryAdded(name, PLUGIN_SKILL_NAME, 0, g_iClassID, g_bRageAvailable);
+}
+
+public void OnLibraryRemoved(const char[] name)
+{
+	if( StrEqual(name, RAGE_PLUGIN_NAME, false) )
+	{
+		g_iClassID = -1;
 	}
+
+	RageSkills_OnLibraryRemoved(name, g_bRageAvailable);
 }
 
 public void Rage_OnPluginState(char[] plugin, int pluginstate)
 {
+	if( !StrEqual(plugin, RAGE_PLUGIN_NAME, false) )
+		return;
+
 	if( pluginstate == 1)
 	{
-		g_iClassID = RegisterRageSkill(PLUGIN_SKILL_NAME, 0);
+		g_bRageAvailable = true;
+		if( g_iClassID == -1 )
+		{
+			g_iClassID = RegisterRageSkill(PLUGIN_SKILL_NAME, 0);
+		}
 	}
 	else if( pluginstate == 0)
 	{
-		if (g_iClassID > -1) {
-			g_iClassID = -1;
-		}
+		g_bRageAvailable = false;
+		g_iClassID = -1;
 	}
 }
 

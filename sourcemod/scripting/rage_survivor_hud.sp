@@ -615,12 +615,21 @@ void LoadPluginData()
 
     if (!FileExists(path))
     {
-        SetFailState("Missing required data file on \"data/%s.cfg\", please re-download.", DATA_FILENAME);
-        return;
+        BuildPath(Path_SM, path, PLATFORM_MAX_PATH, "gamedata/%s.txt", DATA_FILENAME);
+        if (!FileExists(path))
+        {
+            SetFailState("Missing required data file: \"data/%s.cfg\" (or \"gamedata/%s.txt\").", DATA_FILENAME, DATA_FILENAME);
+            return;
+        }
     }
 
     KeyValues kv = new KeyValues("l4d2_scripted_hud");
-    kv.ImportFromFile(path);
+    if (!kv.ImportFromFile(path))
+    {
+        delete kv;
+        SetFailState("Failed to read HUD text data from \"%s\".", path);
+        return;
+    }
     kv.JumpToKey("HUD_Texts");
 
     kv.GetString("HUD1", g_sData_HUD1_Text, sizeof(g_sData_HUD1_Text));

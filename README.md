@@ -2,14 +2,16 @@
 
 A celebratory remix of Left 4 Dead 2 that turns every round into a playable action movie. Rage Edition keeps the co-op chaos you love and layers on bold classes, dramatic abilities, and a stack of quality-of-life touches that make the whole server feel alive.
 
-## What you'll experience
-- **Playable heroes instead of plain survivors.** Pick a role, unlock its signature move with `!skill`, and swap at any time through the in-game menu.
-- **Mix-and-match perks.** Stack advantages, accept trade-offs, and discover combos that keep each run fresh.
-- **Instant clarity.** A toggleable HUD calls out kills, warnings, and supplies, while the guide menu explains every talent in clear language.
-- **Fast admin access.** Type `!adm` for spawn tools, debug switches, and quick clean-up options without leaving the fight.
-- **Hold-to-open game menu.** Press and hold ALT to pop up a full-screen selector with 3rd-person view, kit pickup, class change, music control, and more. Release the key and it disappears.
-- **Now playing overlay.** The active track title and playtime stay pinned to every menu page so the entire lobby knows what’s on the air.
-- **Testing currently dynamically generated music based on your current situation** **Improved social skills for bots, your chat will be routed to 1-3 LLM's biased on the character persona, and live dialog is sent back. tension amped up between the 3 other bots.
+## Core Features
+- Sourcemod 1.21 compatible
+- Plugin-based architecture: drop in new perks or classes via `RageCore` and optional skill plugins
+- Configurable skill bindings per class via `configs/rage_class_skills.cfg` (special, secondary, deploy)
+- Modular perk system with negative effects and combo chaining; class-based skins and custom class definitions
+- Optional HUD with alerts, kill counter and supply warnings
+- Expanded help system with class descriptions and a night vision tutorial
+- Adjustable adrenaline, pills, revive and heal timings
+- Rewritten invisibility and fixed gun reload glitches
+- Debug modes, admin menu and useful tools
 
 ## Play your way
 
@@ -27,17 +29,38 @@ A celebratory remix of Left 4 Dead 2 that turns every round into a playable acti
 - Builds rage meter to unleash a Berserk rush that melts specials.
 
 ### Medic
-- Patches teammates in record time and blasts glowing heal orbs across the room.
-- Healed players get a reassuring glow so you always know who’s safe.
+- Expanded spawn options
+- Faster healing and revival; movement boost while healing
+- Throws healing orbs that glow and announce to others; cleanses bile with `sm_unvomit`
+- Players notified when healed; healed players gain a special glow; look down + **Shift** to drop medkits/supplies
+- Default health for classless players configurable
 
 ### Engineer
-- Drops upgrade packs, barricades chokepoints, and deploys turrets from an in-game shop.
-- Shields, door blocks, and “single turret mode” keep builds tidy.
+- Spawns ready-to-use upgrade packs
+- `!skill` opens a turret menu with two turret types and eight ammo options; look down + **Shift** to drop ammo supplies
+- Deploys protective shields and barricades doors/windows; single-turret mode for old-school play
+- Turrets notify nearby players, can be blown up by infected and are non-blocking
+- Deployment countdowns for engineer, medic and saboteur
 
-### Sneaky
+### Saboteur
+- Faster crouch movement with visibility status
+- Dead Ringer decoy: middle-click or type `!skill` (`sm_fd`/`sm_cloak`) to vanish and drop a fake corpse
+- Extended survivor sight: `!extendedsight` reveals special infected for 20 s every 2 min
+- Night vision and 20 mine types; look down + **Shift** to plant mines that glow and warn nearby players
+- Reduced survivor damage, increased infected damage
 
-- Sneaks with a Dead Ringer decoy, mines the map, and spots infected through walls on a timer.
-- Night vision and mine warnings help the whole team stay alert.
+## Additional Features & Commands
+- **Prototype Grenades** – Equip any grenade and press **Primary Fire** to throw. Hold **Primary Fire** and tap **Shove** (or type `sm_grenade`) to cycle through 20 experimental types like Black Hole vortices, Tesla lightning, Medic healing clouds, or an Airstrike marker.
+- **Class Skill Command** – Bind a key or type `!skill` to trigger your class's special ability. Secondary actions (Use+Attack) and deploy actions (look down + Shift) are configurable per class in `configs/rage_class_skills.cfg`.
+- **Dead Ringer Cloak** – Saboteur-only decoy and invisibility; `sm_fd` toggles the effect and `sm_cloak` triggers it immediately.
+- **Extended Survivor Sight** – Saboteur-only wallhack for 20 s on a 2 min cooldown; activate with `sm_extendedsight`.
+- **Unvomit** – Clear Boomer bile with `sm_unvomit` as a Medic cleanse.
+- **Map Music** – `!music` menu lets players enable round-start tracks. Server var `start_music_enabled` controls the default.
+- **Multiturret** – Engineer presses the class skill key (default middle mouse or `sm_skill`) to open a turret menu. Pick a gun and ammo, left-click to deploy, and press **Use** to pick it back up. Look down + **Shift** to drop ammo supplies. Admins can remove a turret via `sm_removemachine`.
+- **Ninja Kick** – Athlete leap‑kicks infected by jumping into them, knocking targets to the ground.
+- **Berserk Mode** – Commando builds rage as they deal damage; press `!skill` (or `sm_berserker`) when prompted for a short speed and damage surge.
+- **Airstrike** – Soldier aims and hits `!skill` to mark a target for a missile barrage.
+- **3rd Person Mode** – Switch to shoulder cam via the Game Options menu (`!rage`); modes include Off, Melee-only, and Always, your selection is remembered per-player, and you can bind a key (e.g., Alt) to `+rage_menu` to hold the menu open while choosing.
 
 ## Toys, tricks, and server spice
 - **Prototype grenades** – Equip one and experiment with gravity wells, lightning storms, medic clouds, and more just by cycling the throw style.
@@ -56,4 +79,4 @@ Need to tidy the battlefield? `!adm` opens a dedicated panel with spawn helpers,
 ## Ready to tinker?
 Rage Edition is built from modular SourceMod plugins, so you can add new talents, swap out effects, or write your own class packs without touching the core. Check the `sourcemod/scripting` folder for clean, well-documented examples.
 
-Grab the files, drop them on your server, and let the rage weekend begin.
+Grab the files, drop them on your server, tweak `configs/rage_class_skills.cfg` to taste, and let the rage weekend begin.
